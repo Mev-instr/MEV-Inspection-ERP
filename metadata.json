@@ -1,0 +1,6 @@
+{
+  "name": "MEV INS ERP",
+  "description": "MEV Inspection ERP Application connected to Firebase",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

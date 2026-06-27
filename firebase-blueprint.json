@@ -1,0 +1,123 @@
+{
+  "entities": {
+    "CustomerDetail": {
+      "title": "Customer Detail",
+      "description": "Customer information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "companyName": { "type": "string" }
+      }
+    },
+    "EmployeeDetail": {
+      "title": "Employee Detail",
+      "description": "Employee information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" }
+      }
+    },
+    "TrainingJob": {
+      "title": "Training Job",
+      "description": "Training job order",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "courseTitle": { "type": "string" }
+      }
+    },
+    "InspectionJob": {
+      "title": "Inspection Job",
+      "description": "Inspection job order",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "assetType": { "type": "string" }
+      }
+    },
+    "InspectionReport": {
+      "title": "Inspection Report",
+      "description": "Inspection report details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "reportName": { "type": "string" }
+      }
+    },
+    "MachineCertificate": {
+      "title": "Machine Certificate",
+      "description": "Machine certificate details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "namingSeries": { "type": "string" }
+      }
+    },
+    "LiftingToolCert": {
+      "title": "Lifting Tool Certificate",
+      "description": "Lifting tool certificate",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" }
+      }
+    },
+    "MachineDetail": {
+      "title": "Machine Detail",
+      "description": "Machine detail",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "machineName": { "type": "string" }
+      }
+    },
+    "OperatorCard": {
+      "title": "Operator Card",
+      "description": "Operator card details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "firstName": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "customers": {
+      "schema": { "$ref": "#/entities/CustomerDetail" },
+      "description": "Stores customer details"
+    },
+    "employees": {
+      "schema": { "$ref": "#/entities/EmployeeDetail" },
+      "description": "Stores employee details"
+    },
+    "trainingJobs": {
+      "schema": { "$ref": "#/entities/TrainingJob" },
+      "description": "Stores training jobs"
+    },
+    "inspectionJobs": {
+      "schema": { "$ref": "#/entities/InspectionJob" },
+      "description": "Stores inspection jobs"
+    },
+    "inspectionReports": {
+      "schema": { "$ref": "#/entities/InspectionReport" },
+      "description": "Stores inspection reports"
+    },
+    "machineCertificates": {
+      "schema": { "$ref": "#/entities/MachineCertificate" },
+      "description": "Stores machine certificates"
+    },
+    "liftingToolCerts": {
+      "schema": { "$ref": "#/entities/LiftingToolCert" },
+      "description": "Stores lifting tool certificates"
+    },
+    "machineDetails": {
+      "schema": { "$ref": "#/entities/MachineDetail" },
+      "description": "Stores machine details"
+    },
+    "operatorCards": {
+      "schema": { "$ref": "#/entities/OperatorCard" },
+      "description": "Stores operator cards"
+    }
+  }
+}
