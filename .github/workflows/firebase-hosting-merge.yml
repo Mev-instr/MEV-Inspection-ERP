@@ -9,9 +9,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: npm install && npm run build && echo "${{ github.sha }}" > dist/version.txt
-      - uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
-          channelId: live
-          projectId: gen-lang-client-0459155438
+      - name: Deploy to Firebase Hosting
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > sa.json
+          export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/sa.json
+          
+          set +e
+          OUTPUT=$(npx firebase-tools deploy --only hosting --project gen-lang-client-0459155438 --non-interactive 2>&1)
+          EXIT_CODE=$?
+          set -e
+          
+          echo "$OUTPUT"
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            if echo "$OUTPUT" | grep -q "is the current active version"; then
+              echo "✅ False positive error detected (CLI retry bug). The deployment actually succeeded on the backend."
+              exit 0
+            else
+              echo "❌ Deployment failed."
+              exit $EXIT_CODE
+            fi
+          fi
+          
+          echo "✅ Deployment successful."
