@@ -7,6 +7,7 @@ import { QRCodeSVG } from "qrcode.react";
 import mevLogoAsset from "./Horizonal_MEV_logo.png";
 import faviconAsset from "./Favicon.png";
 import mevStampAsset from "./MEV_Stamp.png";
+import halfWhiteLogoAsset from "./Half_White_Logo.png";
 
 interface PrintMachineCertificatePreviewProps {
   certificate: MachineCertificate;
@@ -20,8 +21,8 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
   const certRef = useRef<HTMLDivElement>(null);
 
   // Pre-load fallback images to avoid CORS issues during PDF generation
-  const fallbackInspSigBase64 = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='100'><text x='10' y='50' font-family='cursive' font-size='30' fill='black'>Inspector</text></svg>";
-  const fallbackAuthSigBase64 = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='100'><text x='10' y='50' font-family='cursive' font-size='30' fill='black'>Authorizer</text></svg>";
+  const fallbackInspSigBase64 = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='100'></svg>";
+  const fallbackAuthSigBase64 = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='100'></svg>";
   const fallbackStampBase64 = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><circle cx='100' cy='100' r='90' stroke='green' stroke-width='5' fill='none'/><text x='100' y='110' font-family='sans-serif' font-size='30' fill='green' text-anchor='middle'>APPROVED</text></svg>";
 
   const handleDownloadPDF = useReactToPrint({
@@ -50,6 +51,9 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
   const templates = [
     { id: "template1", name: "Standard Design" }
   ];
+
+  const headerLogoUrl = "https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FHorizonal%20MEV%20logo.png?alt=media&token=6fd9c05f-5c66-4c31-94b5-06ff4cb6c980";
+  const footerLogoUrl = "https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FHorizontal%20White%20Logo.png?alt=media&token=41850433-efdc-4527-bcc3-a071cb41cc35";
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-140px)] bg-slate-900 rounded-3xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-300">
@@ -116,7 +120,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                   <div className="flex justify-between items-start pt-10 px-10">
                     {/* Left Logo */}
                     <div className="w-40 h-auto flex flex-col items-center">
-                         <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FHorizonal%20MEV%20logo.png?alt=media&token=6fd9c05f-5c66-4c31-94b5-06ff4cb6c980" alt="MEV Logo" className="w-full h-full object-contain" />
+                         <img src={headerLogoUrl} alt="MEV Logo" className="w-full h-full object-contain" />
                     </div>
                     {/* Right Titles */}
                     <div className="flex flex-col items-end mt-1">
@@ -314,13 +318,11 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                      {/* Inspected By */}
                      <div className="flex flex-col w-[220px] text-center">
                         <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest mb-[3px]">Inspected By</span>
-                        <span className="text-[12px] font-bold text-slate-800 mb-2">{certificate.inspectedBy || "MEV MIDDLE EAST - Verification"}</span>
                         <div className="h-24 flex items-center justify-center relative">
-                           <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FMEV%20Stamp.png?alt=media&token=16bfd5d6-8380-4488-b036-6e917a6aecea" className="h-28 w-28 absolute object-contain" alt="MEV Stamp" crossOrigin="anonymous" />
                            {certificate.inspectedBySignature ? (
-                              <img src={certificate.inspectedBySignature} className="h-16 max-w-full object-contain relative z-10" alt="Inspected By" crossOrigin="anonymous" />
+                              <img src={certificate.inspectedBySignature} className="h-16 max-w-full object-contain relative z-10" alt="Inspected By" />
                            ) : (
-                              <img src={fallbackInspSigBase64} className="h-16 max-w-full object-contain relative z-10" alt="Inspected By" crossOrigin="anonymous" />
+                              <img src={fallbackInspSigBase64} className="h-16 max-w-full object-contain relative z-10" alt="Inspected By" />
                            )}
                         </div>
                      </div>
@@ -342,13 +344,11 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                      {/* Authorized By */}
                      <div className="flex flex-col w-[220px] text-center">
                         <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest mb-[3px]">Authorized By</span>
-                        <span className="text-[12px] font-bold text-slate-800 mb-2">{certificate.authorizedBy || "MEV MIDDLE EAST - Verification"}</span>
                         <div className="h-24 flex items-center justify-center relative">
-                           <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FMEV%20Stamp.png?alt=media&token=16bfd5d6-8380-4488-b036-6e917a6aecea" className="h-28 w-28 absolute object-contain" alt="MEV Stamp" crossOrigin="anonymous" />
                            {certificate.authorizedBySignature ? (
-                              <img src={certificate.authorizedBySignature} className="h-16 max-w-full object-contain relative z-10" alt="Authorized By" crossOrigin="anonymous" />
+                              <img src={certificate.authorizedBySignature} className="h-16 max-w-full object-contain relative z-10" alt="Authorized By" />
                            ) : (
-                              <img src={fallbackAuthSigBase64} className="h-16 max-w-full object-contain relative z-10" alt="Authorized By" crossOrigin="anonymous" />
+                              <img src={fallbackAuthSigBase64} className="h-16 max-w-full object-contain relative z-10" alt="Authorized By" />
                            )}
                         </div>
                      </div>
@@ -366,7 +366,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                   {/* Footer */}
                   <div className="mt-auto mb-0 py-[5px] h-auto min-h-[100px] bg-[#111827] flex items-center px-10 gap-10">
                      <div className="w-[200px] shrink-0 border-r border-white/20 h-16 flex items-center pr-10">
-                         <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FHorizontal%20White%20Logo.png?alt=media&token=41850433-efdc-4527-bcc3-a071cb41cc35" alt="MEV White Logo" className="w-full h-full object-contain" />
+                         <img src={footerLogoUrl} alt="MEV White Logo" className="w-full h-full object-contain" />
                      </div>
                      
                      <div className="flex-1 grid grid-cols-2 gap-y-[7px] gap-x-8 text-white/80">
@@ -418,7 +418,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                     
                     {/* Watermark Logo */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none z-0">
-                      <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FMEV%20Logo.png?alt=media&token=4556a2dc-9296-419c-9694-2b5519e1e7b8" alt="Watermark" className="w-[500px] h-[500px] object-contain" />
+                      <img src={faviconAsset} alt="Watermark" className="w-[500px] h-[500px] object-contain" />
                     </div>
 
                     <div className="flex-1 flex flex-col relative z-10 p-12 box-border">
@@ -434,7 +434,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                             </div>
                          </div>
                          <div className="h-28 w-64 flex items-center justify-center mt-6 mb-4">
-                            <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FHorizonal%20MEV%20logo.png?alt=media&token=6fd9c05f-5c66-4c31-94b5-06ff4cb6c980" alt="MEV Logo" className="w-full h-full object-contain" />
+                            <img src={headerLogoUrl} alt="MEV Logo" className="w-full h-full object-contain" />
                          </div>
                          <div className="w-full h-px bg-gradient-to-r from-transparent via-slate-300 to-transparent my-4"></div>
                          <h1 className="text-5xl font-normal text-[#111827] tracking-widest uppercase leading-tight font-serif text-center">
@@ -502,29 +502,24 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                          <div className="flex flex-col items-center w-56 text-center">
                             <div className="h-16 w-full border-b border-slate-400 relative flex items-end justify-center mb-3">
                                {certificate.inspectedBySignature ? (
-                                  <img src={certificate.inspectedBySignature} className="h-16 max-w-full object-contain relative z-10" alt="Inspected By" crossOrigin="anonymous" />
+                                  <img src={certificate.inspectedBySignature} className="h-16 max-w-full object-contain relative z-10" alt="Inspected By" />
                                ) : (
-                                  <img src={fallbackInspSigBase64} className="h-16 max-w-full object-contain relative z-10" alt="Inspected By" crossOrigin="anonymous" />
+                                  <img src={fallbackInspSigBase64} className="h-16 max-w-full object-contain relative z-10" alt="Inspected By" />
                                )}
                             </div>
-                            <div className="text-sm font-bold text-slate-800 mb-0.5">{certificate.inspectedBy || "N/A"}</div>
-                            <div className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Inspector</div>
                          </div>
 
                          <div className="flex flex-col items-center justify-center w-36 relative h-36">
-                           <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FMEV%20Stamp.png?alt=media&token=16bfd5d6-8380-4488-b036-6e917a6aecea" className="h-28 w-28 absolute object-contain" alt="MEV Stamp" crossOrigin="anonymous" />
                          </div>
 
                          <div className="flex flex-col items-center w-56 text-center">
                             <div className="h-16 w-full border-b border-slate-400 relative flex items-end justify-center mb-3">
                                {certificate.authorizedBySignature ? (
-                                  <img src={certificate.authorizedBySignature} className="h-16 max-w-full object-contain relative z-10" alt="Authorized By" crossOrigin="anonymous" />
+                                  <img src={certificate.authorizedBySignature} className="h-16 max-w-full object-contain relative z-10" alt="Authorized By" />
                                ) : (
-                                  <img src={fallbackAuthSigBase64} className="h-16 max-w-full object-contain relative z-10" alt="Authorized By" crossOrigin="anonymous" />
+                                  <img src={fallbackAuthSigBase64} className="h-16 max-w-full object-contain relative z-10" alt="Authorized By" />
                                )}
                             </div>
-                            <div className="text-sm font-bold text-slate-800 mb-0.5">{certificate.authorizedBy || "N/A"}</div>
-                            <div className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Authorized Signatory</div>
                          </div>
                       </div>
 

@@ -11,9 +11,10 @@ interface OperatorDetailViewProps {
   onUpdate: (updated: OperatorCard) => void;
   onDelete: (id: string) => void;
   onUploadImage?: (file: File, clientName: string, subfolder: string, entityId?: string) => Promise<string>;
+  onDeleteImage?: (url: string) => Promise<void>;
 }
 
-export function OperatorDetailView({ operator, onBack, onUpdate, onDelete, onUploadImage }: OperatorDetailViewProps) {
+export function OperatorDetailView({ operator, onBack, onUpdate, onDelete, onUploadImage, onDeleteImage }: OperatorDetailViewProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedFields, setEditedFields] = useState<OperatorCard>({ ...operator });
   const [showToast, setShowToast] = useState<string | null>(null);
@@ -151,6 +152,25 @@ export function OperatorDetailView({ operator, onBack, onUpdate, onDelete, onUpl
                   </div>
                 )}
                 
+                {isEditing && (
+                  <div className="absolute top-2 right-2 z-30">
+                    {operator.photoAttachment && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onDeleteImage && operator.photoAttachment) onDeleteImage(operator.photoAttachment);
+                          onUpdate({ ...operator, photoAttachment: "" });
+                          triggerToast("✓ Portrait image removed.");
+                        }}
+                        className="p-1.5 bg-rose-500 text-white rounded-lg hover:bg-rose-600 shadow-lg transition-colors"
+                        title="Remove Image"
+                      >
+                        <Icons.X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {isEditing && (
                   <div onClick={() => setPickerTarget("photoAttachment")} className="absolute inset-0 bg-slate-900/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                     <div className="text-white flex flex-col items-center gap-1">
@@ -342,7 +362,22 @@ export function OperatorDetailView({ operator, onBack, onUpdate, onDelete, onUpl
                     <Icons.Upload className="w-5 h-5 text-slate-400 mb-2 opacity-50 relative z-10" />
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest relative z-10">Authorized By</span>
                     {editedFields.authorizedBySignature ? (
-                      <img src={editedFields.authorizedBySignature} alt="Authorized By" className="max-h-16 object-contain mt-2 z-10 relative" />
+                      <div className="relative group/sig">
+                        <img src={editedFields.authorizedBySignature} alt="Authorized By" className="max-h-16 object-contain mt-2 z-10 relative" />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onDeleteImage && editedFields.authorizedBySignature) onDeleteImage(editedFields.authorizedBySignature);
+                            setEditedFields({ ...editedFields, authorizedBySignature: "" });
+                            triggerToast("✓ Authorized signature removed.");
+                          }}
+                          className="absolute -top-1 -right-1 p-1.5 bg-rose-500 text-white rounded-full shadow-lg z-30 hover:bg-rose-600 transition-colors"
+                          title="Remove Signature"
+                        >
+                          <Icons.X className="w-3 h-3" />
+                        </button>
+                      </div>
                     ) : (
                       <span className="text-xs text-slate-400 font-bold relative z-10 mt-1">Upload Signature</span>
                     )}
@@ -369,7 +404,22 @@ export function OperatorDetailView({ operator, onBack, onUpdate, onDelete, onUpl
                     <Icons.Upload className="w-5 h-5 text-slate-400 mb-2 opacity-50 relative z-10" />
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest relative z-10">Trained By</span>
                     {editedFields.trainedBySignature ? (
-                      <img src={editedFields.trainedBySignature} alt="Trained By" className="max-h-16 object-contain mt-2 z-10 relative" />
+                      <div className="relative group/sig">
+                        <img src={editedFields.trainedBySignature} alt="Trained By" className="max-h-16 object-contain mt-2 z-10 relative" />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onDeleteImage && editedFields.trainedBySignature) onDeleteImage(editedFields.trainedBySignature);
+                            setEditedFields({ ...editedFields, trainedBySignature: "" });
+                            triggerToast("✓ Trained signature removed.");
+                          }}
+                          className="absolute -top-1 -right-1 p-1.5 bg-rose-500 text-white rounded-full shadow-lg z-30 hover:bg-rose-600 transition-colors"
+                          title="Remove Signature"
+                        >
+                          <Icons.X className="w-3 h-3" />
+                        </button>
+                      </div>
                     ) : (
                       <span className="text-xs text-slate-400 font-bold relative z-10 mt-1">Upload Signature</span>
                     )}
@@ -466,7 +516,14 @@ export function OperatorDetailView({ operator, onBack, onUpdate, onDelete, onUpl
       {pickerTarget && (
         <ImageUploadPicker
           clientName={editedFields.company || "General"}
-          subfolder="Operator Directory"
+          subfolder="operator-card"
+          fileName={
+            pickerTarget === "photoAttachment"
+              ? `${(editedFields.operatorName || "unnamed").replace(/\s+/g, "-").toLowerCase()}-img`
+              : pickerTarget === "authorizedBySignature"
+                ? `${(editedFields.operatorName || "unnamed").replace(/\s+/g, "-").toLowerCase()}-auth-img`
+                : `${(editedFields.operatorName || "unnamed").replace(/\s+/g, "-").toLowerCase()}-trained-img`
+          }
           onClose={() => setPickerTarget(null)}
           onImageSelect={(url) => {
             setEditedFields({ ...editedFields, [pickerTarget]: url });

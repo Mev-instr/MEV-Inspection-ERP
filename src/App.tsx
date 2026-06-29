@@ -32,7 +32,9 @@ import {
   signInWithGoogle,
   signOutUser,
   getAccessToken,
+  storage,
 } from "./lib/firebase";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import {
   fetchCollection,
   saveDocument,
@@ -100,6 +102,7 @@ export default function App() {
         );
         initializeStructure();
       } else {
+        triggerCloudToast(`Not connected. Please sign in to manage data.`);
       }
     });
     return () => unsubscribe();
@@ -148,10 +151,10 @@ export default function App() {
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = new Image();
-        img.onload = () => {
+        img.onload = async () => {
           const canvas = document.createElement("canvas");
-          const MAX_WIDTH = 800;
-          const MAX_HEIGHT = 800;
+          const MAX_WIDTH = 400;
+          const MAX_HEIGHT = 400;
           let width = img.width;
           let height = img.height;
 
@@ -175,8 +178,27 @@ export default function App() {
             return;
           }
           ctx.drawImage(img, 0, 0, width, height);
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
-          resolve(dataUrl);
+          
+          canvas.toBlob(async (blob) => {
+            if (!blob) {
+              reject(new Error("Failed to create blob"));
+              return;
+            }
+
+            try {
+              const extension = "webp";
+              const safeSubfolder = subfolder.trim();
+              const fileName = entityId ? `${entityId}.${extension}` : `${Date.now()}.${extension}`;
+              const storageRef = ref(storage, `${safeSubfolder}/${fileName}`);
+              const snapshot = await uploadBytes(storageRef, blob, { contentType: "image/webp" });
+              const url = await getDownloadURL(snapshot.ref);
+              resolve(url);
+            } catch (err) {
+              console.error("Storage upload failed, falling back to data URL:", err);
+              const dataUrl = canvas.toDataURL("image/webp", 0.8);
+              resolve(dataUrl);
+            }
+          }, "image/webp", 0.8);
         };
         img.onerror = () => reject(new Error("Failed to load image"));
         img.src = e.target?.result as string;
@@ -184,6 +206,19 @@ export default function App() {
       reader.onerror = () => reject(new Error("Failed to read file"));
       reader.readAsDataURL(file);
     });
+  };
+
+  const handleDeleteImage = async (url: string): Promise<void> => {
+    if (!url || !url.startsWith("https://firebasestorage.googleapis.com")) {
+      return;
+    }
+    try {
+      const storageRef = ref(storage, url);
+      await deleteObject(storageRef);
+      console.log("File deleted from storage successfully");
+    } catch (err) {
+      console.error("Error deleting file from storage:", err);
+    }
   };
 
   // 5. Connect and Sync ERP State Arrays with Firestore
@@ -259,10 +294,11 @@ export default function App() {
   }, [customers, currentUser]);
 
   useEffect(() => {
-    if (currentUser && operators !== initialOperators) {
+    // Save operators even if not signed in, as long as data differs from initial
+    if (operators !== initialOperators) {
       operators.forEach((op) => saveDocument("operators", op.id, op));
     }
-  }, [operators, currentUser]);
+  }, [operators]);
 
   useEffect(() => {
     if (currentUser && machineCertificates !== initialMachineCertificates) {
@@ -711,14 +747,25 @@ export default function App() {
             )}
           </div>
 
-          <button
-            id="sidebar-sign-out"
-            onClick={handleSignOut}
-            className={`w-full flex items-center space-x-3 px-3 py-2 text-xs font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50/50 rounded-lg transition-all`}
-          >
-            <Icons.LogOut className="w-4 h-4 shrink-0" />
-            {!sidebarCollapsed && <span>SIGN OUT</span>}
-          </button>
+          {currentUser ? (
+            <button
+              id="sidebar-sign-out"
+              onClick={handleSignOut}
+              className={`w-full flex items-center space-x-3 px-3 py-2 text-xs font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50/50 rounded-lg transition-all`}
+            >
+              <Icons.LogOut className="w-4 h-4 shrink-0" />
+              {!sidebarCollapsed && <span>SIGN OUT</span>}
+            </button>
+          ) : (
+            <button
+              id="sidebar-sign-in"
+              onClick={handleSignIn}
+              className={`w-full flex items-center space-x-3 px-3 py-2 text-xs font-bold text-[#683EFF] hover:bg-[#F0EBFF] rounded-lg transition-all`}
+            >
+              <Icons.LogIn className="w-4 h-4 shrink-0" />
+              {!sidebarCollapsed && <span>SIGN IN WITH GOOGLE</span>}
+            </button>
+          )}
         </div>
       </aside>
 
@@ -938,13 +985,23 @@ export default function App() {
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={handleSignOut}
-                  className="w-full flex items-center justify-center space-x-2 rounded-lg bg-rose-50 py-2.5 text-xs font-bold text-rose-600"
-                >
-                  <Icons.LogOut className="w-4 h-4" />
-                  <span>SIGN OUT</span>
-                </button>
+                {currentUser ? (
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full flex items-center justify-center space-x-2 rounded-lg bg-rose-50 py-2.5 text-xs font-bold text-rose-600"
+                  >
+                    <Icons.LogOut className="w-4 h-4" />
+                    <span>SIGN OUT</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSignIn}
+                    className="w-full flex items-center justify-center space-x-2 rounded-lg bg-[#F0EBFF] py-2.5 text-xs font-bold text-[#683EFF]"
+                  >
+                    <Icons.LogIn className="w-4 h-4" />
+                    <span>SIGN IN WITH GOOGLE</span>
+                  </button>
+                )}
               </div>
             </motion.div>
           </div>
@@ -973,7 +1030,7 @@ export default function App() {
         </div>
 
         {/* Global Toolbar Header */}
-        <header className="z-40 flex items-center justify-between bg-white/70 backdrop-blur border-b border-[#ECECF3] px-6 py-4 md:px-8">
+        <header className="z-10 flex items-center justify-between bg-white/70 backdrop-blur border-b border-[#ECECF3] px-6 py-4 md:px-8">
           <div className="flex items-center space-x-4">
             {/* Hamburger for mobile responsive */}
             <button
@@ -1020,7 +1077,7 @@ export default function App() {
                   <>
                     {/* Popover backdrop closer */}
                     <div
-                      className="fixed inset-0 z-40"
+                      className="fixed inset-0 z-50"
                       onClick={() => setShowNotifications(false)}
                       id="notif-popover-underlay"
                     />
@@ -1029,7 +1086,7 @@ export default function App() {
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute right-0 mt-2 z-50 w-80 sm:w-96 rounded-2xl border border-slate-100 bg-white p-4 shadow-xl text-slate-700"
+                      className="absolute right-0 mt-2 z-[60] w-80 sm:w-96 rounded-2xl border border-slate-100 bg-white p-4 shadow-xl text-slate-700"
                       id="notifications-popover-panel"
                     >
                       <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 select-none">
@@ -1078,7 +1135,7 @@ export default function App() {
 
         {/* 3. CORE ROUTER PAGE SPACE */}
         <div
-          className="flex-1 overflow-y-auto p-6 md:p-8 z-10"
+          className="flex-1 overflow-y-auto p-6 md:p-8"
           id="router-scroll-container"
         >
           <AnimatePresence mode="wait">
@@ -1191,6 +1248,7 @@ export default function App() {
                       setViewOperatorId(null);
                     }}
                     onUploadImage={handleUploadImage}
+                    onDeleteImage={handleDeleteImage}
                   />
                 ) : (
                   <OperatorDirectoryView
@@ -1198,6 +1256,7 @@ export default function App() {
                     onOperatorsChange={setOperators}
                     onViewOperator={(id) => setViewOperatorId(id)}
                     onUploadImage={handleUploadImage}
+                    onDeleteImage={handleDeleteImage}
                   />
                 )}
               </motion.div>

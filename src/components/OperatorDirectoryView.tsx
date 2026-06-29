@@ -13,9 +13,10 @@ interface OperatorDirectoryProps {
   onOperatorsChange: React.Dispatch<React.SetStateAction<OperatorCard[]>>;
   onViewOperator: (id: string) => void;
   onUploadImage?: (file: File, clientName: string, subfolder: string, entityId?: string) => Promise<string>;
+  onDeleteImage?: (url: string) => Promise<void>;
 }
 
-export function OperatorDirectoryView({ operators, onOperatorsChange, onViewOperator, onUploadImage }: OperatorDirectoryProps) {
+export function OperatorDirectoryView({ operators, onOperatorsChange, onViewOperator, onUploadImage, onDeleteImage }: OperatorDirectoryProps) {
   // View states
   const [viewMode, setViewMode] = useState<"list" | "grid" | "compact">("list");
   const [showViewDropdown, setShowViewDropdown] = useState(false);
@@ -144,7 +145,12 @@ export function OperatorDirectoryView({ operators, onOperatorsChange, onViewOper
         setIsUploading(field);
         showToast(`Uploading ${field === "photoAttachment" ? "photo" : "signature"}...`);
         try {
-          const url = await onUploadImage(file, formValues.company || "General", "Operator Directory", formValues.id);
+          const fileName = field === "photoAttachment" 
+            ? `${(formValues.operatorName || "unnamed").replace(/\s+/g, "-").toLowerCase()}-img`
+            : field === "authorizedBySignature"
+              ? `${(formValues.operatorName || "unnamed").replace(/\s+/g, "-").toLowerCase()}-auth-img`
+              : `${(formValues.operatorName || "unnamed").replace(/\s+/g, "-").toLowerCase()}-trained-img`;
+          const url = await onUploadImage(file, formValues.company || "General", "operator-card", fileName);
           setFormValues(prev => ({ ...prev, [field]: url }));
           showToast(`✓ Uploaded successfully!`);
         } catch (err) {
@@ -905,7 +911,10 @@ export function OperatorDirectoryView({ operators, onOperatorsChange, onViewOper
                     {formValues.photoAttachment && (
                       <button 
                         type="button"
-                        onClick={() => setFormValues(prev => ({ ...prev, photoAttachment: null }))}
+                        onClick={() => {
+                          if (onDeleteImage && formValues.photoAttachment) onDeleteImage(formValues.photoAttachment);
+                          setFormValues(prev => ({ ...prev, photoAttachment: undefined }))
+                        }}
                         className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full shadow-lg hover:bg-rose-600 transition-colors"
                       >
                         <Icons.X className="w-4 h-4" />
@@ -1056,10 +1065,14 @@ export function OperatorDirectoryView({ operators, onOperatorsChange, onViewOper
                       {formValues.authorizedBySignature && (
                         <button 
                           type="button"
-                          onClick={() => setFormValues(prev => ({ ...prev, authorizedBySignature: undefined }))}
+                          onClick={() => {
+                            if (onDeleteImage && formValues.authorizedBySignature) onDeleteImage(formValues.authorizedBySignature);
+                            setFormValues(prev => ({ ...prev, authorizedBySignature: undefined }))
+                            showToast("✓ Authorized signature removed.");
+                          }}
                           className="text-[10px] font-bold text-rose-500 z-10 hover:text-rose-600 relative"
                         >
-                          Clear
+                          Remove
                         </button>
                       )}
                     </div>
@@ -1091,10 +1104,14 @@ export function OperatorDirectoryView({ operators, onOperatorsChange, onViewOper
                       {formValues.trainedBySignature && (
                         <button 
                           type="button"
-                          onClick={() => setFormValues(prev => ({ ...prev, trainedBySignature: undefined }))}
+                          onClick={() => {
+                            if (onDeleteImage && formValues.trainedBySignature) onDeleteImage(formValues.trainedBySignature);
+                            setFormValues(prev => ({ ...prev, trainedBySignature: undefined }))
+                            showToast("✓ Trained signature removed.");
+                          }}
                           className="text-[10px] font-bold text-rose-500 z-10 hover:text-rose-600 relative"
                         >
-                          Clear
+                          Remove
                         </button>
                       )}
                     </div>

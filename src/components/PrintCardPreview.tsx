@@ -4,9 +4,6 @@ import * as Icons from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import { QRCodeSVG } from "qrcode.react";
 
-import mevLogoAsset from "./Horizonal_MEV_logo.png";
-import faviconAsset from "./Favicon.png";
-import halfWhiteLogoAsset from "./Half_White_Logo.png";
 import mevStampAsset from "./MEV_Stamp.png";
 
 interface PrintCardPreviewProps {
@@ -22,9 +19,32 @@ export function PrintCardPreview({ operator, onClose }: PrintCardPreviewProps) {
   const backRef = useRef<HTMLDivElement>(null);
   const cardsContainerRef = useRef<HTMLDivElement>(null);
 
+  const pageStyle = `
+    @media print {
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .watermark-layer {
+        position: absolute !important;
+        inset: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        pointer-events: none !important;
+        z-index: 0 !important;
+      }
+      .watermark-img {
+        width: 50px !important;
+        opacity: 0.12 !important;
+        object-fit: contain !important;
+      }
+    }
+  `;
+
   const handleDownloadPDF = useReactToPrint({
     contentRef: cardsContainerRef,
-    documentTitle: `${operator.namingSeries || operator.id}_ID_Card`,
+    documentTitle: `${operator.namingSeries || operator.id}_ID_Card`.replace(/[/\\?%*:|"<>]/g, '-'),
   });
 
   const templates = [
@@ -33,6 +53,7 @@ export function PrintCardPreview({ operator, onClose }: PrintCardPreviewProps) {
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-140px)] bg-slate-900 rounded-3xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-300">
+      <style>{pageStyle}</style>
       {/* Top Header */}
       <div className="flex items-center justify-between p-4 px-6 bg-slate-900 border-b border-white/10 shrink-0">
         <div className="flex items-center gap-4">
@@ -94,24 +115,52 @@ export function PrintCardPreview({ operator, onClose }: PrintCardPreviewProps) {
                 }}
               >
                 {/* Header */}
-                <div className="h-[120px] shrink-0 flex items-center pl-10 pr-6 border-b border-slate-100">
-                  <div className="flex items-center justify-center h-24 w-[280px]">
-                    <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FHorizonal%20MEV%20logo.png?alt=media&token=6fd9c05f-5c66-4c31-94b5-06ff4cb6c980" className="w-full h-full object-contain" alt="MEV Logo" crossOrigin="anonymous" />
-                  </div>
-                  <div className="h-24 w-px bg-slate-300 mx-10"></div>
-                  <div className="flex flex-col justify-center translate-y-1">
-                    <h1 className="text-[24px] font-medium text-black tracking-wide uppercase leading-tight mb-1">Equipment Inspection Services</h1>
-                    <p className="text-[#683EFF] font-normal text-[18px] tracking-wide">Safety. Integrity. Reliability</p>
+                <div className="h-[120px] shrink-0 flex items-center px-10 border-b border-slate-100">
+                  <div className="grid grid-cols-[1fr_2fr] items-center gap-0 w-full">
+                    <div className="flex justify-center pr-10">
+                      <img 
+                        src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FHorizonal%20MEV%20logo.png?alt=media&token=6fd9c05f-5c66-4c31-94b5-06ff4cb6c980" 
+                        alt="MEV Logo" 
+                        className="h-20 object-contain"
+                      />
+                    </div>
+                    <div className="flex flex-col justify-center border-l-2 border-[#683EFF] pl-10 h-16">
+                      <h1 className="text-[24px] font-semibold text-slate-900 tracking-tight uppercase leading-none mb-1">Equipment Inspection Services</h1>
+                      <p className="text-[#683EFF] font-normal text-[18px] tracking-wide">Safety. Integrity. Reliability</p>
+                    </div>
                   </div>
                 </div>
 
                 {/* Body Content */}
-                <div className="flex-1 flex px-10 py-4 relative items-center min-h-0 overflow-hidden">
+                <div className="flex-1 flex px-10 py-4 relative items-center min-h-0">
+                  {/* Watermark - Placed here to only show in middle section */}
+                  <div 
+                    className="watermark-layer" 
+                    style={{ 
+                      zIndex: 0, 
+                      position: 'absolute', 
+                      top: 0, 
+                      left: 0, 
+                      right: 0, 
+                      bottom: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      pointerEvents: 'none'
+                    }}
+                  >
+                    <img 
+                      src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FFavicon.png?alt=media&token=c8b110bc-316b-439b-84d0-b1f25816b7a1" 
+                      className="watermark-img" 
+                      style={{ width: '290px' }}
+                      alt="watermark" 
+                    />
+                  </div>
                   {/* Photo Profile */}
-                  <div className="w-[215px] h-[252px] rounded-2xl overflow-hidden border border-[#683EFF]/30 bg-slate-100 shrink-0 shadow-sm relative mr-6 z-10 box-border p-1">
+                  <div className="w-[215px] h-[252px] rounded-2xl overflow-hidden border border-[#683EFF]/30 bg-slate-100 shrink-0 shadow-sm relative mr-6 box-border p-1" style={{ zIndex: 10 }}>
                     <div className="w-full h-full rounded-xl overflow-hidden bg-white">
                        {operator.photoAttachment ? (
-                        <img src={operator.photoAttachment} className="w-full h-full object-cover" alt="Operator Portrait" crossOrigin="anonymous" />
+                        <img src={operator.photoAttachment} className="w-full h-full object-cover" alt="Operator Portrait" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-300">
                            <Icons.User className="w-24 h-24" />
@@ -121,7 +170,7 @@ export function PrintCardPreview({ operator, onClose }: PrintCardPreviewProps) {
                   </div>
 
                   {/* Info Grid */}
-                  <div className="flex-1 flex flex-col justify-center max-w-[400px] z-10">
+                  <div className="flex-1 flex flex-col justify-center max-w-[400px]" style={{ zIndex: 10 }}>
                     <h2 className="text-[28px] font-bold text-slate-800 uppercase mb-1 leading-[1.2em]">{operator.operatorName}</h2>
                     <h3 className="text-xl font-medium text-[#683EFF] mb-1.5 leading-[1.2em]">{operator.levelType || "Operator"}</h3>
                     
@@ -165,16 +214,9 @@ export function PrintCardPreview({ operator, onClose }: PrintCardPreviewProps) {
                   </div>
 
                   {/* QR Code */}
-                  <div className="absolute top-1/2 right-6 -translate-y-1/2 p-2 bg-white rounded-xl shadow-sm border border-[#683EFF] z-10">
+                  <div className="absolute top-1/2 right-6 -translate-y-1/2 p-2 bg-white rounded-xl shadow-sm border border-[#683EFF]" style={{ zIndex: 10 }}>
                     <QRCodeSVG value={`https://mev-ins.com/verify/${operator.id}`} size={120} />
                   </div>
-                  
-                  {/* Watermark in background */}
-                  {faviconAsset && (
-                    <div className="absolute inset-0 flex items-center justify-center opacity-[0.15] pointer-events-none z-0">
-                      <div className="w-[280px] h-[280px]" /> {/* Space for Watermark */}
-                    </div>
-                  )}
                 </div>
 
                 {/* Footer */}
@@ -256,9 +298,11 @@ export function PrintCardPreview({ operator, onClose }: PrintCardPreviewProps) {
                   <div className="flex flex-1 overflow-hidden h-[490px]">
                     {/* Left Column (Dark) */}
                     <div className="w-[210px] bg-[#111827] h-full flex flex-col items-center justify-center p-6 text-center shrink-0 relative overflow-hidden">
-                      <div className="w-40 flex justify-center items-center z-10">
-                        <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FHalf%20White%20Logo.png?alt=media&token=5d1ceefc-3248-4da6-a8f6-b9bbb310e534" className="w-full object-contain" alt="MEV Logo" crossOrigin="anonymous" />
-                      </div>
+                      <img 
+                        src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FHalf%20White%20Logo.png?alt=media&token=5d1ceefc-3248-4da6-a8f6-b9bbb310e534" 
+                        alt="MEV Logo" 
+                        className="w-full object-contain opacity-90"
+                      />
                     </div>
 
                     {/* Right Column (Light) */}
@@ -304,9 +348,8 @@ export function PrintCardPreview({ operator, onClose }: PrintCardPreviewProps) {
                          <div className="flex flex-col items-center w-48 relative">
                             <div className="text-base font-bold text-[#683EFF] mb-2 uppercase text-center w-full">Authorized By:</div>
                             <div className="h-32 w-32 flex items-center justify-center relative">
-                              <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FMEV%20Stamp.png?alt=media&token=16bfd5d6-8380-4488-b036-6e917a6aecea" className="absolute inset-0 w-full h-full object-contain" alt="Stamp" crossOrigin="anonymous" />
                               {operator.authorizedBySignature && (
-                                <img src={operator.authorizedBySignature} className="absolute inset-0 w-full h-full object-contain" alt="Signature" crossOrigin="anonymous" />
+                                <img src={operator.authorizedBySignature} className="absolute inset-0 w-full h-full object-contain" alt="Signature" />
                               )}
                             </div>
                          </div>
@@ -325,7 +368,7 @@ export function PrintCardPreview({ operator, onClose }: PrintCardPreviewProps) {
                             </div>
                             <div className="h-32 w-40 flex items-center justify-center relative overflow-hidden">
                                {operator.trainedBySignature ? (
-                                  <div className="w-full h-full" /> /* Space for Trained By */
+                                  <img src={operator.trainedBySignature} className="w-full h-full object-contain" alt="Signature" />
                                ) : null}
                             </div>
                          </div>

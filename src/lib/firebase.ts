@@ -1,8 +1,11 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, User } from "firebase/auth";
+import { initializeFirestore } from "firebase/firestore";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, User, signInAnonymously } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import firebaseAppletConfig from "../../firebase-applet-config.json";
+
+const storageBucket = firebaseAppletConfig.storageBucket || `${firebaseAppletConfig.projectId}.appspot.com`;
+console.log("Using storage bucket:", storageBucket);
 
 const firebaseConfig = {
   projectId: firebaseAppletConfig.projectId,
@@ -10,38 +13,44 @@ const firebaseConfig = {
   apiKey: firebaseAppletConfig.apiKey,
   authDomain: firebaseAppletConfig.authDomain,
   messagingSenderId: firebaseAppletConfig.messagingSenderId,
-  storageBucket: firebaseAppletConfig.storageBucket,
+  storageBucket: storageBucket,
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app, (firebaseAppletConfig as any).firestoreDatabaseId || "(default)");
+
+// Use initializeFirestore with experimentalForceLongPolling to avoid connectivity issues in proxy environments
+const databaseId = (firebaseAppletConfig as any).databaseId || (firebaseAppletConfig as any).firestoreDatabaseId || "(default)";
+console.log("Initializing Firestore with databaseId:", databaseId);
+
+const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+}, databaseId);
+
+// Add a helper to check if we are online
+export const isFirestoreOnline = async () => {
+  try {
+    const { doc, getDocFromServer } = await import("firebase/firestore");
+    await getDocFromServer(doc(db, 'test', 'connection'));
+    return true;
+  } catch (e) {
+    console.error("Firestore connectivity check failed:", e);
+    return false;
+  }
+};
+
 const auth = getAuth(app);
 const storage = getStorage(app);
 
 const googleProvider = new GoogleAuthProvider();
 
-let cachedAccessToken: string | null = null;
+let cachedAccessToken: string | null = localStorage.getItem("gdrive_access_token");
 let isSigningIn = false;
 
 // Initialize auth listener
 export const initAuth = (
-  onAuthSuccess?: (user: User, token: string) => void,
-  onAuthFailure?: () => void
+  onAuthChange: (user: User | null) => void
 ) => {
-  return onAuthStateChanged(auth, async (user: User | null) => {
-    if (user) {
-      if (cachedAccessToken) {
-        if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
-      } else if (!isSigningIn) {
-        // Token might have expired or not present in cache.
-        // In full-stack context, the user might need to re-login to get a fresh token.
-        if (onAuthFailure) onAuthFailure();
-      }
-    } else {
-      cachedAccessToken = null;
-      if (onAuthFailure) onAuthFailure();
-    }
-  });
+  return onAuthStateChanged(auth, onAuthChange);
 };
 
 export const signInWithGoogle = async () => {

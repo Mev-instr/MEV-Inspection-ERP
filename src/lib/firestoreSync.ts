@@ -31,6 +31,13 @@ export async function saveDocument(collectionName: string, docId: string, data: 
     const docRef = doc(db, collectionName, docId);
     // Remove the id from the actual data payload to avoid duplicates
     const { id, ...cleanData } = data;
+    
+    // Check for large fields (Data URLs)
+    const stringified = JSON.stringify(cleanData);
+    if (stringified.length > 800000) { // Close to 1MB limit
+      console.warn(`Document ${docId} is very large (${Math.round(stringified.length / 1024)} KB). This might fail if it exceeds 1MB.`);
+    }
+
     await setDoc(docRef, cleanData, { merge: true });
     console.log(`Document ${docId} successfully saved in ${collectionName}`);
   } catch (error) {
