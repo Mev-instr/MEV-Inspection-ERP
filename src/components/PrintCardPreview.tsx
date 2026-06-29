@@ -25,11 +25,6 @@ export function PrintCardPreview({ operator, onClose }: PrintCardPreviewProps) {
   const handleDownloadPDF = useReactToPrint({
     contentRef: cardsContainerRef,
     documentTitle: `${operator.namingSeries || operator.id}_ID_Card`,
-    onBeforePrint: () => {
-      setIsExporting(true);
-      return Promise.resolve();
-    },
-    onAfterPrint: () => setIsExporting(false),
   });
 
   const templates = [
@@ -69,11 +64,10 @@ export function PrintCardPreview({ operator, onClose }: PrintCardPreviewProps) {
           
           <button
             onClick={() => handleDownloadPDF()}
-            disabled={isExporting}
-            className="flex items-center gap-2 px-6 py-2.5 bg-[#683EFF] hover:bg-[#582DE5] disabled:opacity-50 text-white rounded-lg text-sm font-bold transition-colors shadow-lg"
+            className="flex items-center gap-2 px-6 py-2.5 bg-[#683EFF] hover:bg-[#582DE5] text-white rounded-lg text-sm font-bold transition-colors shadow-lg"
           >
-            {isExporting ? <Icons.Loader2 className="w-4 h-4 animate-spin" /> : <Icons.Download className="w-4 h-4" />}
-            {isExporting ? "Generating..." : "Print / Save as PDF"}
+            <Icons.Download className="w-4 h-4" />
+            Print / Save as PDF
           </button>
         </div>
       </div>
@@ -102,11 +96,7 @@ export function PrintCardPreview({ operator, onClose }: PrintCardPreviewProps) {
                 {/* Header */}
                 <div className="h-[120px] shrink-0 flex items-center pl-10 pr-6 border-b border-slate-100">
                   <div className="flex items-center justify-center h-24 w-[280px]">
-                    {mevLogoAsset ? (
-                      <div className="w-full h-full" /> /* Space for MEV Logo */
-                    ) : (
-                      <MEVLogoDark />
-                    )}
+                    <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FHorizonal%20MEV%20logo.png?alt=media&token=6fd9c05f-5c66-4c31-94b5-06ff4cb6c980" className="w-full h-full object-contain" alt="MEV Logo" crossOrigin="anonymous" />
                   </div>
                   <div className="h-24 w-px bg-slate-300 mx-10"></div>
                   <div className="flex flex-col justify-center translate-y-1">
@@ -121,7 +111,7 @@ export function PrintCardPreview({ operator, onClose }: PrintCardPreviewProps) {
                   <div className="w-[215px] h-[252px] rounded-2xl overflow-hidden border border-[#683EFF]/30 bg-slate-100 shrink-0 shadow-sm relative mr-6 z-10 box-border p-1">
                     <div className="w-full h-full rounded-xl overflow-hidden bg-white">
                        {operator.photoAttachment ? (
-                        <div className="w-full h-full bg-slate-100" /> /* Space for operator photo */
+                        <img src={operator.photoAttachment} className="w-full h-full object-cover" alt="Operator Portrait" crossOrigin="anonymous" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-300">
                            <Icons.User className="w-24 h-24" />
@@ -267,9 +257,7 @@ export function PrintCardPreview({ operator, onClose }: PrintCardPreviewProps) {
                     {/* Left Column (Dark) */}
                     <div className="w-[210px] bg-[#111827] h-full flex flex-col items-center justify-center p-6 text-center shrink-0 relative overflow-hidden">
                       <div className="w-40 flex justify-center items-center z-10">
-                        {halfWhiteLogoAsset && (
-                          <div className="w-full h-[150px]" /> /* Space for Half White Logo */
-                        )}
+                        <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FHalf%20White%20Logo.png?alt=media&token=5d1ceefc-3248-4da6-a8f6-b9bbb310e534" className="w-full object-contain" alt="MEV Logo" crossOrigin="anonymous" />
                       </div>
                     </div>
 
@@ -316,12 +304,10 @@ export function PrintCardPreview({ operator, onClose }: PrintCardPreviewProps) {
                          <div className="flex flex-col items-center w-48 relative">
                             <div className="text-base font-bold text-[#683EFF] mb-2 uppercase text-center w-full">Authorized By:</div>
                             <div className="h-32 w-32 flex items-center justify-center relative">
-                              {mevStampAsset && (
-                                <div className="absolute inset-0 w-full h-full" /> /* Space for MEV Stamp */
+                              <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FMEV%20Stamp.png?alt=media&token=16bfd5d6-8380-4488-b036-6e917a6aecea" className="absolute inset-0 w-full h-full object-contain" alt="Stamp" crossOrigin="anonymous" />
+                              {operator.authorizedBySignature && (
+                                <img src={operator.authorizedBySignature} className="absolute inset-0 w-full h-full object-contain" alt="Signature" crossOrigin="anonymous" />
                               )}
-                              {operator.authorizedBySignature ? (
-                                <div className="absolute inset-0 w-full h-full" /> /* Space for Authorized By */
-                              ) : null}
                             </div>
                          </div>
 

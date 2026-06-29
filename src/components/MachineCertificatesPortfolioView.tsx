@@ -9,6 +9,7 @@ import { MachineCertificate, InspectionReport } from "../types";
 import { initialCustomers } from "../data";
 import { formatDate } from "../utils";
 import { PrintMachineCertificatePreview } from "./PrintMachineCertificatePreview";
+import { ImageUploadPicker } from "./ImageUploadPicker";
 
 interface MachineCertificatesPortfolioProps {
   certificates: MachineCertificate[];
@@ -103,6 +104,7 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
   // Toast notifications
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [pickerTarget, setPickerTarget] = useState<{ field: "inspectedBySignature" | "authorizedBySignature", mode: "edit" | "create" } | null>(null);
   
   const [operatorRows, setOperatorRows] = useState<{ id: number; card: string; name: string }[]>([]);
 
@@ -1060,30 +1062,10 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                         />
                         {isEditingInDetail && (
                           <div className="flex items-center gap-2">
-                            <label className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded text-[10px] font-bold text-slate-600 cursor-pointer transition-colors">
+                            <button type="button" onClick={() => setPickerTarget({ field: "inspectedBySignature", mode: "edit" })} className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded text-[10px] font-bold text-slate-600 transition-colors">
                               <Icons.Upload className="w-3 h-3" />
                               <span>UPLOAD SIGNATURE</span>
-                              <input type="file" className="hidden" onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (file && editFormValues) {
-                                  if (onUploadImage) {
-                                    showToast("Uploading signature to Google Drive...");
-                                    try {
-                                      const url = await onUploadImage(file, editFormValues.clientName || certificate.clientName || "General", "Machine Certificate", certificate.id);
-                                      setEditFormValues({ ...editFormValues, inspectedBySignature: url });
-                                      showToast("✓ Inspected by signature uploaded!");
-                                    } catch (err) {
-                                      console.error(err);
-                                      setEditFormValues({ ...editFormValues, inspectedBySignature: URL.createObjectURL(file) });
-                                      showToast("✓ Signature loaded locally (Drive upload failed).");
-                                    }
-                                  } else {
-                                    setEditFormValues({ ...editFormValues, inspectedBySignature: URL.createObjectURL(file) });
-                                    showToast("✓ Inspected by signature updated.");
-                                  }
-                                }
-                              }} />
-                            </label>
+                            </button>
                             {(editFormValues?.inspectedBySignature || certificate.inspectedBySignature) && (
                               <span className="text-[10px] text-emerald-600 font-bold">✓ File loaded</span>
                             )}
@@ -1108,30 +1090,10 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                         />
                         {isEditingInDetail && (
                           <div className="flex items-center gap-2">
-                            <label className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded text-[10px] font-bold text-slate-600 cursor-pointer transition-colors">
+                            <button type="button" onClick={() => setPickerTarget({ field: "authorizedBySignature", mode: "edit" })} className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded text-[10px] font-bold text-slate-600 transition-colors">
                               <Icons.Upload className="w-3 h-3" />
                               <span>UPLOAD SIGNATURE</span>
-                              <input type="file" className="hidden" onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (file && editFormValues) {
-                                  if (onUploadImage) {
-                                    showToast("Uploading signature to Google Drive...");
-                                    try {
-                                      const url = await onUploadImage(file, editFormValues.clientName || certificate.clientName || "General", "Machine Certificate", certificate.id);
-                                      setEditFormValues({ ...editFormValues, authorizedBySignature: url });
-                                      showToast("✓ Authorized by signature uploaded!");
-                                    } catch (err) {
-                                      console.error(err);
-                                      setEditFormValues({ ...editFormValues, authorizedBySignature: URL.createObjectURL(file) });
-                                      showToast("✓ Signature loaded locally (Drive upload failed).");
-                                    }
-                                  } else {
-                                    setEditFormValues({ ...editFormValues, authorizedBySignature: URL.createObjectURL(file) });
-                                    showToast("✓ Authorized by signature updated.");
-                                  }
-                                }
-                              }} />
-                            </label>
+                            </button>
                             {(editFormValues?.authorizedBySignature || certificate.authorizedBySignature) && (
                               <span className="text-[10px] text-emerald-600 font-bold">✓ File loaded</span>
                             )}
@@ -2258,41 +2220,14 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                       value={formValues.inspectedBy}
                       onChange={(e) => setFormValues({ ...formValues, inspectedBy: e.target.value })}
                     />
-                    <label className="flex flex-col mt-2 cursor-pointer">
+                    <div className="flex flex-col mt-2 cursor-pointer">
                       <span className="text-[10px] font-medium text-slate-500 mb-1">Signature Image Upload</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="text-xs text-slate-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-[#683EFF] hover:file:bg-slate-200 transition-colors"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            if (onUploadImage) {
-                              showToast("Uploading signature to Google Drive...");
-                              try {
-                                const url = await onUploadImage(file, formValues.clientName || "General", "Machine Certificate", formValues.id);
-                                setFormValues({ ...formValues, inspectedBySignature: url });
-                                showToast("✓ Inspected by signature uploaded to Google Drive!");
-                              } catch (err) {
-                                console.error(err);
-                                const reader = new FileReader();
-                                reader.onloadend = () => {
-                                  setFormValues({ ...formValues, inspectedBySignature: reader.result as string });
-                                };
-                                reader.readAsDataURL(file);
-                                showToast("✓ Signature attached locally.");
-                              }
-                            } else {
-                              const reader = new FileReader();
-                              reader.onloadend = () => {
-                                setFormValues({ ...formValues, inspectedBySignature: reader.result as string });
-                              };
-                              reader.readAsDataURL(file);
-                            }
-                          }
-                        }}
-                      />
-                    </label>
+                      <button type="button" onClick={() => setPickerTarget({ field: "inspectedBySignature", mode: "create" })} className="w-fit flex items-center gap-2 py-1.5 px-3 rounded-lg text-xs font-semibold bg-slate-100 text-[#683EFF] hover:bg-slate-200 transition-colors">
+                        <Icons.Upload className="w-4 h-4" />
+                        Select File
+                      </button>
+                      {formValues.inspectedBySignature && <span className="text-xs text-emerald-600 mt-1 font-semibold">✓ Signature attached</span>}
+                    </div>
                   </div>
 
                   <div>
@@ -2305,41 +2240,14 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                       value={formValues.authorizedBy}
                       onChange={(e) => setFormValues({ ...formValues, authorizedBy: e.target.value })}
                     />
-                    <label className="flex flex-col mt-2 cursor-pointer">
+                    <div className="flex flex-col mt-2 cursor-pointer">
                       <span className="text-[10px] font-medium text-slate-500 mb-1">Signature Image Upload</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="text-xs text-slate-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-[#683EFF] hover:file:bg-slate-200 transition-colors"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            if (onUploadImage) {
-                              showToast("Uploading signature to Google Drive...");
-                              try {
-                                const url = await onUploadImage(file, formValues.clientName || "General", "Machine Certificate", formValues.id);
-                                setFormValues({ ...formValues, authorizedBySignature: url });
-                                showToast("✓ Authorized by signature uploaded to Google Drive!");
-                              } catch (err) {
-                                console.error(err);
-                                const reader = new FileReader();
-                                reader.onloadend = () => {
-                                  setFormValues({ ...formValues, authorizedBySignature: reader.result as string });
-                                };
-                                reader.readAsDataURL(file);
-                                showToast("✓ Signature attached locally.");
-                              }
-                            } else {
-                              const reader = new FileReader();
-                              reader.onloadend = () => {
-                                setFormValues({ ...formValues, authorizedBySignature: reader.result as string });
-                              };
-                              reader.readAsDataURL(file);
-                            }
-                          }
-                        }}
-                      />
-                    </label>
+                      <button type="button" onClick={() => setPickerTarget({ field: "authorizedBySignature", mode: "create" })} className="w-fit flex items-center gap-2 py-1.5 px-3 rounded-lg text-xs font-semibold bg-slate-100 text-[#683EFF] hover:bg-slate-200 transition-colors">
+                        <Icons.Upload className="w-4 h-4" />
+                        Select File
+                      </button>
+                      {formValues.authorizedBySignature && <span className="text-xs text-emerald-600 mt-1 font-semibold">✓ Signature attached</span>}
+                    </div>
                   </div>
                   
                   <div className="md:col-span-2">
@@ -2415,6 +2323,22 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
         </div>
       )}
 
+      {pickerTarget && (
+        <ImageUploadPicker
+          clientName={pickerTarget.mode === "edit" ? (editFormValues?.clientName || "General") : (formValues.clientName || "General")}
+          subfolder="Machine Certificate"
+          onClose={() => setPickerTarget(null)}
+          onImageSelect={(url) => {
+            if (pickerTarget.mode === "edit" && editFormValues) {
+              setEditFormValues({ ...editFormValues, [pickerTarget.field]: url });
+            } else {
+              setFormValues({ ...formValues, [pickerTarget.field]: url });
+            }
+            setPickerTarget(null);
+            showToast(`✓ Signature selected successfully!`);
+          }}
+        />
+      )}
     </div>
   );
 }

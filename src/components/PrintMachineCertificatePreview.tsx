@@ -27,11 +27,6 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
   const handleDownloadPDF = useReactToPrint({
     contentRef: certRef,
     documentTitle: `${certificate.namingSeries || certificate.id}_Certificate`.replace(/[/\\?%*:|"<>]/g, '-'),
-    onBeforePrint: () => {
-      setIsExporting(true);
-      return Promise.resolve();
-    },
-    onAfterPrint: () => setIsExporting(false),
   });
 
   const d = new Date();
@@ -39,7 +34,8 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
 
   const dummyLoadChartData = [
     { boom: "10.0", radius: "3.0", swl: "20.0", testLoad: "20.0" },
-    { boom: "13.5", radius: "3.0", swl: "17.5", testLoad: "17.5" }
+    { boom: "13.5", radius: "3.0", swl: "17.5", testLoad: "17.5" },
+    { boom: "17.0", radius: "4.0", swl: "15.0", testLoad: "15.0" }
   ];
 
   const loadChartDataToRender = certificate.loadChartData || dummyLoadChartData;
@@ -87,11 +83,10 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
           </div>
           <button
             onClick={() => handleDownloadPDF()}
-            disabled={isExporting}
-            className="flex items-center gap-2 px-6 py-2.5 bg-[#683EFF] hover:bg-[#582DE5] disabled:opacity-50 text-white rounded-lg text-sm font-bold transition-colors shadow-lg"
+            className="flex items-center gap-2 px-6 py-2.5 bg-[#683EFF] hover:bg-[#582DE5] text-white rounded-lg text-sm font-bold transition-colors shadow-lg"
           >
-            {isExporting ? <Icons.Loader2 className="w-4 h-4 animate-spin" /> : <Icons.Download className="w-4 h-4" />}
-            {isExporting ? "Generating..." : "Print / Save as PDF"}
+            <Icons.Download className="w-4 h-4" />
+            Print / Save as PDF
           </button>
         </div>
       </div>
@@ -121,11 +116,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                   <div className="flex justify-between items-start pt-10 px-10">
                     {/* Left Logo */}
                     <div className="w-40 h-auto flex flex-col items-center">
-                       {mevLogoAsset ? (
-                         <div className="w-full h-full" /> /* Space for MEV Logo */
-                       ) : (
-                         <div className="w-32 h-16 bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-400">MEV Logo</div>
-                       )}
+                         <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FHorizonal%20MEV%20logo.png?alt=media&token=6fd9c05f-5c66-4c31-94b5-06ff4cb6c980" alt="MEV Logo" className="w-full h-full object-contain" />
                     </div>
                     {/* Right Titles */}
                     <div className="flex flex-col items-end mt-1">
@@ -206,12 +197,12 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                               <h3 className="text-[15px] font-bold text-slate-800 uppercase tracking-widest">Client Information</h3>
                            </div>
                            <div className="border border-slate-300 rounded-lg overflow-hidden bg-white">
-                              <DetailRow label="Client Name" value={certificate.clientName} />
-                              <DetailRow label="Inspection Location" value={certificate.location} />
-                              <DetailRow label="Job Number" value={certificate.jobNumber} />
-                              <DetailRow label="Checklist No." value={certificate.checkList} />
-                              <DetailRow label="Timesheet no." value={certificate.timeSheetNumber} />
-                              <DetailRow label="Assigned Inspector" value={certificate.inspectedBy} />
+                              <DetailRow compact label="Client Name" value={certificate.clientName} />
+                              <DetailRow compact label="Inspection Location" value={certificate.location} />
+                              <DetailRow compact label="Job Number" value={certificate.jobNumber} />
+                              <DetailRow compact label="Checklist No." value={certificate.checkList} />
+                              <DetailRow compact label="Timesheet no." value={certificate.timeSheetNumber} />
+                              <DetailRow compact label="Assigned Inspector" value={certificate.inspectedBy} />
                            </div>
                         </div>
 
@@ -252,12 +243,12 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                               <h3 className="text-[15px] font-bold text-slate-800 uppercase tracking-widest">Equipment Details</h3>
                            </div>
                            <div className="border border-slate-300 rounded-lg overflow-hidden bg-white">
-                              <DetailRow label="Equipment Name" value={certificate.equipmentName} />
-                              <DetailRow label="Manufacturer / Model" value={`${certificate.manufacturer || "KATO"} / ${certificate.modelName || "NK-200M"}`} />
-                              <DetailRow label="Serial Number" value={certificate.serialNumber || "K203510645"} />
-                              <DetailRow label="Date of Mfg" value={certificate.dateOfMfg || "1995-01-01"} />
-                              <DetailRow label="Owner ID / Plate No." value={certificate.ownerId || "8275 TAA"} />
-                              <DetailRow label="Reference Standard" value={certificate.referenceStandard || "ASME B30.5"} />
+                              <DetailRow compact label="Equipment Name" value={certificate.equipmentName} />
+                              <DetailRow compact label="Manufacturer / Model" value={`${certificate.manufacturer || "KATO"} / ${certificate.modelName || "NK-200M"}`} />
+                              <DetailRow compact label="Serial Number" value={certificate.serialNumber || "K203510645"} />
+                              <DetailRow compact label="Date of Mfg" value={certificate.dateOfMfg || "1995-01-01"} />
+                              <DetailRow compact label="Owner ID / Plate No." value={certificate.ownerId || "8275 TAA"} />
+                              <DetailRow compact label="Reference Standard" value={certificate.referenceStandard || "ASME B30.5"} />
                            </div>
                         </div>
 
@@ -310,9 +301,9 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                      <div className="shrink-0 text-emerald-600">
                         <Icons.ShieldCheck className="w-[60px] h-[60px] stroke-2" />
                      </div>
-                     <div className="flex flex-col gap-[2px] flex-1">
-                        <h4 className="text-[15px] font-bold text-emerald-700 uppercase tracking-widest">Recommendation</h4>
-                        <p className="text-[12px] font-medium text-emerald-950 leading-relaxed w-full">
+                     <div className="flex flex-col flex-1">
+                        <h4 className="text-[15px] font-bold text-emerald-700 uppercase tracking-wide">Recommendation</h4>
+                        <p className="text-[12px] font-medium text-emerald-950 leading-[1.2em] -mt-1 w-full">
                            {certificate.recommendation || `The equipment was inspected in accordance with ${certificate.referenceStandard || "ASME B30.5"} and was found to comply with the applicable inspection criteria during the time of inspection.`}
                         </p>
                      </div>
@@ -325,15 +316,11 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                         <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest mb-[3px]">Inspected By</span>
                         <span className="text-[12px] font-bold text-slate-800 mb-2">{certificate.inspectedBy || "MEV MIDDLE EAST - Verification"}</span>
                         <div className="h-24 flex items-center justify-center relative">
-                           {mevStampAsset ? (
-                             <div className="h-24 w-24 absolute" /> /* Space for MEV Stamp */
-                           ) : (
-                             <div className="h-24 w-24 absolute" /> /* Space for Fallback Stamp */
-                           )}
+                           <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FMEV%20Stamp.png?alt=media&token=16bfd5d6-8380-4488-b036-6e917a6aecea" className="h-28 w-28 absolute object-contain" alt="MEV Stamp" crossOrigin="anonymous" />
                            {certificate.inspectedBySignature ? (
-                              <div className="h-16 w-32 relative z-10" /> /* Space for Inspected By */
+                              <img src={certificate.inspectedBySignature} className="h-16 max-w-full object-contain relative z-10" alt="Inspected By" crossOrigin="anonymous" />
                            ) : (
-                              <div className="h-16 w-32 relative z-10" /> /* Space for Fallback Signature */
+                              <img src={fallbackInspSigBase64} className="h-16 max-w-full object-contain relative z-10" alt="Inspected By" crossOrigin="anonymous" />
                            )}
                         </div>
                      </div>
@@ -357,16 +344,11 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                         <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest mb-[3px]">Authorized By</span>
                         <span className="text-[12px] font-bold text-slate-800 mb-2">{certificate.authorizedBy || "MEV MIDDLE EAST - Verification"}</span>
                         <div className="h-24 flex items-center justify-center relative">
-                           {mevStampAsset ? (
-                             <div className="h-24 w-24 absolute" /> /* Space for MEV Stamp */
-                           ) : (
-                             <div className="h-24 w-24 absolute" /> /* Space for Fallback Stamp */
-                           )}
-                           
+                           <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FMEV%20Stamp.png?alt=media&token=16bfd5d6-8380-4488-b036-6e917a6aecea" className="h-28 w-28 absolute object-contain" alt="MEV Stamp" crossOrigin="anonymous" />
                            {certificate.authorizedBySignature ? (
-                              <div className="h-16 w-32 relative z-10" /> /* Space for Authorized By */
+                              <img src={certificate.authorizedBySignature} className="h-16 max-w-full object-contain relative z-10" alt="Authorized By" crossOrigin="anonymous" />
                            ) : (
-                              <div className="h-16 w-32 relative z-10" /> /* Space for Fallback Signature */
+                              <img src={fallbackAuthSigBase64} className="h-16 max-w-full object-contain relative z-10" alt="Authorized By" crossOrigin="anonymous" />
                            )}
                         </div>
                      </div>
@@ -384,11 +366,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                   {/* Footer */}
                   <div className="mt-auto mb-0 py-[5px] h-auto min-h-[100px] bg-[#111827] flex items-center px-10 gap-10">
                      <div className="w-[200px] shrink-0 border-r border-white/20 h-16 flex items-center pr-10">
-                         {mevLogoAsset ? (
-                           <div className="w-full h-full" /> /* Space for MEV Logo */
-                         ) : (
-                           <div className="w-full h-8 bg-white/20 text-white flex items-center justify-center text-xs">MEV LOGO</div>
-                         )}
+                         <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FHorizontal%20White%20Logo.png?alt=media&token=41850433-efdc-4527-bcc3-a071cb41cc35" alt="MEV White Logo" className="w-full h-full object-contain" />
                      </div>
                      
                      <div className="flex-1 grid grid-cols-2 gap-y-[7px] gap-x-8 text-white/80">
@@ -440,7 +418,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                     
                     {/* Watermark Logo */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none z-0">
-                      {faviconAsset && <div className="w-[500px] h-[500px]" /> /* Space for Watermark */}
+                      <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FMEV%20Logo.png?alt=media&token=4556a2dc-9296-419c-9694-2b5519e1e7b8" alt="Watermark" className="w-[500px] h-[500px] object-contain" />
                     </div>
 
                     <div className="flex-1 flex flex-col relative z-10 p-12 box-border">
@@ -456,11 +434,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                             </div>
                          </div>
                          <div className="h-28 w-64 flex items-center justify-center mt-6 mb-4">
-                            {mevLogoAsset ? (
-                              <div className="w-full h-full" /> /* Space for MEV Logo */
-                            ) : (
-                              <div className="text-4xl font-black text-[#111827] tracking-tight">MEV</div>
-                            )}
+                            <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FHorizonal%20MEV%20logo.png?alt=media&token=6fd9c05f-5c66-4c31-94b5-06ff4cb6c980" alt="MEV Logo" className="w-full h-full object-contain" />
                          </div>
                          <div className="w-full h-px bg-gradient-to-r from-transparent via-slate-300 to-transparent my-4"></div>
                          <h1 className="text-5xl font-normal text-[#111827] tracking-widest uppercase leading-tight font-serif text-center">
@@ -528,9 +502,9 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                          <div className="flex flex-col items-center w-56 text-center">
                             <div className="h-16 w-full border-b border-slate-400 relative flex items-end justify-center mb-3">
                                {certificate.inspectedBySignature ? (
-                                  <div className="h-16 w-32 relative z-10" /> /* Space for Inspected By */
+                                  <img src={certificate.inspectedBySignature} className="h-16 max-w-full object-contain relative z-10" alt="Inspected By" crossOrigin="anonymous" />
                                ) : (
-                                  <div className="h-16 w-32 relative z-10" /> /* Space for Fallback Signature */
+                                  <img src={fallbackInspSigBase64} className="h-16 max-w-full object-contain relative z-10" alt="Inspected By" crossOrigin="anonymous" />
                                )}
                             </div>
                             <div className="text-sm font-bold text-slate-800 mb-0.5">{certificate.inspectedBy || "N/A"}</div>
@@ -538,19 +512,15 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                          </div>
 
                          <div className="flex flex-col items-center justify-center w-36 relative h-36">
-                           {mevStampAsset ? (
-                             <div className="h-24 w-24 absolute" /> /* Space for MEV Stamp */
-                           ) : (
-                             <div className="h-24 w-24 absolute" /> /* Space for Fallback Stamp */
-                           )}
+                           <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FMEV%20Stamp.png?alt=media&token=16bfd5d6-8380-4488-b036-6e917a6aecea" className="h-28 w-28 absolute object-contain" alt="MEV Stamp" crossOrigin="anonymous" />
                          </div>
 
                          <div className="flex flex-col items-center w-56 text-center">
                             <div className="h-16 w-full border-b border-slate-400 relative flex items-end justify-center mb-3">
                                {certificate.authorizedBySignature ? (
-                                  <div className="h-16 w-32 relative z-10" /> /* Space for Authorized By */
+                                  <img src={certificate.authorizedBySignature} className="h-16 max-w-full object-contain relative z-10" alt="Authorized By" crossOrigin="anonymous" />
                                ) : (
-                                  <div className="h-16 w-32 relative z-10" /> /* Space for Fallback Signature */
+                                  <img src={fallbackAuthSigBase64} className="h-16 max-w-full object-contain relative z-10" alt="Authorized By" crossOrigin="anonymous" />
                                )}
                             </div>
                             <div className="text-sm font-bold text-slate-800 mb-0.5">{certificate.authorizedBy || "N/A"}</div>

@@ -3,6 +3,7 @@ import * as Icons from "lucide-react";
 import { OperatorCard } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { PrintCardPreview } from "./PrintCardPreview";
+import { ImageUploadPicker } from "./ImageUploadPicker";
 
 interface OperatorDetailViewProps {
   operator: OperatorCard;
@@ -17,6 +18,7 @@ export function OperatorDetailView({ operator, onBack, onUpdate, onDelete, onUpl
   const [editedFields, setEditedFields] = useState<OperatorCard>({ ...operator });
   const [showToast, setShowToast] = useState<string | null>(null);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState<"photoAttachment" | "authorizedBySignature" | "trainedBySignature" | null>(null);
 
   const triggerToast = (msg: string) => {
     setShowToast(msg);
@@ -150,37 +152,12 @@ export function OperatorDetailView({ operator, onBack, onUpdate, onDelete, onUpl
                 )}
                 
                 {isEditing && (
-                  <label className="absolute inset-0 bg-slate-900/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                  <div onClick={() => setPickerTarget("photoAttachment")} className="absolute inset-0 bg-slate-900/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                     <div className="text-white flex flex-col items-center gap-1">
                       <Icons.Upload className="w-6 h-6" />
                       <span className="text-[10px] font-bold">Update Photo</span>
                     </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file && onUploadImage) {
-                          triggerToast("Uploading photo...");
-                          try {
-                            const url = await onUploadImage(file, editedFields.company || "General", "Operator Directory", operator.id);
-                            setEditedFields({ ...editedFields, photoAttachment: url });
-                            triggerToast("✓ Photo uploaded successfully!");
-                          } catch (err) {
-                            console.error(err);
-                            triggerToast("❌ Upload failed, using local file.");
-                          }
-                        } else if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setEditedFields({ ...editedFields, photoAttachment: reader.result as string });
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                    />
-                  </label>
+                  </div>
                 )}
               </div>
               <div className={`absolute -bottom-3 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg ${
@@ -369,31 +346,9 @@ export function OperatorDetailView({ operator, onBack, onUpdate, onDelete, onUpl
                     ) : (
                       <span className="text-xs text-slate-400 font-bold relative z-10 mt-1">Upload Signature</span>
                     )}
-                     <input
-                      type="file"
-                      accept="image/*"
-                      className="absolute inset-0 opacity-0 cursor-pointer z-20"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file && onUploadImage) {
-                          triggerToast("Uploading signature...");
-                          try {
-                            const url = await onUploadImage(file, editedFields.company || "General", "Operator Directory", operator.id);
-                            setEditedFields({ ...editedFields, authorizedBySignature: url });
-                            triggerToast("✓ Authorized signature uploaded!");
-                          } catch (err) {
-                            console.error(err);
-                            triggerToast("❌ Upload failed, using local file.");
-                          }
-                        } else if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setEditedFields({ ...editedFields, authorizedBySignature: reader.result as string });
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                    />
+                  {isEditing && (
+                    <div onClick={() => setPickerTarget("authorizedBySignature")} className="absolute inset-0 z-20 cursor-pointer"></div>
+                  )}
                   </>
                 ) : (
                   <>
@@ -418,31 +373,9 @@ export function OperatorDetailView({ operator, onBack, onUpdate, onDelete, onUpl
                     ) : (
                       <span className="text-xs text-slate-400 font-bold relative z-10 mt-1">Upload Signature</span>
                     )}
-                     <input
-                      type="file"
-                      accept="image/*"
-                      className="absolute inset-0 opacity-0 cursor-pointer z-20"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file && onUploadImage) {
-                          triggerToast("Uploading signature...");
-                          try {
-                            const url = await onUploadImage(file, editedFields.company || "General", "Operator Directory", operator.id);
-                            setEditedFields({ ...editedFields, trainedBySignature: url });
-                            triggerToast("✓ Trained signature uploaded!");
-                          } catch (err) {
-                            console.error(err);
-                            triggerToast("❌ Upload failed, using local file.");
-                          }
-                        } else if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setEditedFields({ ...editedFields, trainedBySignature: reader.result as string });
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                    />
+                  {isEditing && (
+                    <div onClick={() => setPickerTarget("trainedBySignature")} className="absolute inset-0 z-20 cursor-pointer"></div>
+                  )}
                   </>
                 ) : (
                   <>
@@ -529,6 +462,18 @@ export function OperatorDetailView({ operator, onBack, onUpdate, onDelete, onUpl
             </div>
           </div>
         </div>
+      )}
+      {pickerTarget && (
+        <ImageUploadPicker
+          clientName={editedFields.company || "General"}
+          subfolder="Operator Directory"
+          onClose={() => setPickerTarget(null)}
+          onImageSelect={(url) => {
+            setEditedFields({ ...editedFields, [pickerTarget]: url });
+            setPickerTarget(null);
+            triggerToast(`✓ Image selected successfully!`);
+          }}
+        />
       )}
     </div>
   );

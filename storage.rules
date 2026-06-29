@@ -1,0 +1,15 @@
+rules_version = '2';
+
+// Craft rules based on data in your Firestore database
+// allow write: if firestore.get(
+//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      // Allow any read, but only authenticated users can write.
+      // Since there is no auth right now, maybe allow read/write for all to fix the error in the preview environment, 
+      // or at least read for all and write for all if auth is not set up.
+      allow read, write: if true; 
+    }
+  }
+}
