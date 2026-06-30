@@ -134,9 +134,9 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                   </div>
 
                   {/* Badges Section */}
-                  <div className="flex gap-[3px] px-10 mt-[17px]">
+                  <div className="flex gap-[3px] px-10 mt-4">
                      {/* Result Badge */}
-                     <div className="flex items-center justify-center gap-6 border-2 border-slate-200 rounded-xl px-8 py-3 bg-white w-1/3">
+                     <div className="flex items-center justify-center gap-6 border-2 border-slate-200 rounded-xl px-8 py-2 bg-white w-1/3">
                         <div className="flex flex-col text-center">
                            <span className="text-[15px] font-bold text-slate-800 uppercase tracking-widest mb-1">Result</span>
                            <span className="text-[42px] font-black leading-none text-emerald-600 uppercase tracking-wider">
@@ -144,7 +144,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                            </span>
                         </div>
                         {certificate.result?.toUpperCase() !== "FAIL" ? (
-                           <div className="w-[58px] h-[58px] rounded-full bg-white text-emerald-600 flex items-center justify-center border-[4px] border-emerald-600">
+                           <div className="w-14 h-16 rounded-full bg-white text-emerald-600 flex items-center justify-center border-[4px] border-emerald-600">
                              <Icons.Check className="w-10 h-10 stroke-[4]" />
                            </div>
                         ) : (
@@ -157,28 +157,28 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                      {/* Other Badges */}
                      <div className="flex flex-1 border-2 border-[#683EFF]/20 rounded-xl bg-white overflow-hidden divide-x-2 divide-[#683EFF]/20">
                         <div className="flex-1 flex flex-col items-center justify-center py-2 px-1">
-                           <div className="w-10 h-10 rounded-full bg-[#F0EBFF] flex items-center justify-center mb-1.5 text-[#683EFF]">
+                           <div className="w-5 h-5 flex items-center justify-center mb-1.5 text-[#683EFF]">
                               <Icons.Tag className="w-5 h-5" />
                            </div>
                            <span className="text-[10px] font-bold text-slate-600 uppercase mb-0.5">Sticker No.</span>
                            <span className="text-[10px] font-bold text-slate-800 uppercase">{certificate.stickerNumber || "1425"}</span>
                         </div>
                         <div className="flex-1 flex flex-col items-center justify-center py-2 px-1">
-                           <div className="w-10 h-10 rounded-full bg-[#F0EBFF] flex items-center justify-center mb-1.5 text-[#683EFF]">
+                           <div className="w-5 h-5 flex items-center justify-center mb-1.5 text-[#683EFF]">
                               <Icons.CalendarDays className="w-5 h-5" />
                            </div>
                            <span className="text-[10px] font-bold text-slate-600 uppercase mb-0.5">Validity</span>
                            <span className="text-[10px] font-bold text-slate-800 uppercase">{certificate.validity || "12 Months"}</span>
                         </div>
                         <div className="flex-1 flex flex-col items-center justify-center py-2 px-1">
-                           <div className="w-10 h-10 rounded-full bg-[#F0EBFF] flex items-center justify-center mb-1.5 text-[#683EFF]">
+                           <div className="w-5 h-5 flex items-center justify-center mb-1.5 text-[#683EFF]">
                               <Icons.CalendarPlus className="w-5 h-5" />
                            </div>
                            <span className="text-[10px] font-bold text-slate-600 uppercase mb-0.5">Inspection Date</span>
                            <span className="text-[10px] font-bold text-slate-800 uppercase">{certificate.inspectionDate ? new Date(certificate.inspectionDate).toLocaleDateString("en-GB", {day: "2-digit", month: "short", year: "numeric"}) : "09 Jun 2026"}</span>
                         </div>
                         <div className="flex-1 flex flex-col items-center justify-center py-2 px-1">
-                           <div className="w-10 h-10 rounded-full bg-[#F0EBFF] flex items-center justify-center mb-1.5 text-[#683EFF]">
+                           <div className="w-5 h-5 flex items-center justify-center mb-1.5 text-[#683EFF]">
                               <Icons.CalendarOff className="w-5 h-5" />
                            </div>
                            <span className="text-[10px] font-bold text-slate-600 uppercase mb-0.5">Expiry Date</span>
@@ -316,21 +316,21 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                   {/* Signatures Section */}
                   <div className="px-10 mt-[30px] flex justify-between items-end relative">
                      {/* Inspected By */}
-                     <div className="flex flex-col w-[220px] text-center relative -top-[10px]">
-                        <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest mb-[3px]">Inspected By</span>
+                     <div className="flex flex-col w-[220px] text-center relative -top-[20px]">
+                        <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest leading-[1.2em] mb-[3px]">Inspected By</span>
                         <span className="text-[12px] font-bold text-slate-800 uppercase tracking-widest">{certificate.inspectedBy || "Zaid Mansoor"}</span>
                         <div className="h-24 flex items-center justify-center relative">
                            {certificate.inspectedBySignature ? (
-                              <img src={certificate.inspectedBySignature} className="h-20 max-w-full object-contain relative z-10" alt="Inspected By" />
+                              <img src={certificate.inspectedBySignature} className="h-24 max-w-full object-contain relative z-10" alt="Inspected By" />
                            ) : (
-                              <img src={fallbackInspSigBase64} className="h-20 max-w-full object-contain relative z-10" alt="Inspected By" />
+                              <img src={fallbackInspSigBase64} className="h-24 max-w-full object-contain relative z-10" alt="Inspected By" />
                            )}
                         </div>
                      </div>
 
                      {/* QR Code */}
-                     <div className="absolute left-1/2 -translate-x-1/2 bottom-[0px] flex flex-col items-center w-64 text-center">
-                        <div className="p-2 bg-white rounded-xl shadow-sm border border-slate-200">
+                     <div className="absolute left-1/2 -translate-x-1/2 bottom-[30px] flex flex-col items-center w-64 text-center">
+                        <div className="p-0 bg-white rounded-xl shadow-sm border border-slate-200">
                            <QRCodeSVG 
                              value={`https://mev-ins.com/verify/${certificate.id}`}
                              size={85}
@@ -343,14 +343,14 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                      </div>
 
                      {/* Authorized By */}
-                     <div className="flex flex-col w-[220px] text-center relative -top-[10px]">
-                        <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest mb-[3px]">Authorized By</span>
+                     <div className="flex flex-col w-[220px] text-center relative -top-[20px]">
+                        <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest leading-[1.2em] mb-[3px]">Authorized By</span>
                         <span className="text-[12px] font-bold text-slate-800 uppercase tracking-widest">{certificate.authorizedBy || "Ali Ahmed"}</span>
                         <div className="h-24 flex items-center justify-center relative">
                            {certificate.authorizedBySignature ? (
-                              <img src={certificate.authorizedBySignature} className="h-20 max-w-full object-contain relative z-10" alt="Authorized By" />
+                              <img src={certificate.authorizedBySignature} className="h-24 max-w-full object-contain relative z-10" alt="Authorized By" />
                            ) : (
-                              <img src={fallbackAuthSigBase64} className="h-20 max-w-full object-contain relative z-10" alt="Authorized By" />
+                              <img src={fallbackAuthSigBase64} className="h-24 max-w-full object-contain relative z-10" alt="Authorized By" />
                            )}
                         </div>
                      </div>
@@ -502,13 +502,13 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                       {/* Footer Signatures */}
                       <div className="mt-auto shrink-0 pt-16 pb-4 flex items-end justify-between px-12 relative">
                          <div className="flex flex-col items-center w-56 text-center relative -top-[10px]">
-                            <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest mb-[3px]">Inspected By</span>
+                            <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest leading-[1.2em] mb-[3px]">Inspected By</span>
                             <span className="text-[12px] font-bold text-slate-800 uppercase tracking-widest">{certificate.inspectedBy || "Zaid Mansoor"}</span>
                             <div className="h-16 w-full relative flex items-end justify-center mb-3">
                                {certificate.inspectedBySignature ? (
-                                  <img src={certificate.inspectedBySignature} className="h-20 max-w-full object-contain relative z-10" alt="Inspected By" />
+                                  <img src={certificate.inspectedBySignature} className="h-24 max-w-full object-contain relative z-10" alt="Inspected By" />
                                ) : (
-                                  <img src={fallbackInspSigBase64} className="h-20 max-w-full object-contain relative z-10" alt="Inspected By" />
+                                  <img src={fallbackInspSigBase64} className="h-24 max-w-full object-contain relative z-10" alt="Inspected By" />
                                )}
                             </div>
                          </div>
@@ -517,13 +517,13 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                          </div>
 
                          <div className="flex flex-col items-center w-56 text-center relative -top-[10px]">
-                            <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest mb-[3px]">Authorized By</span>
+                            <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest leading-[1.2em] mb-[-10px]">Authorized By</span>
                             <span className="text-[12px] font-bold text-slate-800 uppercase tracking-widest">{certificate.authorizedBy || "Ali Ahmed"}</span>
                             <div className="h-16 w-full relative flex items-end justify-center mb-3">
                                {certificate.authorizedBySignature ? (
-                                  <img src={certificate.authorizedBySignature} className="h-20 max-w-full object-contain relative z-10" alt="Authorized By" />
+                                  <img src={certificate.authorizedBySignature} className="h-24 max-w-full object-contain relative z-10" alt="Authorized By" />
                                ) : (
-                                  <img src={fallbackAuthSigBase64} className="h-20 max-w-full object-contain relative z-10" alt="Authorized By" />
+                                  <img src={fallbackAuthSigBase64} className="h-24 max-w-full object-contain relative z-10" alt="Authorized By" />
                                )}
                             </div>
                          </div>
