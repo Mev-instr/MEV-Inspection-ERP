@@ -1029,8 +1029,8 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                     <span>Certification & Standards</span>
                   </h4>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
+                  <div className="space-y-6">
+                    <div className="w-full">
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
                         Reference Standard
                       </label>
@@ -1046,61 +1046,120 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Inspected by
-                      </label>
-                      <div className="flex flex-col gap-2">
-                        <input
-                          type="text"
-                          disabled={!isEditingInDetail}
-                          value={isEditingInDetail && editFormValues ? editFormValues.inspectedBy || "" : certificate.inspectedBy || ""}
-                          onChange={(e) => {
-                            if (editFormValues) setEditFormValues({ ...editFormValues, inspectedBy: e.target.value });
-                          }}
-                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
-                        />
-                        {isEditingInDetail && (
-                          <div className="flex items-center gap-2">
-                            <button type="button" onClick={() => setPickerTarget({ field: "inspectedBySignature", mode: "edit" })} className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded text-[10px] font-bold text-slate-600 transition-colors">
-                              <Icons.Upload className="w-3 h-3" />
-                              <span>UPLOAD SIGNATURE</span>
-                            </button>
-                            {(editFormValues?.inspectedBySignature || certificate.inspectedBySignature) && (
-                              <span className="text-[10px] text-emerald-600 font-bold">✓ File loaded</span>
-                            )}
-                          </div>
-                        )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Authorized By Section */}
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                            Authorized by
+                          </label>
+                          <input
+                            type="text"
+                            disabled={!isEditingInDetail}
+                            value={isEditingInDetail && editFormValues ? editFormValues.authorizedBy || "" : certificate.authorizedBy || ""}
+                            onChange={(e) => {
+                              if (editFormValues) setEditFormValues({ ...editFormValues, authorizedBy: e.target.value });
+                            }}
+                            className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
+                          />
+                        </div>
+
+                        {/* Authorized Signature Box */}
+                        <div className="bg-white border rounded-xl p-6 flex flex-col items-center justify-center min-h-[120px] relative w-full group overflow-hidden border-slate-200">
+                          {isEditingInDetail ? (
+                            <>
+                              <Icons.Upload className="w-5 h-5 text-slate-400 mb-2 opacity-50 relative z-10" />
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest relative z-10">Authorized Signature</span>
+                              {(editFormValues?.authorizedBySignature) ? (
+                                <div className="relative group/sig">
+                                  <img src={editFormValues.authorizedBySignature} alt="Authorized" className="max-h-16 object-contain mt-2 z-10 relative" />
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (editFormValues) setEditFormValues({ ...editFormValues, authorizedBySignature: "" });
+                                      showToast("✓ Authorized signature removed.");
+                                    }}
+                                    className="absolute -top-1 -right-1 p-1.5 bg-rose-500 text-white rounded-full shadow-lg z-30 hover:bg-rose-600 transition-colors"
+                                  >
+                                    <Icons.X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-slate-400 font-bold relative z-10 mt-1">Upload Signature</span>
+                              )}
+                              <div onClick={() => setPickerTarget({ field: "authorizedBySignature", mode: "edit" })} className="absolute inset-0 z-20 cursor-pointer"></div>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest absolute top-4 left-4">Authorized Signature</span>
+                              {certificate.authorizedBySignature ? (
+                                <img src={certificate.authorizedBySignature} alt="Authorized" className="max-h-16 object-contain mt-4" />
+                              ) : (
+                                <span className="text-sm font-bold text-slate-400 mt-4">No Signature</span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Inspected By Section */}
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                            Inspected by
+                          </label>
+                          <input
+                            type="text"
+                            disabled={!isEditingInDetail}
+                            value={isEditingInDetail && editFormValues ? editFormValues.inspectedBy || "" : certificate.inspectedBy || ""}
+                            onChange={(e) => {
+                              if (editFormValues) setEditFormValues({ ...editFormValues, inspectedBy: e.target.value });
+                            }}
+                            className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
+                          />
+                        </div>
+
+                        {/* Inspected Signature Box */}
+                        <div className="bg-white border rounded-xl p-6 flex flex-col items-center justify-center min-h-[120px] relative w-full group overflow-hidden border-slate-200">
+                          {isEditingInDetail ? (
+                            <>
+                              <Icons.Upload className="w-5 h-5 text-slate-400 mb-2 opacity-50 relative z-10" />
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest relative z-10">Inspected Signature</span>
+                              {(editFormValues?.inspectedBySignature) ? (
+                                <div className="relative group/sig">
+                                  <img src={editFormValues.inspectedBySignature} alt="Inspected" className="max-h-16 object-contain mt-2 z-10 relative" />
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (editFormValues) setEditFormValues({ ...editFormValues, inspectedBySignature: "" });
+                                      showToast("✓ Inspected signature removed.");
+                                    }}
+                                    className="absolute -top-1 -right-1 p-1.5 bg-rose-500 text-white rounded-full shadow-lg z-30 hover:bg-rose-600 transition-colors"
+                                  >
+                                    <Icons.X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-slate-400 font-bold relative z-10 mt-1">Upload Signature</span>
+                              )}
+                              <div onClick={() => setPickerTarget({ field: "inspectedBySignature", mode: "edit" })} className="absolute inset-0 z-20 cursor-pointer"></div>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest absolute top-4 left-4">Inspected Signature</span>
+                              {certificate.inspectedBySignature ? (
+                                <img src={certificate.inspectedBySignature} alt="Inspected" className="max-h-16 object-contain mt-4" />
+                              ) : (
+                                <span className="text-sm font-bold text-slate-400 mt-4">No Signature</span>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Authorized by
-                      </label>
-                      <div className="flex flex-col gap-2">
-                        <input
-                          type="text"
-                          disabled={!isEditingInDetail}
-                          value={isEditingInDetail && editFormValues ? editFormValues.authorizedBy || "" : certificate.authorizedBy || ""}
-                          onChange={(e) => {
-                            if (editFormValues) setEditFormValues({ ...editFormValues, authorizedBy: e.target.value });
-                          }}
-                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
-                        />
-                        {isEditingInDetail && (
-                          <div className="flex items-center gap-2">
-                            <button type="button" onClick={() => setPickerTarget({ field: "authorizedBySignature", mode: "edit" })} className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded text-[10px] font-bold text-slate-600 transition-colors">
-                              <Icons.Upload className="w-3 h-3" />
-                              <span>UPLOAD SIGNATURE</span>
-                            </button>
-                            {(editFormValues?.authorizedBySignature || certificate.authorizedBySignature) && (
-                              <span className="text-[10px] text-emerald-600 font-bold">✓ File loaded</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
 
                     <div className="md:col-span-2">
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
@@ -1250,7 +1309,28 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
             </div>
           </div>
         )}
-
+        {pickerTarget && (
+          <ImageUploadPicker
+            clientName={pickerTarget.mode === "edit" ? (editFormValues?.clientName || "General") : (formValues.clientName || "General")}
+            subfolder="Machine Certificate"
+            onClose={() => setPickerTarget(null)}
+            onImageSelect={(url) => {
+              if (pickerTarget.mode === "edit" && editFormValues) {
+                setEditFormValues({ ...editFormValues, [pickerTarget.field]: url });
+              } else {
+                setFormValues({ ...formValues, [pickerTarget.field]: url });
+              }
+              setPickerTarget(null);
+              showToast(`✓ Signature selected successfully!`);
+            }}
+          />
+        )}
+        {toastMessage && (
+          <div className="fixed bottom-5 right-5 z-50 bg-[#0E1B2D] text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border border-slate-750 animate-slide-in">
+            <Icons.Info className="w-4 h-4 text-[#683EFF]" />
+            <span>{toastMessage}</span>
+          </div>
+        )}
       </div>
     );
   }
@@ -1260,14 +1340,6 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
   // ==========================================
   return (
     <div className="space-y-6" id="training-portfolio-view-container">
-      
-      {/* Toast Alert */}
-      {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 bg-[#0E1B2D] text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border border-slate-755 animate-slide-in">
-          <Icons.Info className="w-4 h-4 text-[#683EFF]" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
 
       {/* 1. Header with custom tags metadata and Add Machine Certificate Button */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -2188,65 +2260,100 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
-                      Reference Standard
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
-                      value={formValues.referenceStandard}
-                      onChange={(e) => setFormValues({ ...formValues, referenceStandard: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 4: PERSONNEL & RECOMMENDATION */}
-              <div className="space-y-4 pb-2">
-                <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-bold flex items-center gap-2 select-none font-display">
-                  <Icons.Users className="w-4 h-4" />
-                  <span>4. Personnel & Recommendations</span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-slate-100 pb-6">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
-                      Inspected By
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
-                      value={formValues.inspectedBy}
-                      onChange={(e) => setFormValues({ ...formValues, inspectedBy: e.target.value })}
-                    />
-                    <div className="flex flex-col mt-2 cursor-pointer">
-                      <span className="text-[10px] font-medium text-slate-500 mb-1">Signature Image Upload</span>
-                      <button type="button" onClick={() => setPickerTarget({ field: "inspectedBySignature", mode: "create" })} className="w-fit flex items-center gap-2 py-1.5 px-3 rounded-lg text-xs font-semibold bg-slate-100 text-[#683EFF] hover:bg-slate-200 transition-colors">
-                        <Icons.Upload className="w-4 h-4" />
-                        Select File
-                      </button>
-                      {formValues.inspectedBySignature && <span className="text-xs text-emerald-600 mt-1 font-semibold">✓ Signature attached</span>}
+                  <div className="md:col-span-2 space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Reference Standard
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.referenceStandard}
+                        onChange={(e) => setFormValues({ ...formValues, referenceStandard: e.target.value })}
+                        placeholder="e.g. ANSI/ASME B30.5"
+                      />
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
-                      Authorized By
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
-                      value={formValues.authorizedBy}
-                      onChange={(e) => setFormValues({ ...formValues, authorizedBy: e.target.value })}
-                    />
-                    <div className="flex flex-col mt-2 cursor-pointer">
-                      <span className="text-[10px] font-medium text-slate-500 mb-1">Signature Image Upload</span>
-                      <button type="button" onClick={() => setPickerTarget({ field: "authorizedBySignature", mode: "create" })} className="w-fit flex items-center gap-2 py-1.5 px-3 rounded-lg text-xs font-semibold bg-slate-100 text-[#683EFF] hover:bg-slate-200 transition-colors">
-                        <Icons.Upload className="w-4 h-4" />
-                        Select File
-                      </button>
-                      {formValues.authorizedBySignature && <span className="text-xs text-emerald-600 mt-1 font-semibold">✓ Signature attached</span>}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                      {/* Authorized By Section */}
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
+                            Authorized By
+                          </label>
+                          <input
+                            type="text"
+                            className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                            value={formValues.authorizedBy}
+                            onChange={(e) => setFormValues({ ...formValues, authorizedBy: e.target.value })}
+                          />
+                        </div>
+
+                        {/* Authorized Signature Box */}
+                        <div className="bg-white border rounded-xl p-6 flex flex-col items-center justify-center min-h-[120px] relative w-full group overflow-hidden border-slate-200">
+                          <Icons.Upload className="w-5 h-5 text-slate-400 mb-2 opacity-50 relative z-10" />
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest relative z-10">Authorized Signature</span>
+                          {formValues.authorizedBySignature ? (
+                            <div className="relative group/sig">
+                              <img src={formValues.authorizedBySignature} alt="Authorized" className="max-h-16 object-contain mt-2 z-10 relative" />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFormValues({ ...formValues, authorizedBySignature: "" });
+                                  showToast("✓ Authorized signature removed.");
+                                }}
+                                className="absolute -top-1 -right-1 p-1.5 bg-rose-500 text-white rounded-full shadow-lg z-30 hover:bg-rose-600 transition-colors"
+                              >
+                                <Icons.X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400 font-bold relative z-10 mt-1">Upload Signature</span>
+                          )}
+                          <div onClick={() => setPickerTarget({ field: "authorizedBySignature", mode: "create" })} className="absolute inset-0 z-20 cursor-pointer"></div>
+                        </div>
+                      </div>
+
+                      {/* Inspected By Section */}
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
+                            Inspected By
+                          </label>
+                          <input
+                            type="text"
+                            className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                            value={formValues.inspectedBy}
+                            onChange={(e) => setFormValues({ ...formValues, inspectedBy: e.target.value })}
+                          />
+                        </div>
+
+                        {/* Inspected Signature Box */}
+                        <div className="bg-white border rounded-xl p-6 flex flex-col items-center justify-center min-h-[120px] relative w-full group overflow-hidden border-slate-200">
+                          <Icons.Upload className="w-5 h-5 text-slate-400 mb-2 opacity-50 relative z-10" />
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest relative z-10">Inspected Signature</span>
+                          {formValues.inspectedBySignature ? (
+                            <div className="relative group/sig">
+                              <img src={formValues.inspectedBySignature} alt="Inspected" className="max-h-16 object-contain mt-2 z-10 relative" />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFormValues({ ...formValues, inspectedBySignature: "" });
+                                  showToast("✓ Inspected signature removed.");
+                                }}
+                                className="absolute -top-1 -right-1 p-1.5 bg-rose-500 text-white rounded-full shadow-lg z-30 hover:bg-rose-600 transition-colors"
+                              >
+                                <Icons.X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400 font-bold relative z-10 mt-1">Upload Signature</span>
+                          )}
+                          <div onClick={() => setPickerTarget({ field: "inspectedBySignature", mode: "create" })} className="absolute inset-0 z-20 cursor-pointer"></div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
@@ -2323,6 +2430,12 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
         </div>
       )}
 
+      {toastMessage && (
+        <div className="fixed bottom-5 right-5 z-50 bg-[#0E1B2D] text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border border-slate-755 animate-slide-in">
+          <Icons.Info className="w-4 h-4 text-[#683EFF]" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
       {pickerTarget && (
         <ImageUploadPicker
           clientName={pickerTarget.mode === "edit" ? (editFormValues?.clientName || "General") : (formValues.clientName || "General")}

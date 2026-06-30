@@ -188,7 +188,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                   </div>
 
                   {/* Main Two Columns */}
-                  <div className="flex gap-6 px-10 mt-[6px] flex-1">
+                  <div className="flex gap-6 px-10 mt-[6px]">
                      {/* Left Column */}
                      <div className="w-1/2 flex flex-col gap-[7px]">
                         
@@ -314,21 +314,22 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                   </div>
 
                   {/* Signatures Section */}
-                  <div className="px-10 mt-[2px] flex justify-between items-end relative">
+                  <div className="px-10 mt-[30px] flex justify-between items-end relative">
                      {/* Inspected By */}
-                     <div className="flex flex-col w-[220px] text-center">
+                     <div className="flex flex-col w-[220px] text-center relative -top-[10px]">
                         <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest mb-[3px]">Inspected By</span>
+                        <span className="text-[12px] font-bold text-slate-800 uppercase tracking-widest">{certificate.inspectedBy || "Zaid Mansoor"}</span>
                         <div className="h-24 flex items-center justify-center relative">
                            {certificate.inspectedBySignature ? (
-                              <img src={certificate.inspectedBySignature} className="h-16 max-w-full object-contain relative z-10" alt="Inspected By" />
+                              <img src={certificate.inspectedBySignature} className="h-20 max-w-full object-contain relative z-10" alt="Inspected By" />
                            ) : (
-                              <img src={fallbackInspSigBase64} className="h-16 max-w-full object-contain relative z-10" alt="Inspected By" />
+                              <img src={fallbackInspSigBase64} className="h-20 max-w-full object-contain relative z-10" alt="Inspected By" />
                            )}
                         </div>
                      </div>
 
                      {/* QR Code */}
-                     <div className="absolute left-1/2 -translate-x-1/2 bottom-[8px] flex flex-col items-center w-64 text-center">
+                     <div className="absolute left-1/2 -translate-x-1/2 bottom-[0px] flex flex-col items-center w-64 text-center">
                         <div className="p-2 bg-white rounded-xl shadow-sm border border-slate-200">
                            <QRCodeSVG 
                              value={`https://mev-ins.com/verify/${certificate.id}`}
@@ -342,13 +343,14 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                      </div>
 
                      {/* Authorized By */}
-                     <div className="flex flex-col w-[220px] text-center">
+                     <div className="flex flex-col w-[220px] text-center relative -top-[10px]">
                         <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest mb-[3px]">Authorized By</span>
+                        <span className="text-[12px] font-bold text-slate-800 uppercase tracking-widest">{certificate.authorizedBy || "Ali Ahmed"}</span>
                         <div className="h-24 flex items-center justify-center relative">
                            {certificate.authorizedBySignature ? (
-                              <img src={certificate.authorizedBySignature} className="h-16 max-w-full object-contain relative z-10" alt="Authorized By" />
+                              <img src={certificate.authorizedBySignature} className="h-20 max-w-full object-contain relative z-10" alt="Authorized By" />
                            ) : (
-                              <img src={fallbackAuthSigBase64} className="h-16 max-w-full object-contain relative z-10" alt="Authorized By" />
+                              <img src={fallbackAuthSigBase64} className="h-20 max-w-full object-contain relative z-10" alt="Authorized By" />
                            )}
                         </div>
                      </div>
@@ -499,12 +501,14 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
 
                       {/* Footer Signatures */}
                       <div className="mt-auto shrink-0 pt-16 pb-4 flex items-end justify-between px-12 relative">
-                         <div className="flex flex-col items-center w-56 text-center">
-                            <div className="h-16 w-full border-b border-slate-400 relative flex items-end justify-center mb-3">
+                         <div className="flex flex-col items-center w-56 text-center relative -top-[10px]">
+                            <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest mb-[3px]">Inspected By</span>
+                            <span className="text-[12px] font-bold text-slate-800 uppercase tracking-widest">{certificate.inspectedBy || "Zaid Mansoor"}</span>
+                            <div className="h-16 w-full relative flex items-end justify-center mb-3">
                                {certificate.inspectedBySignature ? (
-                                  <img src={certificate.inspectedBySignature} className="h-16 max-w-full object-contain relative z-10" alt="Inspected By" />
+                                  <img src={certificate.inspectedBySignature} className="h-20 max-w-full object-contain relative z-10" alt="Inspected By" />
                                ) : (
-                                  <img src={fallbackInspSigBase64} className="h-16 max-w-full object-contain relative z-10" alt="Inspected By" />
+                                  <img src={fallbackInspSigBase64} className="h-20 max-w-full object-contain relative z-10" alt="Inspected By" />
                                )}
                             </div>
                          </div>
@@ -512,12 +516,14 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                          <div className="flex flex-col items-center justify-center w-36 relative h-36">
                          </div>
 
-                         <div className="flex flex-col items-center w-56 text-center">
-                            <div className="h-16 w-full border-b border-slate-400 relative flex items-end justify-center mb-3">
+                         <div className="flex flex-col items-center w-56 text-center relative -top-[10px]">
+                            <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest mb-[3px]">Authorized By</span>
+                            <span className="text-[12px] font-bold text-slate-800 uppercase tracking-widest">{certificate.authorizedBy || "Ali Ahmed"}</span>
+                            <div className="h-16 w-full relative flex items-end justify-center mb-3">
                                {certificate.authorizedBySignature ? (
-                                  <img src={certificate.authorizedBySignature} className="h-16 max-w-full object-contain relative z-10" alt="Authorized By" />
+                                  <img src={certificate.authorizedBySignature} className="h-20 max-w-full object-contain relative z-10" alt="Authorized By" />
                                ) : (
-                                  <img src={fallbackAuthSigBase64} className="h-16 max-w-full object-contain relative z-10" alt="Authorized By" />
+                                  <img src={fallbackAuthSigBase64} className="h-20 max-w-full object-contain relative z-10" alt="Authorized By" />
                                )}
                             </div>
                          </div>
