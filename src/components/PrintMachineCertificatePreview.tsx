@@ -119,7 +119,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                   {/* Top Header */}
                   <div className="flex justify-between items-start pt-10 px-10">
                     {/* Left Logo */}
-                    <div className="w-40 h-auto flex flex-col items-center">
+                    <div className="w-50 h-auto flex flex-col items-center">
                          <img src={headerLogoUrl} alt="MEV Logo" className="w-full h-full object-contain" />
                     </div>
                     {/* Right Titles */}
@@ -301,7 +301,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                   </div>
 
                   {/* Recommendation Box */}
-                  <div className="mx-10 mt-[7px] border border-emerald-600 rounded-xl overflow-hidden bg-emerald-50/50 flex py-[24px] px-6 gap-6 items-center">
+                  <div className="mx-10 mt-[7px] border border-emerald-600 rounded-xl overflow-hidden bg-emerald-50/50 flex py-[16px] px-6 gap-6 items-center">
                      <div className="shrink-0 text-emerald-600">
                         <Icons.ShieldCheck className="w-[60px] h-[60px] stroke-2" />
                      </div>
