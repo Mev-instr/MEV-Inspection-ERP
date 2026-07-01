@@ -19,7 +19,7 @@ export enum ERPCategory {
   INSPECTION_REPORT = "Inspection Report",
   MACHINE_CERTIFICATES = "Machine Certificates",
   LIFTING_TOOL_CERTIFICATE = "Lifting Tool Certificate",
-  MACHINE_DETAILS = "Machine Details",
+  MACHINE_DETAILS = "Machine Models",
   OPERATOR_CARD = "Operator Card",
 }
 
@@ -245,6 +245,20 @@ export interface MachineDetail {
   serialNumber?: string;
   currentLocation?: string;
   status?: string;
+  workingHours?: number;
+  department?: string;
+  lastServiceDate?: string;
+  swl?: string;
+  maxOutreach?: string;
+  bucketCapacity?: string;
+  enginePower?: string;
+  boomLength?: string;
+  wheelType?: string;
+  maxPlatformHeight?: string;
+  heoBucketCapacity?: string;
+  engineSpeed?: string;
+  angleOfSpan?: string;
+  personAllowed?: string;
 }
 
 export interface OperatorCard {

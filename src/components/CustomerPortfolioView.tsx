@@ -170,27 +170,23 @@ export function CustomerPortfolioView({ customers, onCustomersChange, onUploadIm
     const count = selectedCustomerIds.length;
     setToastMessage(`✓ Exporting ${count} customers to CSV...`);
     
-    // Define all headers covering all fields in CustomerDetail
+    // Headers matching the fields in add customer popup exactly
     const headers = [
-      "ID", "Company Name", "Country", "Contact Person", "Status",
-      "VAT Number", "CR Number", "Address", "Email", "Phone",
-      "Customer Type", "Training Site Address", "Training Contact Person", 
-      "Training Contact Phone", "Inspection Site Address", "Inspection Contact Person",
-      "Inspection Contact Phone", "Inspection Mobile", "Primary Email", 
-      "Primary Mobile", "Address Line 1", "City Address", "Address Line 2", 
-      "State/Province", "Zip/Postal Code", "Last Updated"
+      "Customer Name", "Customer Type", "Country Gateway", "Initial Status",
+      "Training Site Address", "Training Contact Person", "Training Contact Phone Number",
+      "Inspection Site Address", "Inspection Contact Person", "Contact Phone Number",
+      "Mobile Number", "Email ID", "Primary Contact Mobile Number",
+      "Address Line 1", "City Address", "Address Line 2", "State / Province", "ZIP / Postal Code"
     ].join(",");
 
     const rows = customers
       .filter(c => selectedCustomerIds.includes(c.id))
       .map(c => [
-        c.id, c.companyName, c.country, c.contactPerson, c.status,
-        c.vatNumber || "", c.crNumber || "", c.address || "", c.email || "", c.phone || "",
-        c.customerType || "", c.trainingSiteAddress || "", c.trainingContactPerson || "",
-        c.trainingContactPhone || "", c.inspectionSiteAddress || "", c.inspectionContactPerson || "",
-        c.inspectionContactPhone || "", c.inspectionMobile || "", c.primaryEmail || "",
-        c.primaryMobile || "", c.addressLine1 || "", c.cityAddress || "", c.addressLine2 || "",
-        c.stateProvince || "", c.zipPostalCode || "", c.lastUpdated || ""
+        c.companyName, c.customerType, c.country, c.status,
+        c.trainingSiteAddress || "", c.trainingContactPerson || "", c.trainingContactPhone || "",
+        c.inspectionSiteAddress || "", c.inspectionContactPerson || "", c.inspectionContactPhone || "",
+        c.inspectionMobile || "", c.primaryEmail || "", c.primaryMobile || "",
+        c.addressLine1 || "", c.cityAddress || "", c.addressLine2 || "", c.stateProvince || "", c.zipPostalCode || ""
       ].map(field => `"${String(field).replace(/"/g, '""')}"`).join(","))
       .join("\n");
 
@@ -206,6 +202,116 @@ export function CustomerPortfolioView({ customers, onCustomersChange, onUploadIm
     setSelectedCustomerIds([]);
     setShowBulkActionDropdown(false);
     setTimeout(() => setToastMessage(""), 3000);
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const parseCSVLine = (line: string): string[] => {
+      const result: string[] = [];
+      let current = "";
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          result.push(current);
+          current = "";
+        } else {
+          current += char;
+        }
+      }
+      result.push(current);
+      return result;
+    };
+
+    const parseCSV = (text: string): string[][] => {
+      const lines = text.split(/\r?\n/);
+      return lines
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .map(parseCSVLine);
+    };
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (!text) return;
+
+      try {
+        const rows = parseCSV(text);
+        if (rows.length < 2) {
+          setToastMessage("⚠ CSV file is empty or missing data rows.");
+          setTimeout(() => setToastMessage(""), 3000);
+          return;
+        }
+
+        const csvHeaders = rows[0].map(h => h.trim().toLowerCase());
+        const importedCustomers: any[] = [];
+
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (row.length === 0 || !row[0]) continue;
+
+          const getVal = (headerName: string) => {
+            const idx = csvHeaders.indexOf(headerName.toLowerCase());
+            return idx !== -1 && idx < row.length ? row[idx] : "";
+          };
+
+          const companyName = getVal("Customer Name");
+          if (!companyName) continue;
+
+          const customer = {
+            id: companyName,
+            companyName: companyName,
+            customerType: getVal("Customer Type") || "Company",
+            country: getVal("Country Gateway") || "Saudi Arabia",
+            status: getVal("Initial Status") || "Active",
+            trainingSiteAddress: getVal("Training Site Address"),
+            trainingContactPerson: getVal("Training Contact Person"),
+            trainingContactPhone: getVal("Training Contact Phone Number"),
+            inspectionSiteAddress: getVal("Inspection Site Address"),
+            inspectionContactPerson: getVal("Inspection Contact Person"),
+            inspectionContactPhone: getVal("Contact Phone Number"),
+            inspectionMobile: getVal("Mobile Number"),
+            primaryEmail: getVal("Email ID"),
+            primaryMobile: getVal("Primary Contact Mobile Number"),
+            addressLine1: getVal("Address Line 1"),
+            cityAddress: getVal("City Address"),
+            addressLine2: getVal("Address Line 2"),
+            stateProvince: getVal("State / Province"),
+            zipPostalCode: getVal("ZIP / Postal Code"),
+            contactPerson: getVal("Email ID") ? getVal("Email ID").split("@")[0] : "Admin-VIM",
+            phone: getVal("Contact Phone Number") || getVal("Primary Contact Mobile Number") || "+966 50 000 0000",
+            email: getVal("Email ID") || "info@client.com",
+            lastUpdated: new Date().toISOString().split("T")[0]
+          };
+
+          importedCustomers.push(customer);
+        }
+
+        if (importedCustomers.length > 0) {
+          onCustomersChange((prev) => [...importedCustomers, ...prev]);
+          setToastMessage(`✓ Successfully imported ${importedCustomers.length} customers.`);
+        } else {
+          setToastMessage("⚠ No valid customer entries found in the CSV.");
+        }
+      } catch (err) {
+        console.error(err);
+        setToastMessage("⚠ Error parsing CSV file.");
+      }
+      setTimeout(() => setToastMessage(""), 3000);
+      e.target.value = "";
+    };
+
+    reader.readAsText(file);
   };
 
   const handleBulkDeleteItems = () => {
@@ -447,6 +553,23 @@ export function CustomerPortfolioView({ customers, onCustomersChange, onUploadIm
               </>
             )}
           </div>
+
+          {/* Import CSV Button */}
+          <button
+            onClick={() => document.getElementById("csv-import-customers-input")?.click()}
+            className="px-4 py-2 text-sm font-bold text-slate-700 bg-white border border-slate-300 hover:border-[#683EFF] hover:text-[#683EFF] rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+            title="Import Customers from CSV"
+          >
+            <Icons.Upload className="w-4 h-4 text-slate-400 hover:text-[#683EFF]" />
+            <span>Import</span>
+          </button>
+          <input
+            id="csv-import-customers-input"
+            type="file"
+            accept=".csv"
+            onChange={handleImportCSV}
+            className="hidden"
+          />
 
           {/* Refresh Button */}
           <button

@@ -29,8 +29,8 @@ const db = initializeFirestore(app, {
 // Add a helper to check if we are online
 export const isFirestoreOnline = async () => {
   try {
-    const { doc, getDocFromServer } = await import("firebase/firestore");
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    const { collection, getDocs, limit, query } = await import("firebase/firestore");
+    await getDocs(query(collection(db, 'customers'), limit(1)));
     return true;
   } catch (e) {
     console.error("Firestore connectivity check failed:", e);

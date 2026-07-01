@@ -26,7 +26,7 @@ export const initialDashboardCards: DashboardCard[] = [
   { id: "5", section: ERPSection.CHECK_LIST_REPORT, category: ERPCategory.INSPECTION_REPORT, title: "Inspection Report", iconName: "ClipboardCheck", count: 1481 },
   { id: "6", section: ERPSection.CERTIFICATES, category: ERPCategory.MACHINE_CERTIFICATES, title: "Machine Certificates", iconName: "Shield", count: 1281 },
   { id: "7", section: ERPSection.CERTIFICATES, category: ERPCategory.LIFTING_TOOL_CERTIFICATE, title: "Lifting Tool Certificate", iconName: "Anchor", count: 197 },
-  { id: "8", section: ERPSection.CERTIFICATES, category: ERPCategory.MACHINE_DETAILS, title: "Machine Details", iconName: "Award", count: 640 },
+  { id: "8", section: ERPSection.CERTIFICATES, category: ERPCategory.MACHINE_DETAILS, title: "Machine Models", iconName: "Award", count: 640 },
   { id: "9", section: ERPSection.OPERATOR_CARDS, category: ERPCategory.OPERATOR_CARD, title: "Operator Card", iconName: "FileSpreadsheet", count: 2803 },
 ];
 
@@ -363,7 +363,60 @@ export const initialMachineCertificates: MachineCertificate[] = [
 
 export const initialLiftingToolCerts: LiftingToolCert[] = [];
 
-export const initialMachineDetails: MachineDetail[] = [];
+export const initialMachineDetails: MachineDetail[] = [
+  {
+    id: "MACH-26-1001",
+    machineName: "Tadano GR-500EX Crane",
+    model: "GR-500EX",
+    manufacturer: "Tadano Works Ltd.",
+    yearOfManufacture: 2021,
+    serialNumber: "TD-500-1191",
+    currentLocation: "Dhahran South Refineries Hub",
+    status: "Operational",
+    workingHours: 1250,
+    department: "Heavy Equipment Fleet",
+    lastServiceDate: "2026-05-12"
+  },
+  {
+    id: "MACH-26-1002",
+    machineName: "Kato Heavy Hydraulic Crane",
+    model: "TR-500-Series",
+    manufacturer: "Kato Works Co., Ltd.",
+    yearOfManufacture: 2022,
+    serialNumber: "K-SER-4402",
+    currentLocation: "NEOM Community Base 2",
+    status: "Maintenance",
+    workingHours: 890,
+    department: "Lifting Operations",
+    lastServiceDate: "2026-06-18"
+  },
+  {
+    id: "MACH-26-1003",
+    machineName: "CAT D10 Heavy Duty Crawler",
+    model: "D10T2",
+    manufacturer: "Caterpillar Inc.",
+    yearOfManufacture: 2020,
+    serialNumber: "CAT-D10-9901",
+    currentLocation: "Red Sea Coastal Village Hub",
+    status: "Operational",
+    workingHours: 2150,
+    department: "Earthmoving & Grading",
+    lastServiceDate: "2026-04-30"
+  },
+  {
+    id: "MACH-26-1004",
+    machineName: "Crosby Spreader Beam",
+    model: "SBL-A200",
+    manufacturer: "The Crosby Group",
+    yearOfManufacture: 2023,
+    serialNumber: "CR-SP-5501",
+    currentLocation: "Dhahran Logistics Yard",
+    status: "Breakdown",
+    workingHours: 350,
+    department: "Rigging Fleet",
+    lastServiceDate: "2026-06-01"
+  }
+];
 
 export const initialOperators: OperatorCard[] = [
   {

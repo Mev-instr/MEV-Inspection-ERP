@@ -133,19 +133,17 @@ export function InspectionJobsPortfolioView({ jobs, onJobsChange, reports, onRep
     showToast(`✓ Exporting ${count} inspection jobs to CSV...`);
     
     const headers = [
-      "ID", "Asset Type", "Inspector", "Scheduled Date", "Location", 
-      "Urgency", "Status", "Naming Series", "Inspector ID", "Inspection Start Date", 
-      "Inspection End Date", "Client Name", "Attention Location", "Attention Phone", 
-      "Machine Name", "Machine Count"
+      "Naming Series Code prefix", "Inspector ID", "Inspection Date", "Expiration Date",
+      "Initial Status", "Client Name", "Equipment Location", "Attention Location",
+      "Phone Number", "Machine Name", "Number of Count"
     ].join(",");
 
     const rows = jobs
       .filter(j => selectedJobIds.includes(j.id))
       .map(j => [
-        j.id, j.assetType, j.inspector, j.scheduledDate, j.location,
-        j.urgency, j.status, j.namingSeries, j.inspectorId, j.inspectionStartDate,
-        j.inspectionEndDate, j.clientName, j.attentionLocation, j.attentionPhone,
-        j.machineName, j.machineCount
+        j.namingSeries, j.inspectorId, j.inspectionStartDate, j.inspectionEndDate,
+        j.status, j.clientName, j.location, j.attentionLocation,
+        j.attentionPhone, j.machineName, j.machineCount
       ].map(field => `"${String(field || "").replace(/"/g, '""')}"`).join(","))
       .join("\n");
 
@@ -160,6 +158,121 @@ export function InspectionJobsPortfolioView({ jobs, onJobsChange, reports, onRep
 
     setSelectedJobIds([]);
     setShowBulkActionDropdown(false);
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const parseCSVLine = (line: string): string[] => {
+      const result: string[] = [];
+      let current = "";
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          result.push(current);
+          current = "";
+        } else {
+          current += char;
+        }
+      }
+      result.push(current);
+      return result;
+    };
+
+    const parseCSV = (text: string): string[][] => {
+      const lines = text.split(/\r?\n/);
+      return lines
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .map(parseCSVLine);
+    };
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (!text) return;
+
+      try {
+        const rows = parseCSV(text);
+        if (rows.length < 2) {
+          showToast("⚠ CSV file is empty or missing data rows.");
+          return;
+        }
+
+        const csvHeaders = rows[0].map(h => h.trim().toLowerCase());
+        const importedJobs: any[] = [];
+
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (row.length === 0 || !row[0]) continue;
+
+          const getVal = (headerName: string) => {
+            const idx = csvHeaders.indexOf(headerName.toLowerCase());
+            return idx !== -1 && idx < row.length ? row[idx] : "";
+          };
+
+          const namingSeries = getVal("Naming Series Code prefix") || "JO-IN-26";
+          const clientName = getVal("Client Name");
+          if (!clientName) continue;
+
+          const finalId = calculateNextSequenceId(namingSeries);
+
+          const inspectorId = getVal("Inspector ID");
+          const inspectionStartDate = getVal("Inspection Date") || new Date().toISOString().split("T")[0];
+          const inspectionEndDate = getVal("Expiration Date") || new Date().toISOString().split("T")[0];
+          const status = getVal("Initial Status") || "Scheduled";
+          const location = getVal("Equipment Location") || "Main Site";
+          const attentionLocation = getVal("Attention Location");
+          const attentionPhone = getVal("Phone Number");
+          const machineName = getVal("Machine Name") || "Crane Safe Simulator";
+          const machineCount = getVal("Number of Count") || "1";
+
+          const job = {
+            id: finalId,
+            assetType: machineName ? `Simulator: ${machineName} Inspection` : "General Heavy Machine Inspection",
+            inspector: inspectorId || "Nour Al-Faisal",
+            urgency: "Medium",
+            scheduledDate: inspectionEndDate,
+            status: status,
+            location: location,
+            namingSeries: namingSeries,
+            inspectorId: inspectorId,
+            inspectionStartDate: inspectionStartDate,
+            inspectionEndDate: inspectionEndDate,
+            clientName: clientName,
+            attentionLocation: attentionLocation,
+            attentionPhone: attentionPhone,
+            machineName: machineName,
+            machineCount: machineCount,
+            operators: []
+          };
+
+          importedJobs.push(job);
+        }
+
+        if (importedJobs.length > 0) {
+          onJobsChange((prev) => [...importedJobs, ...prev]);
+          showToast(`✓ Successfully imported ${importedJobs.length} inspection jobs.`);
+        } else {
+          showToast("⚠ No valid inspection job entries found in the CSV.");
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("⚠ Error parsing CSV file.");
+      }
+      e.target.value = "";
+    };
+
+    reader.readAsText(file);
   };
 
   const handleBulkDeleteItems = () => {
@@ -1238,6 +1351,23 @@ export function InspectionJobsPortfolioView({ jobs, onJobsChange, reports, onRep
               </>
             )}
           </div>
+
+          {/* Import CSV Button */}
+          <button
+            onClick={() => document.getElementById("csv-import-inspection-input")?.click()}
+            className="px-4 py-2 text-sm font-bold text-slate-700 bg-white border border-slate-300 hover:border-[#683EFF] hover:text-[#683EFF] rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+            title="Import Inspection Jobs from CSV"
+          >
+            <Icons.Upload className="w-4 h-4 text-slate-400 hover:text-[#683EFF]" />
+            <span>Import</span>
+          </button>
+          <input
+            id="csv-import-inspection-input"
+            type="file"
+            accept=".csv"
+            onChange={handleImportCSV}
+            className="hidden"
+          />
 
           {/* Refresh Action Trigger */}
           <button

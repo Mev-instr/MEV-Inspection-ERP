@@ -28,6 +28,9 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
   const handleDownloadPDF = useReactToPrint({
     contentRef: certRef,
     documentTitle: `${certificate.namingSeries || certificate.id}_Certificate`.replace(/[/\\?%*:|"<>]/g, '-'),
+    pageStyle: `@media print { @page { size: A4; margin: 0; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }`,
+    onPrintError: (error) => console.error("Print error:", error),
+    onAfterPrint: () => console.log("Print success"),
   });
 
   const d = new Date();
@@ -39,7 +42,8 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
     { boom: "17.0", radius: "4.0", swl: "15.0", testLoad: "15.0" }
   ];
 
-  const loadChartDataToRender = certificate.loadChartData || dummyLoadChartData;
+  const hasLoadChartData = certificate.loadChartData && certificate.loadChartData.length > 0;
+  const loadChartDataToRender = hasLoadChartData ? certificate.loadChartData : [{ boom: "N/A", radius: "N/A", swl: "N/A", testLoad: "N/A" }];
 
   const DetailRow = ({ label, value, labelWidth = "w-[140px]", compact = false }: { label: string, value: React.ReactNode, labelWidth?: string, compact?: boolean }) => (
     <div className="flex border-b border-slate-200 last:border-0 text-[10px]">
@@ -306,9 +310,9 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                   </div>
 
                   {/* Signatures Section */}
-                  <div className="px-10 mt-[30px] flex justify-between items-end relative">
+                  <div className="px-10 mt-[15px] flex justify-between items-end relative">
                      {/* Inspected By */}
-                     <div className="flex flex-col w-[220px] text-center relative -top-[20px]">
+                     <div className="flex flex-col w-[220px] text-center relative">
                         <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest leading-[1.2em] mb-[3px]">Inspected By</span>
                         <span className="text-[12px] font-bold text-slate-800 uppercase tracking-widest">{certificate.inspectedBy || "Zaid Mansoor"}</span>
                         <div className="h-24 flex items-center justify-center relative">
@@ -321,7 +325,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                      </div>
 
                      {/* QR Code */}
-                     <div className="absolute left-1/2 -translate-x-1/2 bottom-[30px] flex flex-col items-center w-64 text-center">
+                     <div className="absolute left-1/2 -translate-x-1/2 bottom-[15px] flex flex-col items-center w-64 text-center">
                         <div className="p-0 bg-white rounded-xl shadow-sm border border-slate-200">
                            <QRCodeSVG 
                              value={`https://mev-ins.com/verify/${certificate.id}`}
@@ -335,7 +339,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                      </div>
 
                      {/* Authorized By */}
-                     <div className="flex flex-col w-[220px] text-center relative -top-[20px]">
+                     <div className="flex flex-col w-[220px] text-center relative">
                         <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest leading-[1.2em] mb-[3px]">Authorized By</span>
                         <span className="text-[12px] font-bold text-slate-800 uppercase tracking-widest">{certificate.authorizedBy || "Ali Ahmed"}</span>
                         <div className="h-24 flex items-center justify-center relative">
@@ -414,7 +418,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                 >
                   
                   {/* Top Header */}
-                  <div className="flex justify-between items-start pt-10 px-10">
+                  <div className="flex justify-between items-start pt-5 px-10">
                     {/* Left Logo */}
                     <div className="w-50 h-auto flex flex-col items-center">
                          <img src={headerLogoUrl} alt="MEV Logo" className="w-full h-full object-contain" />
@@ -431,7 +435,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                   </div>
 
                   {/* Badges Section */}
-                  <div className="flex gap-[3px] px-10 mt-4">
+                  <div className="flex gap-[3px] px-10 mt-2">
                      {/* Result Badge */}
                      <div className="flex items-center justify-center border-2 border-slate-200 rounded-xl px-8 py-2 bg-white w-1/3">
                         <div className="flex flex-col text-center w-full">
@@ -589,7 +593,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                   </div>
 
                   {/* Recommendation Box */}
-                  <div className="mx-10 mt-[7px] border border-emerald-600 rounded-xl overflow-hidden bg-emerald-50/50 flex py-[40px] px-6 gap-6 items-center">
+                  <div className="mx-10 mt-[7px] border border-emerald-600 rounded-xl overflow-hidden bg-emerald-50/50 flex py-[12px] px-6 gap-6 items-center">
                      <div className="shrink-0 text-emerald-600">
                         <Icons.ShieldCheck className="w-[60px] h-[60px] stroke-2" />
                      </div>
@@ -645,7 +649,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                   </div>
 
                   {/* Statement Box */}
-                  <div className="px-10 mt-[2px] mb-[5px] flex gap-2">
+                  <div className="px-10 mt-[5px] mb-[5px] flex gap-2">
                      <div className="bg-slate-50 border border-slate-200 rounded-xl py-[5px] px-[15px] flex-1 flex items-center">
                         <p className="text-[8px] font-medium text-slate-800 leading-relaxed text-left">
                            This certificate relates only to the equipment inspected on the date stated, and it shall not be reproduced except in full without the written approval of MEV.
@@ -660,7 +664,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                   </div>
 
                   {/* Footer */}
-                  <div className="mt-auto mb-0 py-[5px] h-auto min-h-[100px] bg-[#111827] flex items-center px-10 gap-10">
+                  <div className="mt-auto mb-0 py-[5px] h-auto min-h-[80px] bg-[#111827] flex items-center px-10 gap-10">
                      <div className="w-[200px] shrink-0 border-r border-white/20 h-16 flex items-center pr-10">
                          <img src={footerLogoUrl} alt="MEV White Logo" className="w-full h-full object-contain" />
                      </div>

@@ -5,16 +5,15 @@
 
 import React, { useState, useEffect } from "react";
 import * as Icons from "lucide-react";
-import { TrainingJob } from "../types";
-import { initialCustomers } from "../data";
+import { MachineDetail } from "../types";
 import { formatDate } from "../utils";
 
-interface TrainingJobsPortfolioProps {
-  jobs: TrainingJob[];
-  onJobsChange: React.Dispatch<React.SetStateAction<TrainingJob[]>>;
+interface MachineDetailsPortfolioProps {
+  machines: MachineDetail[];
+  onMachinesChange: React.Dispatch<React.SetStateAction<MachineDetail[]>>;
 }
 
-export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPortfolioProps) {
+export function MachineDetailsPortfolioView({ machines, onMachinesChange }: MachineDetailsPortfolioProps) {
   // View states
   const [viewMode, setViewMode] = useState<"list" | "grid" | "compact">("list");
   const [showViewDropdown, setShowViewDropdown] = useState(false);
@@ -25,34 +24,42 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
   // Row selection & interaction states
-  const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
+  const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
-  const [selectedJobDetail, setSelectedJobDetail] = useState<TrainingJob | null>(null);
+  const [selectedMachineDetail, setSelectedMachineDetail] = useState<MachineDetail | null>(null);
 
   // Pagination configuration
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  // Add Training Job modal states
+  // Add Machine modal states
   const [showAddModal, setShowAddModal] = useState(false);
-  const [activeFormTab, setActiveFormTab] = useState<"basic" | "client" | "attention" | "machine">("basic");
+  const [activeFormTab, setActiveFormTab] = useState<"basic" | "technical" | "status">("basic");
 
-  // Autocomplete client dropdown states
-  const [showClientAutocomplete, setShowClientAutocomplete] = useState(false);
-
-  // New Training Job Form State
+  // New Machine Form State
   const initialFormState = {
-    namingSeries: "JO-TR-26", // Pre-filled prefix, editable
-    trainerId: "",
-    trainingStartDate: new Date().toISOString().split("T")[0],
-    trainingEndDate: new Date().toISOString().split("T")[0],
-    clientName: "",
-    location: "",
-    attentionLocation: "",
-    attentionPhone: "",
+    machineId: "",
     machineName: "",
-    machineCount: "1",
-    status: "Scheduled" as const,
+    model: "",
+    manufacturer: "",
+    yearOfManufacture: new Date().getFullYear().toString(),
+    serialNumber: "",
+    currentLocation: "",
+    workingHours: "0",
+    status: "Operational" as const,
+    department: "Heavy Equipment Fleet",
+    lastServiceDate: new Date().toISOString().split("T")[0],
+    swl: "",
+    maxOutreach: "",
+    bucketCapacity: "",
+    enginePower: "",
+    boomLength: "",
+    wheelType: "",
+    maxPlatformHeight: "",
+    heoBucketCapacity: "",
+    engineSpeed: "",
+    angleOfSpan: "",
+    personAllowed: "",
   };
 
   const [formValues, setFormValues] = useState(initialFormState);
@@ -63,13 +70,13 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
     {
       id: "comment-1",
       author: "ZM",
-      text: "Equipment load calculations verified for Dhahran rigs.",
+      text: "Annual safety certificate verification scheduled.",
       time: "Recorded Note"
     },
     {
       id: "comment-2",
       author: "MK",
-      text: "Client attention phone confirmed compliant and active.",
+      text: "Fleet hydraulic seals checked during routine maintenance cycle.",
       time: "Recorded Note"
     }
   ]);
@@ -80,26 +87,12 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
 
   // Edit in Page status inside Detail layout
   const [isEditingInDetail, setIsEditingInDetail] = useState(false);
-  const [editFormValues, setEditFormValues] = useState<TrainingJob | null>(null);
+  const [editFormValues, setEditFormValues] = useState<MachineDetail | null>(null);
   const [showBulkActionDropdown, setShowBulkActionDropdown] = useState(false);
 
   // Toast notifications
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  
-  const [operatorRows, setOperatorRows] = useState<{ id: number; card: string; name: string }[]>([]);
-
-  const addOperatorRow = () => {
-    setOperatorRows([...operatorRows, { id: Date.now(), card: "", name: "" }]);
-  };
-
-  const removeOperatorRow = (id: number) => {
-    setOperatorRows(operatorRows.filter(row => row.id !== id));
-  };
-
-  const updateOperatorRow = (id: number, field: 'card' | 'name', value: string) => {
-    setOperatorRows(operatorRows.map(row => row.id === id ? { ...row, [field]: value } : row));
-  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -109,34 +102,35 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
   };
 
   const handleBulkDuplicate = () => {
-    const toDuplicate = jobs.filter(j => selectedJobIds.includes(j.id));
-    const duplicated = toDuplicate.map(j => ({
-      ...j,
-      id: `JO-TR-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
-      courseTitle: `${j.courseTitle} (Copy)`,
+    const toDuplicate = machines.filter(m => selectedMachineIds.includes(m.id));
+    const duplicated = toDuplicate.map(m => ({
+      ...m,
+      id: `MACH-26-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
+      machineName: `${m.machineName} (Copy)`,
     }));
-    onJobsChange((prev) => [...duplicated, ...prev]);
-    showToast(`✓ Duplicated ${selectedJobIds.length} job orders`);
-    setSelectedJobIds([]);
+    onMachinesChange((prev) => [...duplicated, ...prev]);
+    showToast(`✓ Duplicated ${selectedMachineIds.length} machines`);
+    setSelectedMachineIds([]);
     setShowBulkActionDropdown(false);
   };
 
   const handleBulkExport = () => {
-    const count = selectedJobIds.length;
-    showToast(`✓ Exporting ${count} training jobs to CSV...`);
+    const count = selectedMachineIds.length;
+    showToast(`✓ Exporting ${count} machines to CSV...`);
     
     const headers = [
-      "Naming Series Code prefix", "Trainer ID", "Training Start Date", "Training End Date",
-      "Initial Status", "Client Name", "Location / Training Site Address", "Attention Location",
-      "Phone Number", "Machine Name", "Number of Count"
+      "Machine ID", "Machine name", "S.W.L", "Maximum Horizontal Outreach",
+      "Max Bucket Capacity", "Manufacturer", "Engine Power", "Boom Length",
+      "Wheel Type", "Max Platform Height", "Hoe Bucket Capacity", "Engine Speed",
+      "Angle of Span", "Person Allowed"
     ].join(",");
 
-    const rows = jobs
-      .filter(j => selectedJobIds.includes(j.id))
-      .map(j => [
-        j.namingSeries, j.trainerId, j.trainingStartDate, j.trainingEndDate,
-        j.status, j.clientName, j.location, j.attentionLocation,
-        j.attentionPhone, j.machineName, j.machineCount
+    const rows = machines
+      .filter(m => selectedMachineIds.includes(m.id))
+      .map(m => [
+        m.id, m.machineName, m.swl, m.maxOutreach, m.bucketCapacity, m.manufacturer,
+        m.enginePower, m.boomLength, m.wheelType, m.maxPlatformHeight, m.heoBucketCapacity,
+        m.engineSpeed, m.angleOfSpan, m.personAllowed
       ].map(field => `"${String(field || "").replace(/"/g, '""')}"`).join(","))
       .join("\n");
 
@@ -144,12 +138,12 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `training_jobs_export_${new Date().getTime()}.csv`);
+    link.setAttribute("download", `machines_export_${new Date().getTime()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    setSelectedJobIds([]);
+    setSelectedMachineIds([]);
     setShowBulkActionDropdown(false);
   };
 
@@ -202,7 +196,7 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
         }
 
         const csvHeaders = rows[0].map(h => h.trim().toLowerCase());
-        const importedJobs: any[] = [];
+        const importedMachines: any[] = [];
 
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
@@ -213,50 +207,65 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
             return idx !== -1 && idx < row.length ? row[idx] : "";
           };
 
-          const namingSeries = getVal("Naming Series Code prefix") || "JO-TR-26";
-          const clientName = getVal("Client Name");
-          if (!clientName) continue;
+          const machineName = getVal("Machine name");
+          if (!machineName) continue;
 
-          const finalId = calculateNextSequenceId(namingSeries);
+          let rawId = getVal("Machine ID").trim();
+          let customPart = rawId.replace(/^ML-?/i, "");
+          let finalId = "";
+          if (customPart) {
+            finalId = `ML-${customPart}`;
+          } else {
+            let nextNum = 1 + importedMachines.length;
+            const regex = /^ML-(\d+)$/i;
+            machines.forEach((m) => {
+              const match = m.id.match(regex);
+              if (match) {
+                const num = parseInt(match[1], 10);
+                if (num >= nextNum) {
+                  nextNum = num + 1;
+                }
+              }
+            });
+            const padded = String(nextNum).padStart(3, "0");
+            finalId = `ML-${padded}`;
+          }
 
-          const trainerId = getVal("Trainer ID");
-          const trainingStartDate = getVal("Training Start Date") || new Date().toISOString().split("T")[0];
-          const trainingEndDate = getVal("Training End Date") || new Date().toISOString().split("T")[0];
-          const status = getVal("Initial Status") || "Scheduled";
-          const location = getVal("Location / Training Site Address") || "Main Training Hub";
-          const attentionLocation = getVal("Attention Location");
-          const attentionPhone = getVal("Phone Number");
-          const machineName = getVal("Machine Name") || "Crane Safe Simulator";
-          const machineCount = getVal("Number of Count") || "1";
+          const generatedSn = "SN-" + Math.floor(100000 + Math.random() * 900000);
 
-          const job = {
+          const machine = {
             id: finalId,
-            courseTitle: machineName ? `Simulator: ${machineName} Training` : "General Heavy Machine Training",
-            instructor: trainerId,
-            targetDate: trainingEndDate,
-            registeredCandidates: Number(machineCount) || 1,
-            status: status,
-            location: location,
-            namingSeries: namingSeries,
-            trainerId: trainerId,
-            trainingStartDate: trainingStartDate,
-            trainingEndDate: trainingEndDate,
-            clientName: clientName,
-            attentionLocation: attentionLocation,
-            attentionPhone: attentionPhone,
             machineName: machineName,
-            machineCount: machineCount,
-            operators: []
+            model: machineName,
+            manufacturer: getVal("Manufacturer") || "General Manufacturer",
+            yearOfManufacture: new Date().getFullYear(),
+            serialNumber: generatedSn,
+            currentLocation: "HQ Fleet",
+            status: "Operational",
+            workingHours: 0,
+            department: "Heavy Equipment Fleet",
+            lastServiceDate: new Date().toISOString().split("T")[0],
+            swl: getVal("S.W.L"),
+            maxOutreach: getVal("Maximum Horizontal Outreach"),
+            bucketCapacity: getVal("Max Bucket Capacity"),
+            enginePower: getVal("Engine Power"),
+            boomLength: getVal("Boom Length"),
+            wheelType: getVal("Wheel Type"),
+            maxPlatformHeight: getVal("Max Platform Height"),
+            heoBucketCapacity: getVal("Hoe Bucket Capacity"),
+            engineSpeed: getVal("Engine Speed"),
+            angleOfSpan: getVal("Angle of Span"),
+            personAllowed: getVal("Person Allowed")
           };
 
-          importedJobs.push(job);
+          importedMachines.push(machine);
         }
 
-        if (importedJobs.length > 0) {
-          onJobsChange((prev) => [...importedJobs, ...prev]);
-          showToast(`✓ Successfully imported ${importedJobs.length} training jobs.`);
+        if (importedMachines.length > 0) {
+          onMachinesChange((prev) => [...importedMachines, ...prev]);
+          showToast(`✓ Successfully imported ${importedMachines.length} machine models.`);
         } else {
-          showToast("⚠ No valid training job entries found in the CSV.");
+          showToast("⚠ No valid machine entries found in the CSV.");
         }
       } catch (err) {
         console.error(err);
@@ -269,11 +278,10 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
   };
 
   const handleBulkDeleteItems = () => {
-    const count = selectedJobIds.length;
-    // Removing window.confirm for direct execution as it might be blocked in the iframe
-    onJobsChange((prev) => prev.filter(j => !selectedJobIds.includes(j.id)));
-    showToast(`✓ Successfully removed ${count} job records`);
-    setSelectedJobIds([]);
+    const count = selectedMachineIds.length;
+    onMachinesChange((prev) => prev.filter(m => !selectedMachineIds.includes(m.id)));
+    showToast(`✓ Successfully removed ${count} machine records`);
+    setSelectedMachineIds([]);
     setShowBulkActionDropdown(false);
   };
 
@@ -300,90 +308,70 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
 
   const handleRefresh = () => {
     clearAllFilters();
-    setSelectedJobIds([]);
+    setSelectedMachineIds([]);
     showToast("✓ Search query and filter tags reset.");
   };
 
   // Filtering criteria matches
-  const filteredJobs = jobs.filter((job) => {
+  const filteredMachines = machines.filter((machine) => {
     if (activeFilters.length === 0) return true;
     return activeFilters.every((kw) => {
       const criteria = kw.toLowerCase();
       return (
-        job.id.toLowerCase().includes(criteria) ||
-        (job.clientName || "").toLowerCase().includes(criteria) ||
-        (job.location || "").toLowerCase().includes(criteria) ||
-        (job.attentionLocation || "").toLowerCase().includes(criteria) ||
-        (job.instructor || job.trainerId || "").toLowerCase().includes(criteria) ||
-        (job.machineName || "").toLowerCase().includes(criteria) ||
-        job.status.toLowerCase().includes(criteria)
+        machine.id.toLowerCase().includes(criteria) ||
+        (machine.machineName || "").toLowerCase().includes(criteria) ||
+        (machine.model || "").toLowerCase().includes(criteria) ||
+        (machine.manufacturer || "").toLowerCase().includes(criteria) ||
+        (machine.serialNumber || "").toLowerCase().includes(criteria) ||
+        (machine.currentLocation || "").toLowerCase().includes(criteria) ||
+        (machine.status || "").toLowerCase().includes(criteria) ||
+        (machine.department || "").toLowerCase().includes(criteria)
       );
     });
   });
 
   // Pagination slices
-  const totalItems = filteredJobs.length;
+  const totalItems = filteredMachines.length;
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedJobs = filteredJobs.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedMachines = filteredMachines.slice(startIndex, startIndex + itemsPerPage);
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
 
-  // Toggle checkout checkboxes
+  // Toggle checkboxes
   const handleCheckboxChange = (id: string) => {
-    if (selectedJobIds.includes(id)) {
-      setSelectedJobIds(selectedJobIds.filter((x) => x !== id));
+    if (selectedMachineIds.includes(id)) {
+      setSelectedMachineIds(selectedMachineIds.filter((x) => x !== id));
     } else {
-      setSelectedJobIds([...selectedJobIds, id]);
+      setSelectedMachineIds([...selectedMachineIds, id]);
     }
   };
 
   // Select all rows on current page
   const handleSelectAll = () => {
-    const pageIds = paginatedJobs.map((j) => j.id);
-    const allSelected = pageIds.every((id) => selectedJobIds.includes(id));
+    const pageIds = paginatedMachines.map((m) => m.id);
+    const allSelected = pageIds.every((id) => selectedMachineIds.includes(id));
     if (allSelected) {
-      setSelectedJobIds(selectedJobIds.filter((id) => !pageIds.includes(id)));
+      setSelectedMachineIds(selectedMachineIds.filter((id) => !pageIds.includes(id)));
     } else {
-      const newIds = [...selectedJobIds];
+      const newIds = [...selectedMachineIds];
       pageIds.forEach((id) => {
         if (!newIds.includes(id)) newIds.push(id);
       });
-      setSelectedJobIds(newIds);
+      setSelectedMachineIds(newIds);
     }
   };
 
-  // Autocomplete search suggestions
-  const matchingCustomers = initialCustomers.filter((cust) => {
-    if (!formValues.clientName.trim()) return true;
-    return cust.companyName.toLowerCase().includes(formValues.clientName.toLowerCase());
-  });
-
-  // Auto-fill form values on selecting customer
-  const handleSelectCustomer = (cust: typeof initialCustomers[0]) => {
-    setFormValues((prev) => ({
-      ...prev,
-      clientName: cust.companyName,
-      location: cust.trainingSiteAddress || cust.addressLine1 || "Dhahran, KSA",
-      attentionLocation: cust.cityAddress || "Eastern Province",
-      attentionPhone: cust.trainingContactPhone || cust.phone || "+966 13 874 1122"
-    }));
-    setShowClientAutocomplete(false);
-    showToast(`✓ Client details loaded from "${cust.companyName}". autofilled locations & contacts.`);
-  };
-
-  // Helper calculation to auto-generate the next JO-TR-26-XXXX sequence
+  // Helper calculation to auto-generate the next MACH-26-XXXX sequence
   const calculateNextSequenceId = (seriesInput: string): string => {
-    const cleanSeries = seriesInput.trim() || "JO-TR-26";
+    const cleanSeries = seriesInput.trim() || "MACH-26";
     
-    // If the input matches a manually entered ID other than the default prefix, return it directly.
-    if (cleanSeries !== "JO-TR-26") {
+    if (cleanSeries !== "MACH-26") {
       return cleanSeries;
     }
 
-    // Otherwise, find the maximum suffix number in current jobs starting with JO-TR-26
-    let maxSuffix = 1100; // Starting baseline suffix count
-    const matchingJobs = jobs.filter((j) => j.id.startsWith("JO-TR-26-"));
-    matchingJobs.forEach((job) => {
-      const parts = job.id.split("-");
+    let maxSuffix = 1000; // Starting baseline suffix count
+    const matchingMachines = machines.filter((m) => m.id.startsWith("MACH-26-"));
+    matchingMachines.forEach((m) => {
+      const parts = m.id.split("-");
       const suffixCode = parts[parts.length - 1];
       const numericVal = parseInt(suffixCode, 10);
       if (!isNaN(numericVal) && numericVal > maxSuffix) {
@@ -391,129 +379,144 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
       }
     });
 
-    return `JO-TR-26-${maxSuffix + 1}`;
+    return `MACH-26-${maxSuffix + 1}`;
   };
 
-  // Handle Form Submission / Job Creation
-  const handleCreateJob = (e?: React.FormEvent | React.MouseEvent) => {
+  // Handle Form Submission / Machine Creation
+  const handleCreateMachine = (e?: React.FormEvent | React.MouseEvent) => {
     if (e) e.preventDefault();
     const errors: Record<string, string> = {};
 
-    if (!formValues.clientName.trim()) {
-      errors.clientName = "Client Name is required";
-    }
-    if (!formValues.location.trim()) {
-      errors.location = "Job Location / Training Site is required";
-    }
-    if (!formValues.trainerId.trim()) {
-      errors.trainerId = "Trainer ID is required";
+    if (!formValues.machineName.trim()) {
+      errors.machineName = "Machine Name is required";
     }
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
-      // Route to correct tab containing the error
-      if (errors.trainerId) setActiveFormTab("basic");
-      else if (errors.clientName || errors.location) setActiveFormTab("client");
       return;
     }
 
-    // Generate compliant ID with our Naming series processor
-    const finalId = calculateNextSequenceId(formValues.namingSeries);
+    let customPart = formValues.machineId.trim();
+    // Strip starting "ML-" case-insensitive, optional dash
+    customPart = customPart.replace(/^ML-?/i, "");
 
-    const newJob: TrainingJob = {
+    let finalId = "";
+    if (customPart) {
+      finalId = `ML-${customPart}`;
+    } else {
+      let nextNum = 1;
+      const regex = /^ML-(\d+)$/i;
+      machines.forEach((m) => {
+        const match = m.id.match(regex);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num >= nextNum) {
+            nextNum = num + 1;
+          }
+        }
+      });
+      const padded = String(nextNum).padStart(3, "0");
+      finalId = `ML-${padded}`;
+    }
+
+    const generatedSn = "SN-" + Math.floor(100000 + Math.random() * 900000);
+
+    const newMachine: MachineDetail = {
       id: finalId,
-      courseTitle: formValues.machineName ? `Simulator: ${formValues.machineName} Training` : "General Heavy Machine Training",
-      instructor: formValues.trainerId,
-      targetDate: formValues.trainingEndDate,
-      registeredCandidates: Number(formValues.machineCount) || 1,
-      status: formValues.status,
-      location: formValues.location,
-
-      // High-fidelity fields
-      trainerId: formValues.trainerId,
-      trainingStartDate: formValues.trainingStartDate,
-      trainingEndDate: formValues.trainingEndDate,
-      clientName: formValues.clientName,
-      attentionLocation: formValues.attentionLocation,
-      attentionPhone: formValues.attentionPhone,
-      machineName: formValues.machineName || "Crane Safe Simulator",
-      machineCount: formValues.machineCount || "1",
-      operators: [...operatorRows],
+      machineName: formValues.machineName,
+      model: formValues.machineName,
+      manufacturer: formValues.manufacturer || "General Manufacturer",
+      yearOfManufacture: new Date().getFullYear(),
+      serialNumber: generatedSn,
+      currentLocation: "HQ Fleet",
+      status: "Operational",
+      workingHours: 0,
+      department: "Heavy Equipment Fleet",
+      lastServiceDate: new Date().toISOString().split("T")[0],
+      swl: formValues.swl,
+      maxOutreach: formValues.maxOutreach,
+      bucketCapacity: formValues.bucketCapacity,
+      enginePower: formValues.enginePower,
+      boomLength: formValues.boomLength,
+      wheelType: formValues.wheelType,
+      maxPlatformHeight: formValues.maxPlatformHeight,
+      heoBucketCapacity: formValues.heoBucketCapacity,
+      engineSpeed: formValues.engineSpeed,
+      angleOfSpan: formValues.angleOfSpan,
+      personAllowed: formValues.personAllowed,
     };
 
-    onJobsChange((prev) => [newJob, ...prev]);
+    onMachinesChange((prev) => [newMachine, ...prev]);
     setShowAddModal(false);
     setFormValues(initialFormState);
     setFormErrors({});
     setActiveFormTab("basic");
-    showToast(`✓ Training job order ${newJob.id} generated successfully.`);
+    showToast(`✓ Machine asset ${newMachine.id} generated successfully.`);
   };
 
   // Save changes done in page detail view
   const handleSaveDetailChanges = () => {
     if (!editFormValues) return;
     
-    const finalJob = { ...editFormValues, operators: [...operatorRows] };
-    // Propagate changes to outer state hook
-    onJobsChange((prev) =>
-      prev.map((j) => (j.id === finalJob.id ? finalJob : j))
+    onMachinesChange((prev) =>
+      prev.map((m) => (m.id === editFormValues.id ? editFormValues : m))
     );
-    setSelectedJobDetail(finalJob);
+    setSelectedMachineDetail(editFormValues);
     setIsEditingInDetail(false);
-    showToast("✓ Training details updated successfully.");
+    showToast("✓ Machine details updated successfully.");
   };
 
   // Quick navigation buttons in detail page
-  const currentDetailIndex = jobs.findIndex((j) => j.id === selectedJobDetail?.id);
+  const currentDetailIndex = machines.findIndex((m) => m.id === selectedMachineDetail?.id);
   
   const handlePrevDetail = () => {
     if (currentDetailIndex > 0) {
-      setSelectedJobDetail(jobs[currentDetailIndex - 1]);
+      setSelectedMachineDetail(machines[currentDetailIndex - 1]);
       setIsEditingInDetail(false);
     } else {
-      showToast("First training job reached.");
+      showToast("First machine record reached.");
     }
   };
 
   const handleNextDetail = () => {
-    if (currentDetailIndex < jobs.length - 1) {
-      setSelectedJobDetail(jobs[currentDetailIndex + 1]);
+    if (currentDetailIndex < machines.length - 1) {
+      setSelectedMachineDetail(machines[currentDetailIndex + 1]);
       setIsEditingInDetail(false);
     } else {
-      showToast("Last training job reached.");
+      showToast("Last machine record reached.");
     }
   };
 
-  // Delete training job
-  const handleDeleteJob = (id: string) => {
-    onJobsChange((prev) => prev.filter((j) => j.id !== id));
-    setSelectedJobIds(selectedJobIds.filter((x) => x !== id));
-    if (selectedJobDetail?.id === id) {
-      setSelectedJobDetail(null);
+  // Delete machine
+  const handleDeleteMachine = (id: string) => {
+    onMachinesChange((prev) => prev.filter((m) => m.id !== id));
+    setSelectedMachineIds(selectedMachineIds.filter((x) => x !== id));
+    if (selectedMachineDetail?.id === id) {
+      setSelectedMachineDetail(null);
     }
-    showToast("✓ Training job order removed from workspace.");
+    showToast("✓ Machine record removed from workspace.");
     setConfirmDeleteId(null);
   };
 
-  // Export JSON summary of job
-  const handleExportJobJson = (job: TrainingJob) => {
+  // Export JSON summary of machine
+  const handleExportMachineJson = (machine: MachineDetail) => {
     try {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(job, null, 2));
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(machine, null, 2));
       const downloadAnchor = document.createElement("a");
       downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `training_job_${job.id}.json`);
+      downloadAnchor.setAttribute("download", `machine_${machine.id}.json`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
-      showToast("✓ Downloaded training job JSON.");
+      showToast("✓ Downloaded machine JSON.");
     } catch {
       showToast("Error exporting JSON.");
     }
   };
 
   // Trigger print document simulator
-  const handlePrintJob = (job: TrainingJob) => {
-    showToast(`✓ Dispatched printable ticket docket for Training Job ID ${job.id}`);
+  const handlePrintMachine = (machine: MachineDetail) => {
+    showToast(`✓ Dispatched printable specification docket for Machine ID ${machine.id}`);
   };
 
   // Timeline comment logging
@@ -528,18 +531,15 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
     };
     setComments([comment, ...comments]);
     setNewComment("");
-    showToast("✓ Added notes to this job's active audit trail.");
+    showToast("✓ Added notes to this machine's active audit trail.");
   };
 
   // Initializing edit form state
   useEffect(() => {
-    if (selectedJobDetail) {
-      setEditFormValues({ ...selectedJobDetail });
-      setOperatorRows(selectedJobDetail.operators || []);
-    } else {
-      setOperatorRows([]);
+    if (selectedMachineDetail) {
+      setEditFormValues({ ...selectedMachineDetail });
     }
-  }, [selectedJobDetail]);
+  }, [selectedMachineDetail]);
 
   const toggleFavorite = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -549,24 +549,22 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
   // ==========================================
   // RENDER DETAILED PAGE ROUTE IF SELECTED
   // ==========================================
-  if (selectedJobDetail) {
-    const job = selectedJobDetail;
-    const isLiked = !!favorites[job.id];
+  if (selectedMachineDetail) {
+    const machine = selectedMachineDetail;
+    const isLiked = !!favorites[machine.id];
     
-    // We synchronize values if they exists on job. Otherwise map back from courseTitle/trainerId to prevent blank states
-    const dispClient = job.clientName || "General Partner Client";
-    const dispEndDate = job.trainingEndDate || job.targetDate || "N/A";
-    const dispStartDate = job.trainingStartDate || "N/A";
-    const dispTrainer = job.trainerId || job.instructor || "Zaid Mansoor";
-    const dispLoc = job.location || "Logistics Yard Site";
-    
-    const dispAttLoc = job.attentionLocation || "Eastern Province";
-    const dispAttPhone = job.attentionPhone || "+966 50 000 0000";
-    const dispMachine = job.machineName || "Industrial Crane Simulator";
-    const dispMachineCount = job.machineCount || "1";
+    const dispName = machine.machineName || "Industrial Heavy Asset";
+    const dispModel = machine.model || "N/A";
+    const dispMfg = machine.manufacturer || "N/A";
+    const dispYear = machine.yearOfManufacture || "N/A";
+    const dispLoc = machine.currentLocation || "N/A";
+    const dispSerial = machine.serialNumber || "N/A";
+    const dispHours = (machine as any).workingHours || 0;
+    const dispDept = (machine as any).department || "Heavy Equipment Fleet";
+    const dispService = (machine as any).lastServiceDate || "N/A";
 
     return (
-      <div className="space-y-6" id="training-detail-route">
+      <div className="space-y-6" id="machine-detail-route">
         
         {/* Toast Alerts */}
         {toastMessage && (
@@ -580,12 +578,15 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#ECECF3] pb-4 select-none">
           <div>
             <div className="flex items-center gap-2 mb-1.5 text-xs text-slate-400 font-medium font-sans">
-              <button onClick={() => setSelectedJobDetail(null)} className="hover:text-[#683EFF] font-semibold transition-colors">
-                Training Jobs
+              <button onClick={() => setSelectedMachineDetail(null)} className="hover:text-[#683EFF] font-semibold transition-colors">
+                Machine models list page
               </button>
               <Icons.ChevronRight className="w-3 h-3 text-slate-350" />
-              <span className="font-bold text-slate-700 truncate max-w-[200px]">{job.id}</span>
+              <span className="font-bold text-slate-700 truncate max-w-[200px]">{machine.id}</span>
             </div>
+            <h2 className="font-display text-2xl font-bold text-slate-800 tracking-tight">
+              Machine models detail page
+            </h2>
           </div>
 
           {/* Action Row Sidebar side buttons */}
@@ -593,24 +594,24 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
             
             {/* Action buttons (Print, Export, Delete) */}
             <button
-              onClick={() => handlePrintJob(job)}
-              title="Print Order Ticket"
+              onClick={() => handlePrintMachine(machine)}
+              title="Print Specification Docket"
               className="p-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-600 rounded-lg shadow-sm transition-colors"
             >
               <Icons.Printer className="w-4 h-4" />
             </button>
 
             <button
-              onClick={() => handleExportJobJson(job)}
-              title="Download Job Summary"
+              onClick={() => handleExportMachineJson(machine)}
+              title="Download Machine Summary"
               className="p-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-600 rounded-lg shadow-sm transition-colors"
             >
               <Icons.Download className="w-4 h-4" />
             </button>
 
             <button
-              onClick={() => setConfirmDeleteId(job.id)}
-              title="Permamently Delete"
+              onClick={() => setConfirmDeleteId(machine.id)}
+              title="Permanent Delete"
               className="p-2 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors"
             >
               <Icons.Trash2 className="w-4 h-4" />
@@ -622,15 +623,15 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                 onClick={handlePrevDetail}
                 disabled={currentDetailIndex <= 0}
                 className="p-2 hover:bg-slate-50 text-slate-500 disabled:opacity-35 border-r border-slate-200 transition-colors"
-                title="Previous training job"
+                title="Previous machine"
               >
                 <Icons.ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={handleNextDetail}
-                disabled={currentDetailIndex >= jobs.length - 1}
+                disabled={currentDetailIndex >= machines.length - 1}
                 className="p-2 hover:bg-slate-50 text-slate-500 disabled:opacity-35 transition-colors"
-                title="Next training job"
+                title="Next machine"
               >
                 <Icons.ChevronRight className="w-4 h-4" />
               </button>
@@ -657,55 +658,21 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
           </div>
         </div>
 
-        {/* 2. Main Double-column layout identical to CustomerDetailPage */}
+        {/* 2. Main Double-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* Detail sidebar Left Column */}
           <div id="Detail sidebar" className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-6 flex flex-col items-center shadow-sm text-center">
             
-            {/* Avatar block with JO/Id */}
+            {/* Avatar block with MA/Id */}
             <div className="h-20 w-20 rounded-2xl bg-gradient-to-tr from-[#683EFF]/15 to-[#683EFF]/5 text-[#683EFF] text-3xl font-black flex items-center justify-center shadow-sm relative shrink-0 font-mono">
-              {job.id.substring(0, 2).toUpperCase()}
+              {machine.id.substring(0, 4).toUpperCase()}
             </div>
 
-            {/* Client Naming details */}
+            {/* Machine Name */}
             <h3 className="font-display font-bold text-slate-800 text-lg mt-4 leading-snug">
-              {dispClient}
+              {dispName}
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5 font-mono">Order: {job.id}</p>
-
-            {/* Status interactive selector */}
-            <div className="mt-3">
-              <select
-                value={isEditingInDetail && editFormValues ? editFormValues.status : job.status}
-                onChange={(e) => {
-                  const val = e.target.value as any;
-                  if (isEditingInDetail && editFormValues) {
-                    setEditFormValues({ ...editFormValues, status: val });
-                  } else {
-                    onJobsChange((prev) =>
-                      prev.map((item) => (item.id === job.id ? { ...item, status: val } : item))
-                    );
-                    setSelectedJobDetail((prev) => (prev ? { ...prev, status: val } : null));
-                    showToast(`✓ Operational status changed to: ${val}`);
-                  }
-                }}
-                className={`text-xs font-bold px-3 py-1 rounded-full cursor-pointer focus:outline-none border transition-colors ${
-                  (isEditingInDetail && editFormValues ? editFormValues.status : job.status) === "Completed"
-                    ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
-                    : (isEditingInDetail && editFormValues ? editFormValues.status : job.status) === "In Progress"
-                    ? "bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100"
-                    : (isEditingInDetail && editFormValues ? editFormValues.status : job.status) === "Cancelled"
-                    ? "bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100"
-                    : "bg-[#F0EBFF] text-[#683EFF] border-[#683EFF]/20 hover:bg-[#E2D9FF]"
-                }`}
-              >
-                <option value="Scheduled">🗓 Scheduled</option>
-                <option value="In Progress">⚡ In Progress</option>
-                <option value="Completed">✅ Completed</option>
-                <option value="Cancelled">❌ Cancelled</option>
-              </select>
-            </div>
 
             {/* Static & Dynamic details rows */}
             <div className="w-full mt-6 pt-5 border-t border-slate-100 space-y-3.5 text-left text-xs text-slate-600 font-medium">
@@ -713,33 +680,17 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                   <div className="flex items-center justify-between py-1 border-b border-slate-50">
                     <div className="flex items-center gap-2">
                       <Icons.Key className="w-4 h-4 text-slate-400" />
-                      <span className="text-slate-500 font-medium font-sans">Job Order ID</span>
+                      <span className="text-slate-500 font-medium font-sans">Asset ID</span>
                     </div>
-                    <span className="font-normal font-sans text-slate-800">{job.id}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between py-1 border-b border-slate-50">
-                    <div className="flex items-center gap-2">
-                      <Icons.User className="w-4 h-4 text-slate-400" />
-                      <span className="text-slate-500 font-medium font-sans">Trainer ID</span>
-                    </div>
-                    <span className="font-normal font-sans text-slate-800">{dispTrainer}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between py-1 border-b border-slate-50">
-                    <div className="flex items-center gap-2">
-                      <Icons.Calendar className="w-4 h-4 text-slate-400" />
-                      <span className="text-slate-500 font-medium font-sans">Start Date</span>
-                    </div>
-                    <span className="font-normal font-sans text-slate-705">{dispStartDate}</span>
+                    <span className="font-mono text-[#683EFF] font-bold">{machine.id}</span>
                   </div>
 
                   <div className="flex items-center justify-between py-1">
                     <div className="flex items-center gap-2">
-                      <Icons.CalendarCheck className="w-4 h-4 text-slate-400" />
-                      <span className="text-slate-500 font-medium font-sans">End Date</span>
+                      <Icons.Cpu className="w-4 h-4 text-slate-400" />
+                      <span className="text-slate-500 font-medium font-sans">Manufacturer</span>
                     </div>
-                    <span className="font-normal font-sans text-slate-705">{dispEndDate}</span>
+                    <span className="font-semibold font-sans text-slate-800">{dispMfg}</span>
                   </div>
 
             </div>
@@ -748,7 +699,7 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
             <div className="w-full mt-5">
               <button
                 type="button"
-                onClick={(e) => toggleFavorite(job.id, e)}
+                onClick={(e) => toggleFavorite(machine.id, e)}
                 className={`w-full py-2 border rounded-xl hover:bg-slate-50 transition text-xs font-bold font-sans flex items-center justify-center gap-2 cursor-pointer ${
                   isLiked ? "bg-rose-50 border-rose-200 text-rose-600" : "bg-white border-slate-200 text-slate-500"
                 }`}
@@ -762,11 +713,11 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
             <div className="w-full mt-6 pt-4 border-t border-slate-100 text-[11px] text-slate-400 space-y-1 text-left">
               <p className="flex items-center gap-1">
                 <span className="w-1 h-1 rounded-full bg-[#683EFF]" />
-                <span>Series verified in Gulf Logistics</span>
+                <span>Asset registered in Central Fleet</span>
               </p>
               <p className="flex items-center gap-1">
                 <span className="w-1 h-1 rounded-full bg-slate-300" />
-                <span>Last updated moments ago</span>
+                <span>Specifications verified today</span>
               </p>
             </div>
           </div>
@@ -775,14 +726,14 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
           <div className="lg:col-span-8 flex flex-col gap-6">
             
             {/* Tab navigation bar */}
-            <div className="border-b border-[#ECECF3] flex gap-6 select-none shrink-0" id="training-detail-tabbed-navigation">
+            <div className="border-b border-[#ECECF3] flex gap-6 select-none shrink-0" id="machine-detail-tabbed-navigation">
               <button
                 onClick={() => setActiveDetailTab("DETAILS")}
                 className={`pb-3 font-display font-bold text-xs uppercase tracking-wider relative transition-all ${
                   activeDetailTab === "DETAILS" ? "text-[#683EFF]" : "text-slate-400 hover:text-slate-700"
                 }`}
               >
-                <span>Details Tab 1</span>
+                <span>Specification Details</span>
                 {activeDetailTab === "DETAILS" && (
                   <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#683EFF]" />
                 )}
@@ -793,296 +744,240 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
             {activeDetailTab === "DETAILS" && (
               <div className="space-y-6">
                 
-                {/* 2.1 Basic information card */}
+                {/* 2.1 Machine Model Specifications Card */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
                   <h4 className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 select-none text-slate-700">
                     <Icons.FileText className="w-4 h-4 text-[#683EFF]" />
-                    <span>Basic Information</span>
+                    <span>Machine Model Specifications</span>
                   </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* 1. Machine ID */}
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Naming Series ID *
+                        Machine ID
+                      </label>
+                      <input
+                        type="text"
+                        disabled={true}
+                        value={machine.id}
+                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 font-mono text-slate-500 disabled:opacity-85"
+                      />
+                    </div>
+
+                    {/* 2. Machine name */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Machine name *
                       </label>
                       <input
                         type="text"
                         disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.id : job.id}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, id: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-mono font-bold text-slate-700 disabled:opacity-85"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Trainer ID *
-                      </label>
-                      <input
-                        type="text"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.trainerId || "" : dispTrainer}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, trainerId: e.target.value, instructor: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
-                        placeholder="TR-ZAID-09"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Training Start Date
-                      </label>
-                      <input
-                        type="date"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.trainingStartDate || "" : dispStartDate}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, trainingStartDate: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-mono text-slate-700"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Training End Date
-                      </label>
-                      <input
-                        type="date"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.trainingEndDate || "" : dispEndDate}
-                        onChange={(e) => {
-                          if (editFormValues) {
-                            setEditFormValues({ ...editFormValues, trainingEndDate: e.target.value, targetDate: e.target.value });
-                          }
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-mono text-slate-700"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2.2 Client details card */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
-                  <h4 className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 select-none text-slate-700">
-                    <Icons.Building className="w-4 h-4 text-[#683EFF]" />
-                    <span>Client Details</span>
-                  </h4>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Client Name
-                      </label>
-                      <input
-                        type="text"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.clientName || "" : dispClient}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, clientName: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
-                        placeholder="Saudi Aramco"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Location / Site Address
-                      </label>
-                      <input
-                        type="text"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.location || "" : dispLoc}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, location: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
-                        placeholder="Saudi Aramco Training Complex"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2.3 Attention details card */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
-                  <h4 className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 select-none text-slate-700">
-                    <Icons.Contact className="w-4 h-4 text-[#683EFF]" />
-                    <span>Attention Details</span>
-                  </h4>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Location
-                      </label>
-                      <input
-                        type="text"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.attentionLocation || "" : dispAttLoc}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, attentionLocation: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
-                        placeholder="e.g. Dhahran / Jeddah"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Phone Number
-                      </label>
-                      <input
-                        type="text"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.attentionPhone || "" : dispAttPhone}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, attentionPhone: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
-                        placeholder="+966..."
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2.4 Machine details card */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
-                  <h4 className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 select-none text-slate-700">
-                    <Icons.Cpu className="w-4 h-4 text-[#683EFF]" />
-                    <span>Machine Details</span>
-                  </h4>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Machine Name
-                      </label>
-                      <input
-                        type="text"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.machineName || "" : dispMachine}
+                        value={isEditingInDetail && editFormValues ? editFormValues.machineName || "" : dispName}
                         onChange={(e) => {
                           if (editFormValues) setEditFormValues({ ...editFormValues, machineName: e.target.value });
                         }}
                         className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
-                        placeholder="Tadano 160T Crane Simulator"
                       />
                     </div>
 
+                    {/* 3. S.W.L */}
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Number of Count
+                        S.W.L
                       </label>
                       <input
                         type="text"
                         disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.machineCount || "" : dispMachineCount}
+                        value={isEditingInDetail && editFormValues ? editFormValues.swl || "" : (machine.swl || "")}
                         onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, machineCount: e.target.value });
+                          if (editFormValues) setEditFormValues({ ...editFormValues, swl: e.target.value });
                         }}
                         className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
-                        placeholder="2"
+                      />
+                    </div>
+
+                    {/* 4. Maximum Horizontal Outreach */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Maximum Horizontal Outreach
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!isEditingInDetail}
+                        value={isEditingInDetail && editFormValues ? editFormValues.maxOutreach || "" : (machine.maxOutreach || "")}
+                        onChange={(e) => {
+                          if (editFormValues) setEditFormValues({ ...editFormValues, maxOutreach: e.target.value });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
+                      />
+                    </div>
+
+                    {/* 5. Max Bucket Capacity */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Max Bucket Capacity
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!isEditingInDetail}
+                        value={isEditingInDetail && editFormValues ? editFormValues.bucketCapacity || "" : (machine.bucketCapacity || "")}
+                        onChange={(e) => {
+                          if (editFormValues) setEditFormValues({ ...editFormValues, bucketCapacity: e.target.value });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
+                      />
+                    </div>
+
+                    {/* 6. Manufacturer */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Manufacturer
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!isEditingInDetail}
+                        value={isEditingInDetail && editFormValues ? editFormValues.manufacturer || "" : dispMfg}
+                        onChange={(e) => {
+                          if (editFormValues) setEditFormValues({ ...editFormValues, manufacturer: e.target.value });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
+                      />
+                    </div>
+
+                    {/* 7. Engine Power */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Engine Power
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!isEditingInDetail}
+                        value={isEditingInDetail && editFormValues ? editFormValues.enginePower || "" : (machine.enginePower || "")}
+                        onChange={(e) => {
+                          if (editFormValues) setEditFormValues({ ...editFormValues, enginePower: e.target.value });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
+                      />
+                    </div>
+
+                    {/* 8. Boom Length */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Boom Length
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!isEditingInDetail}
+                        value={isEditingInDetail && editFormValues ? editFormValues.boomLength || "" : (machine.boomLength || "")}
+                        onChange={(e) => {
+                          if (editFormValues) setEditFormValues({ ...editFormValues, boomLength: e.target.value });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
+                      />
+                    </div>
+
+                    {/* 9. Wheel Type */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Wheel Type
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!isEditingInDetail}
+                        value={isEditingInDetail && editFormValues ? editFormValues.wheelType || "" : (machine.wheelType || "")}
+                        onChange={(e) => {
+                          if (editFormValues) setEditFormValues({ ...editFormValues, wheelType: e.target.value });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
+                      />
+                    </div>
+
+                    {/* 10. Max Platform Height */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Max Platform Height
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!isEditingInDetail}
+                        value={isEditingInDetail && editFormValues ? editFormValues.maxPlatformHeight || "" : (machine.maxPlatformHeight || "")}
+                        onChange={(e) => {
+                          if (editFormValues) setEditFormValues({ ...editFormValues, maxPlatformHeight: e.target.value });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
+                      />
+                    </div>
+
+                    {/* 11. Hoe Bucket Capacity */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Hoe Bucket Capacity
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!isEditingInDetail}
+                        value={isEditingInDetail && editFormValues ? editFormValues.heoBucketCapacity || "" : (machine.heoBucketCapacity || "")}
+                        onChange={(e) => {
+                          if (editFormValues) setEditFormValues({ ...editFormValues, heoBucketCapacity: e.target.value });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
+                      />
+                    </div>
+
+                    {/* 12. Engine Speed */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Engine Speed
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!isEditingInDetail}
+                        value={isEditingInDetail && editFormValues ? editFormValues.engineSpeed || "" : (machine.engineSpeed || "")}
+                        onChange={(e) => {
+                          if (editFormValues) setEditFormValues({ ...editFormValues, engineSpeed: e.target.value });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
+                      />
+                    </div>
+
+                    {/* 13. Angle of Span */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Angle of Span
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!isEditingInDetail}
+                        value={isEditingInDetail && editFormValues ? editFormValues.angleOfSpan || "" : (machine.angleOfSpan || "")}
+                        onChange={(e) => {
+                          if (editFormValues) setEditFormValues({ ...editFormValues, angleOfSpan: e.target.value });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
+                      />
+                    </div>
+
+                    {/* 14. Person Allowed */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Person Allowed
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!isEditingInDetail}
+                        value={isEditingInDetail && editFormValues ? editFormValues.personAllowed || "" : (machine.personAllowed || "")}
+                        onChange={(e) => {
+                          if (editFormValues) setEditFormValues({ ...editFormValues, personAllowed: e.target.value });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Operator Machine Details (Moved to main area) */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-                  <h4 className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 select-none text-slate-700">
-                    <Icons.Users className="w-4 h-4 text-[#683EFF]" />
-                    <span>Operator Machine Details</span>
-                  </h4>
-
-                  <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[10px] font-semibold uppercase tracking-wider font-sans">
-                          <th className="p-3 w-10 text-center border-r border-slate-200">
-                            <input type="checkbox" className="w-3.5 h-3.5 rounded border-slate-300 pointer-events-none" disabled />
-                          </th>
-                          <th className="p-3 w-12 text-center border-r border-slate-200">No.</th>
-                          <th className="p-3 border-r border-slate-200">Operator Card</th>
-                          <th className="p-3">Operator</th>
-                          <th className="p-3 w-10 text-center">
-                            <Icons.Settings className="w-3.5 h-3.5 mx-auto opacity-40" />
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {operatorRows.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} className="p-10 text-center bg-white">
-                              <div className="flex flex-col items-center gap-2 text-slate-400">
-                                <Icons.ClipboardList className="w-10 h-10 opacity-10" />
-                                <span className="text-xs font-semibold font-sans uppercase tracking-[0.2em]">No Data</span>
-                              </div>
-                            </td>
-                          </tr>
-                        ) : (
-                          operatorRows.map((row, idx) => (
-                            <tr key={row.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
-                              <td className="p-2.5 text-center border-r border-slate-100">
-                                <input type="checkbox" className="w-3.5 h-3.5 rounded border-slate-300" />
-                              </td>
-                              <td className="p-2.5 text-center border-r border-slate-100 text-[11px] font-medium text-slate-500 font-sans">
-                                {idx + 1}
-                              </td>
-                              <td className="p-2 border-r border-slate-100">
-                                <input 
-                                  type="text" 
-                                  disabled={!isEditingInDetail}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-[#683EFF] outline-none font-sans disabled:opacity-75"
-                                  placeholder="e.g. CARD-2024-01"
-                                  value={row.card}
-                                  onChange={(e) => updateOperatorRow(row.id, 'card', e.target.value)}
-                                />
-                              </td>
-                              <td className="p-2">
-                                <input 
-                                  type="text" 
-                                  disabled={!isEditingInDetail}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-[#683EFF] outline-none font-sans disabled:opacity-75"
-                                  placeholder="Operator Full Name"
-                                  value={row.name}
-                                  onChange={(e) => updateOperatorRow(row.id, 'name', e.target.value)}
-                                />
-                              </td>
-                              <td className="p-2 text-center">
-                                {isEditingInDetail && (
-                                  <button 
-                                    type="button"
-                                    onClick={() => removeOperatorRow(row.id)}
-                                    className="text-slate-300 hover:text-rose-500 transition-colors p-1"
-                                  >
-                                    <Icons.X className="w-4 h-4" />
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                  {isEditingInDetail && (
-                    <button 
-                      onClick={addOperatorRow}
-                      className="bg-slate-50 hover:bg-slate-100 text-[#683EFF] text-[11px] font-semibold py-2 px-4 rounded-lg border border-dashed border-[#683EFF]/30 font-sans transition-colors flex items-center gap-2"
-                    >
-                      <Icons.Plus className="w-3.5 h-3.5" />
-                      <span>Add Row</span>
-                    </button>
-                  )}
-                </div>
-
-                {/* 2. Timeline and comments double column layout */}
+                {/* 2.3 Activity Timeline and Comments Double-Column Block */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
+                  
                   {/* Left: Activity Timeline */}
                   <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
                     <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest flex items-center gap-1.5 border-b border-slate-100 pb-3 text-slate-700">
@@ -1098,8 +993,8 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                           <Icons.Plus className="w-2.5 h-2.5" />
                         </span>
                         <div>
-                          <p className="text-xs font-bold text-slate-800">Trainer assignment modified</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5 font-semibold">10 minutes ago by MK</p>
+                          <p className="text-xs font-bold text-slate-800">Machine deploy site updated</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5 font-semibold">12 minutes ago by MK</p>
                         </div>
                       </div>
 
@@ -1109,8 +1004,8 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                           <Icons.RefreshCw className="w-2.5 h-2.5" />
                         </span>
                         <div>
-                          <p className="text-xs font-bold text-slate-800">Training job verification logs updated</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5 font-semibold">22 minutes ago</p>
+                          <p className="text-xs font-bold text-slate-800">Routine service checklists synchronized</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5 font-semibold">35 minutes ago</p>
                         </div>
                       </div>
 
@@ -1120,8 +1015,8 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                           <Icons.Paperclip className="w-2.5 h-2.5" />
                         </span>
                         <div>
-                          <p className="text-xs font-bold text-slate-800">Certification document attached</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5 font-semibold">1 hour ago</p>
+                          <p className="text-xs font-bold text-slate-800">Calibration certificate document attached</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5 font-semibold">2 hours ago</p>
                         </div>
                       </div>
                     </div>
@@ -1189,9 +1084,9 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                 <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mb-4">
                   <Icons.AlertTriangle className="w-6 h-6 text-rose-500" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800 font-sans">Delete Training Job?</h3>
+                <h3 className="text-lg font-bold text-slate-800 font-sans">Delete Machine Asset?</h3>
                 <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                  Are you sure you want to permanently delete this training job record? This action cannot be undone.
+                  Are you sure you want to permanently delete this heavy machine asset record? This action cannot be undone.
                 </p>
                 <div className="flex gap-3 mt-6 w-full">
                   <button
@@ -1201,7 +1096,7 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                     Cancel
                   </button>
                   <button
-                    onClick={() => handleDeleteJob(confirmDeleteId)}
+                    onClick={() => handleDeleteMachine(confirmDeleteId)}
                     className="flex-1 px-4 py-2 text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-lg transition-all shadow-md shadow-rose-200"
                   >
                     Delete
@@ -1220,7 +1115,7 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
   // RENDER MASTER PORTFOLIO LIST VIEW DEFAULT
   // ==========================================
   return (
-    <div className="space-y-6" id="training-portfolio-view-container">
+    <div className="space-y-6" id="machine-portfolio-view-container">
       
       {/* Toast Alert */}
       {toastMessage && (
@@ -1230,16 +1125,16 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
         </div>
       )}
 
-      {/* 1. Header with custom tags metadata and Add Training Job Button */}
+      {/* 1. Header with custom tags metadata and Add Machine Button */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1.5 text-xs text-[#683EFF] font-bold tracking-wider uppercase">
             <span>Operations Management</span>
             <span className="text-slate-300">/</span>
-            <span className="bg-[#F0EBFF] px-2 py-0.5 rounded text-[10px]">Training list page</span>
+            <span className="bg-[#F0EBFF] px-2 py-0.5 rounded text-[10px]">Machine models list page</span>
           </div>
           <h2 className="font-display text-3xl font-bold text-slate-800 tracking-tight">
-            Training Jobs Portfolio
+            Machine models list page
           </h2>
         </div>
 
@@ -1247,10 +1142,10 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
         <div className="flex items-center gap-2.5 self-stretch md:self-auto relative">
           
           {/* Bulk Actions Bar Integrated directly into the row, appeared on the left of dropdown */}
-          {selectedJobIds.length > 0 && (
+          {selectedMachineIds.length > 0 && (
             <div className="bg-[#FFF5F5] border border-rose-100 rounded-xl p-1 px-3 flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
               <span className="text-[11px] font-black uppercase tracking-[0.1em] text-rose-600 whitespace-nowrap">
-                SELECTED: {selectedJobIds.length}
+                SELECTED: {selectedMachineIds.length}
               </span>
               
               <div className="relative">
@@ -1347,15 +1242,15 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
 
           {/* Import CSV Button */}
           <button
-            onClick={() => document.getElementById("csv-import-training-input")?.click()}
+            onClick={() => document.getElementById("csv-import-machines-input")?.click()}
             className="px-4 py-2 text-sm font-bold text-slate-700 bg-white border border-slate-300 hover:border-[#683EFF] hover:text-[#683EFF] rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
-            title="Import Training Jobs from CSV"
+            title="Import Machine Models from CSV"
           >
             <Icons.Upload className="w-4 h-4 text-slate-400 hover:text-[#683EFF]" />
             <span>Import</span>
           </button>
           <input
-            id="csv-import-training-input"
+            id="csv-import-machines-input"
             type="file"
             accept=".csv"
             onChange={handleImportCSV}
@@ -1371,13 +1266,13 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
             <Icons.RotateCw className="w-5 h-5" />
           </button>
 
-          {/* Add Training Job master trigger */}
+          {/* Add Machine Detail master trigger */}
           <button
             onClick={() => setShowAddModal(true)}
             className="bg-[#683EFF] hover:bg-[#5229E0] text-white font-bold py-2 px-4 rounded-lg flex items-center gap-1.5 text-sm shadow-sm transition-all"
           >
             <Icons.Plus className="w-4 h-4" />
-            <span>Add Training Job</span>
+            <span>Add machine Model</span>
           </button>
         </div>
       </div>
@@ -1394,7 +1289,7 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
               value={filterInput}
               onChange={(e) => setFilterInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Press Enter to add filter keywords (e.g. Aramco, Scheduled, Zaid)..."
+              placeholder="Press Enter to add filter keywords (e.g. Tadano, Operational, Dhahran, Model)..."
               className="w-full pl-11 pr-5 py-2.5 text-sm bg-white border border-slate-300 rounded-xl shadow-inner focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] transition-all font-medium text-slate-700"
             />
           </div>
@@ -1454,7 +1349,7 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                   )}
 
                   <div className="mt-3 pt-3 border-t border-slate-100 text-[10px] text-slate-400 leading-normal">
-                    Filtering logic matches target training end dates, ID suffix, simulator machine names or trainer registrations.
+                    Filtering matches machine names, maker manufacturer, model versions, serial IDs, departments or locations.
                   </div>
                 </div>
               </>
@@ -1493,14 +1388,14 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
       </div>
 
       {/* 3. Main Data Container Content */}
-      {filteredJobs.length === 0 ? (
+      {filteredMachines.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-16 text-center rounded-2xl bg-white border border-slate-200 shadow-sm min-h-[350px]">
-          <div className="p-4 bg-slate-50 text-slate-450 text-slate-440 rounded-full mb-4">
-            <Icons.Inbox className="w-10 h-10 text-slate-405 text-slate-400" />
+          <div className="p-4 bg-slate-50 text-slate-450 rounded-full mb-4">
+            <Icons.Inbox className="w-10 h-10 text-slate-400" />
           </div>
           <h3 className="font-display text-lg font-bold text-slate-800 font-sans">No Records Found</h3>
           <p className="text-xs text-slate-400 mt-1.5 max-w-sm">
-            We couldn't find any training jobs matching: {activeFilters.join(", ") || "(none)"}. Reset filters to see all.
+            We couldn't find any heavy machine assets matching: {activeFilters.join(", ") || "(none)"}. Reset filters to see all.
           </p>
           <div className="mt-5 flex gap-3">
             <button
@@ -1513,7 +1408,7 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
               onClick={() => setShowAddModal(true)}
               className="px-4 py-2 bg-[#683EFF] text-xs font-bold text-white rounded-lg hover:bg-[#5229E0] transition-colors"
             >
-              Add Training Job
+              Add machine Model
             </button>
           </div>
         </div>
@@ -1529,83 +1424,67 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                       <th className="p-4 w-12 text-center">
                         <input
                           type="checkbox"
-                          checked={paginatedJobs.length > 0 && paginatedJobs.every((j) => selectedJobIds.includes(j.id))}
+                          checked={paginatedMachines.length > 0 && paginatedMachines.every((m) => selectedMachineIds.includes(m.id))}
                           onChange={handleSelectAll}
                           className="w-4 h-4 text-[#683EFF] border-slate-300 rounded focus:ring-[#683EFF] cursor-pointer"
                         />
                       </th>
-                      <th className="p-4 text-slate-600 font-semibold font-sans">ID</th>
-                      <th className="p-4 text-slate-600 font-semibold font-sans">START DATE</th>
-                      <th className="p-4 text-slate-600 font-semibold font-sans">END DATE</th>
-                      <th className="p-4 text-slate-600 font-semibold font-sans">CLIENT NAME</th>
-                      <th className="p-4 text-slate-600 font-semibold font-sans">LOCATION</th>
-                      <th className="p-4 text-slate-600 font-semibold font-sans">STATUS</th>
+                      <th className="p-4 text-slate-600 font-semibold font-sans">MACHINE ID</th>
+                      <th className="p-4 text-slate-600 font-semibold font-sans">MACHINE NAME</th>
+                      <th className="p-4 text-slate-600 font-semibold font-sans">MANUFACTURER / MODEL</th>
+                      <th className="p-4 text-slate-600 font-semibold font-sans">S.W.L</th>
+                      <th className="p-4 text-slate-600 font-semibold font-sans">MAXIMUM HORIZONTAL OUTREACH</th>
                       <th className="p-4 text-xs font-semibold text-slate-500 text-right font-sans">ACTIONS</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {paginatedJobs.map((job) => {
-                      const isSelected = selectedJobIds.includes(job.id);
-                      const isLiked = !!favorites[job.id];
+                    {paginatedMachines.map((m) => {
+                      const isSelected = selectedMachineIds.includes(m.id);
                       
-                      const dispClient = job.clientName || (job.id === "TRN-2026-001" || job.id === "JO-TR-26-1100" ? "Saudi Aramco" : job.id === "TRN-2026-002" || job.id === "JO-TR-26-1101" ? "NEOM Construction" : "Red Sea Global");
-                      const dispEndDate = job.trainingEndDate || job.targetDate || "N/A";
-                      const dispLoc = job.location || "Gulf Yard Hub";
-                      
-                      // Combined Attention Location/Phone info
-                      const dispAttLoc = job.attentionLocation || (dispClient === "Saudi Aramco" ? "Dhahran" : dispClient === "NEOM Construction" ? "Tabuk" : "Jeddah");
-                      const dispAttPhone = job.attentionPhone || (dispClient === "Saudi Aramco" ? "+966 13 874 1122" : dispClient === "NEOM Construction" ? "+966 14 551 4488" : "+966 12 604 1155");
+                      const dispName = m.machineName || "Industrial Heavy Asset";
+                      const dispModel = m.model || "N/A";
+                      const dispMfg = m.manufacturer || "N/A";
+                      const dispSWL = m.swl || "N/A";
+                      const dispOutreach = m.maxOutreach || "N/A";
 
                       return (
                         <tr
-                          key={job.id}
+                          key={m.id}
                           className={`hover:bg-slate-50/80 transition-colors cursor-pointer group ${isSelected ? "bg-[#F0EBFF]/20" : ""}`}
-                          onClick={() => setSelectedJobDetail(job)}
+                          onClick={() => setSelectedMachineDetail(m)}
                         >
                           <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
                             <input
                               type="checkbox"
                               checked={isSelected}
-                              onChange={() => handleCheckboxChange(job.id)}
+                              onChange={() => handleCheckboxChange(m.id)}
                               className="w-4 h-4 text-[#683EFF] border-slate-300 rounded focus:ring-[#683EFF] cursor-pointer"
                             />
                           </td>
                           <td className="p-4">
-                            <span className="text-sm font-mono text-[#683EFF] font-bold">{job.id}</span>
+                            <span className="text-sm font-mono text-[#683EFF] font-bold">{m.id}</span>
                           </td>
                           <td className="p-4">
-                            <div className="flex items-center gap-2">
-                              <Icons.Calendar className="w-3.5 h-3.5 text-slate-400" />
-                              <span className="text-sm text-slate-600 font-medium">{formatDate(job.trainingStartDate || "N/A")}</span>
+                            <span className="text-sm font-bold text-slate-800">{dispName}</span>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex flex-col text-sm font-medium text-slate-600">
+                              <span>{dispMfg}</span>
+                              <span className="text-[10px] text-slate-400 font-sans mt-0.5">Model: {dispModel}</span>
                             </div>
                           </td>
                           <td className="p-4">
-                            <div className="flex items-center gap-2">
-                              <Icons.Calendar className="w-3.5 h-3.5 text-slate-400" />
-                              <span className="text-sm text-slate-600 font-medium">{formatDate(dispEndDate)}</span>
-                            </div>
+                            <span className="text-sm font-semibold text-slate-700">{dispSWL}</span>
                           </td>
                           <td className="p-4">
-                            <span className="text-sm font-bold text-slate-800">{dispClient}</span>
-                          </td>
-                          <td className="p-4 text-slate-600 text-xs truncate max-w-[200px]" title={dispLoc}>
-                            {dispLoc}
-                          </td>
-                          <td className="p-4">
-                            <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wider ${
-                              job.status === "Completed" ? "bg-emerald-100 text-emerald-700" :
-                              job.status === "In Progress" ? "bg-amber-100 text-amber-700" :
-                              "bg-slate-100 text-slate-500"
-                            }`}>
-                              {job.status}
-                            </span>
+                            <span className="text-sm font-semibold text-slate-700">{dispOutreach}</span>
                           </td>
                           <td className="p-4 text-right">
                             <div className="flex items-center justify-end gap-2 transition-opacity">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setSelectedJobDetail(job);
+                                  setSelectedMachineDetail(m);
                                 }}
                                 className="p-1.5 text-slate-400 hover:text-[#683EFF] hover:bg-[#F0EBFF] rounded-lg transition-colors"
                                 title="View Details"
@@ -1615,10 +1494,10 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setConfirmDeleteId(job.id);
+                                  setConfirmDeleteId(m.id);
                                 }}
                                 className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors text-right"
-                                title="Remove Order"
+                                title="Remove Machine"
                               >
                                 <Icons.Trash2 className="w-4 h-4" />
                               </button>
@@ -1636,19 +1515,20 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
           {/* B. GRID VIEW MODE */}
           {viewMode === "grid" && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {paginatedJobs.map((job) => {
-                const isSelected = selectedJobIds.includes(job.id);
-                const isLiked = !!favorites[job.id];
+              {paginatedMachines.map((m) => {
+                const isSelected = selectedMachineIds.includes(m.id);
+                const isLiked = !!favorites[m.id];
                 
-                const dispClient = job.clientName || "General Partner";
-                const dispEndDate = job.trainingEndDate || job.targetDate || "N/A";
-                const dispLoc = job.location || "Logistics Yard Site";
-                const dispMachine = job.machineName || "Safety Crane";
+                const dispName = m.machineName || "Industrial Heavy Asset";
+                const dispModel = m.model || "N/A";
+                const dispMfg = m.manufacturer || "N/A";
+                const dispLoc = m.currentLocation || "HQ Fleet";
+                const dispHours = m.workingHours || 0;
 
                 return (
                   <div
-                    key={job.id}
-                    onClick={() => setSelectedJobDetail(job)}
+                    key={m.id}
+                    onClick={() => setSelectedMachineDetail(m)}
                     className={`bg-white rounded-xl border p-5 shadow-sm hover:shadow-md cursor-pointer transition-all relative overflow-hidden flex flex-col justify-between min-h-[220px] ${
                       isSelected ? "border-[#683EFF] ring-1 ring-[#683EFF]/35" : "border-slate-200"
                     }`}
@@ -1656,13 +1536,13 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                     <div>
                       <div className="flex justify-between items-start gap-2 mb-3">
                         <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
-                          job.status === "Completed" ? "bg-emerald-50 text-emerald-800" : "bg-[#F0EBFF] text-[#683EFF]"
+                          m.status === "Operational" ? "bg-emerald-50 text-emerald-800" : "bg-[#F0EBFF] text-[#683EFF]"
                         }`}>
-                          {job.status}
+                          {m.status}
                         </span>
 
                         <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                          <button onClick={() => handleCheckboxChange(job.id)} className="p-1 text-slate-400 hover:text-[#683EFF]">
+                          <button onClick={() => handleCheckboxChange(m.id)} className="p-1 text-slate-400 hover:text-[#683EFF]">
                             <input
                               type="checkbox"
                               checked={isSelected}
@@ -1670,7 +1550,7 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                               className="w-3.5 h-3.5 text-[#683EFF] border-slate-300 rounded cursor-pointer"
                             />
                           </button>
-                          <button onClick={(e) => toggleFavorite(job.id, e)} className="p-1">
+                          <button onClick={(e) => toggleFavorite(m.id, e)} className="p-1">
                             <Icons.Heart
                               className={`w-4 h-4 transition-colors ${
                                 isLiked ? "text-rose-500 fill-rose-500" : "text-slate-300 hover:text-slate-500"
@@ -1680,24 +1560,25 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                         </div>
                       </div>
 
-                      <h4 className="text-base font-extrabold text-slate-800 tracking-tight font-sans">
-                        {dispClient}
+                      <h4 className="text-base font-extrabold text-slate-800 tracking-tight font-sans line-clamp-1 leading-snug">
+                        {dispName}
                       </h4>
                       <p className="text-xs text-[#683EFF] font-bold font-mono">
-                        ID Suffix: {job.id}
+                        Asset ID: {m.id}
                       </p>
 
                       <div className="space-y-1.5 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-600">
-                        <p className="truncate"><strong className="text-slate-500 font-bold">Venue:</strong> {dispLoc}</p>
-                        <p className="truncate"><strong className="text-slate-500 font-bold">Machine:</strong> {dispMachine}</p>
+                        <p className="truncate"><strong className="text-slate-500 font-bold">Manufacturer:</strong> {dispMfg}</p>
+                        <p className="truncate"><strong className="text-slate-500 font-bold">Model Version:</strong> {dispModel}</p>
+                        <p className="truncate"><strong className="text-slate-500 font-bold">Deploy Venue:</strong> {dispLoc}</p>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 text-[10px]">
                       <span className="text-slate-400 font-bold font-mono uppercase tracking-wider">
-                        End Date: {formatDate(dispEndDate)}
+                        S/N: {m.serialNumber}
                       </span>
-                      <span className="text-slate-500 font-bold">Trainer: {job.trainerId || "Zaid M."}</span>
+                      <span className="text-slate-500 font-bold">Hours Logged: {dispHours} hrs</span>
                     </div>
                   </div>
                 );
@@ -1708,18 +1589,18 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
           {/* C. COMPACT VIEW MODE */}
           {viewMode === "compact" && (
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm divide-y divide-slate-100">
-              {paginatedJobs.map((job) => {
-                const isSelected = selectedJobIds.includes(job.id);
-                const isLiked = !!favorites[job.id];
+              {paginatedMachines.map((m) => {
+                const isSelected = selectedMachineIds.includes(m.id);
+                const isLiked = !!favorites[m.id];
                 
-                const dispClient = job.clientName || "General Partner";
-                const dispEndDate = job.trainingEndDate || job.targetDate || "N/A";
-                const dispLoc = job.location || "Logistics Yard Site";
+                const dispName = m.machineName || "Industrial Heavy Asset";
+                const dispLoc = m.currentLocation || "HQ Fleet";
+                const dispHours = m.workingHours || 0;
 
                 return (
                   <div
-                    key={job.id}
-                    onClick={() => setSelectedJobDetail(job)}
+                    key={m.id}
+                    onClick={() => setSelectedMachineDetail(m)}
                     className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 hover:bg-slate-50/80 transition-colors cursor-pointer gap-2 ${
                       isSelected ? "bg-[#F0EBFF]/10" : ""
                     }`}
@@ -1729,31 +1610,31 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => handleCheckboxChange(job.id)}
+                          onChange={() => handleCheckboxChange(m.id)}
                           className="w-4 h-4 text-[#683EFF] border-slate-300 rounded focus:ring-[#683EFF] cursor-pointer"
                         />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h5 className="font-bold text-slate-800 text-sm">{dispClient}</h5>
+                          <h5 className="font-bold text-slate-800 text-sm">{dispName}</h5>
                           <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.2 rounded font-bold">
-                            {job.id}
+                            {m.id}
                           </span>
                         </div>
                         <p className="text-xs text-slate-500 font-medium font-mono mt-0.5">
-                          Target Location: {dispLoc} • End Date: {formatDate(dispEndDate)} • Trainer: {job.trainerId || "Zaid M."}
+                          Location: {dispLoc} • Working Hours: {dispHours} hrs • S/N: {m.serialNumber}
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-4 text-xs font-semibold text-slate-600 self-stretch sm:self-auto justify-between sm:justify-start">
                       <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                        job.status === "Completed" ? "bg-emerald-50 text-emerald-800" : "bg-[#F0EBFF] text-[#683EFF]"
+                        m.status === "Operational" ? "bg-emerald-50 text-emerald-800" : "bg-[#F0EBFF] text-[#683EFF]"
                       }`}>
-                        {job.status}
+                        {m.status}
                       </span>
                       <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={(e) => toggleFavorite(job.id, e)}>
+                        <button onClick={(e) => toggleFavorite(m.id, e)}>
                           <Icons.Heart className={`w-4 h-4 ${isLiked ? "text-rose-500 fill-rose-500" : "text-slate-300"}`} />
                         </button>
                       </div>
@@ -1810,18 +1691,19 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
           </div>
         </>
       )}
-              {/* ========================================================================= */}
-      {/* 4. MODAL ADD TRAINING JOB POPUP WITH MULTI-TAB & AUTOFILL AUTOCOMPLETE    */}
+
+      {/* ========================================================================= */}
+      {/* 4. MODAL ADD MACHINE POPUP WITH MULTI-TAB                                 */}
       {/* ========================================================================= */}
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden">
             
             {/* Header Area */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 select-none">
               <div>
-                <h3 className="text-xl font-bold font-sans text-slate-800">Create New Training Job order</h3>
-                <p className="text-xs text-slate-400 mt-1">Please fill out the unified training job directory profile for the corporate partner.</p>
+                <h3 className="text-xl font-bold font-sans text-slate-800">Add Machine Model</h3>
+                <p className="text-xs text-slate-400 mt-1">Please configure the technical specifications and operational site parameters for this machine model.</p>
               </div>
               <button
                 onClick={() => {
@@ -1834,317 +1716,168 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
               </button>
             </div>
 
-            {/* Scrollable Form body */}
-            <form onSubmit={handleCreateJob} className="flex-1 overflow-y-auto p-6 space-y-6">
+            {/* Scrollable Form body with only the 13 specified fields */}
+            <form onSubmit={handleCreateMachine} className="flex-1 overflow-y-auto p-6 space-y-4">
               
-              {/* SECTION 1: BASIC INFORMATION */}
-              <div className="space-y-4">
-                <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-semibold flex items-center gap-2 select-none font-display">
-                  <Icons.FileText className="w-4 h-4" />
-                  <span>1. Basic Job Information Details</span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
-                      Naming Series Code prefix
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal text-slate-800 font-sans"
-                      value={formValues.namingSeries}
-                      onChange={(e) => setFormValues({ ...formValues, namingSeries: e.target.value })}
-                      placeholder="JO-TR-26"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
-                      Trainer ID *
-                    </label>
-                    <input
-                      type="text"
-                      className={`w-full text-xs px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans ${
-                        formErrors.trainerId ? "border-rose-300 focus:ring-rose-500" : "border-slate-200"
-                      }`}
-                      value={formValues.trainerId}
-                      onChange={(e) => setFormValues({ ...formValues, trainerId: e.target.value })}
-                      placeholder="e.g. TR-ZAID-09"
-                    />
-                    {formErrors.trainerId && <p className="text-[10px] text-rose-500 font-semibold mt-1">{formErrors.trainerId}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
-                      Training Start Date
-                    </label>
-                    <input
-                      type="date"
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
-                      value={formValues.trainingStartDate}
-                      onChange={(e) => setFormValues({ ...formValues, trainingStartDate: e.target.value })}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
-                      Training End Date
-                    </label>
-                    <input
-                      type="date"
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
-                      value={formValues.trainingEndDate}
-                      onChange={(e) => setFormValues({ ...formValues, trainingEndDate: e.target.value })}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
-                      Initial Status
-                    </label>
-                    <select
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none bg-slate-50 font-normal font-sans"
-                      value={formValues.status}
-                      onChange={(e) => setFormValues({ ...formValues, status: e.target.value as any })}
-                    >
-                      <option value="Scheduled">Scheduled</option>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Completed">Completed</option>
-                      <option value="Cancelled">Cancelled</option>
-                    </select>
-                  </div>
+              {/* Machine ID */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-sans">Machine ID</label>
+                <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-slate-50 focus-within:ring-1 focus-within:ring-[#683EFF] focus-within:border-[#683EFF]">
+                  <span className="bg-slate-100 px-3 py-2.5 text-xs text-slate-500 font-mono border-r border-slate-200 flex items-center select-none">
+                    ML-
+                  </span>
+                  <input
+                    type="text"
+                    className="w-full text-xs px-3 py-2.5 bg-transparent border-0 focus:outline-none font-normal font-sans text-slate-800"
+                    value={formValues.machineId}
+                    onChange={(e) => setFormValues({ ...formValues, machineId: e.target.value })}
+                  />
                 </div>
               </div>
 
-              {/* SECTION 2: CLIENT DETAILS */}
-              <div className="space-y-4">
-                <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-semibold flex items-center gap-2 select-none font-display">
-                  <Icons.Building className="w-4 h-4" />
-                  <span>2. Client Relationship Context</span>
+              {/* Machine Name */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-sans">Machine name *</label>
+                <input
+                  type="text"
+                  className={`w-full text-xs px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans ${
+                    formErrors.machineName ? "border-rose-300 focus:ring-rose-500" : "border-slate-200"
+                  }`}
+                  value={formValues.machineName}
+                  onChange={(e) => {
+                    setFormValues({ ...formValues, machineName: e.target.value });
+                    if (formErrors.machineName) setFormErrors({ ...formErrors, machineName: "" });
+                  }}
+                />
+                {formErrors.machineName && (
+                  <p className="text-[10px] text-rose-500 font-semibold mt-1">{formErrors.machineName}</p>
+                )}
+              </div>
+
+              {/* Grid of specifications */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-sans">S.W.L</label>
+                  <input
+                    type="text"
+                    className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                    value={formValues.swl}
+                    onChange={(e) => setFormValues({ ...formValues, swl: e.target.value })}
+                  />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="relative">
-                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
-                      Client Name *
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        className={`w-full text-xs px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans ${
-                          formErrors.clientName ? "border-rose-300 focus:ring-rose-500" : "border-slate-200"
-                        }`}
-                        onFocus={() => setShowClientAutocomplete(true)}
-                        value={formValues.clientName}
-                        onChange={(e) => {
-                          setFormValues({ ...formValues, clientName: e.target.value });
-                          setShowClientAutocomplete(true);
-                        }}
-                        placeholder="Click to show registered corporate clients (e.g. Aramco, NEOM, Red Sea)..."
-                      />
-                      <Icons.ChevronDown className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                    </div>
-
-                    {formErrors.clientName && <p className="text-[10px] text-rose-500 font-semibold mt-1">{formErrors.clientName}</p>}
-
-                    {/* Autocomplete Overlay menu */}
-                    {showClientAutocomplete && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowClientAutocomplete(false)} />
-                        <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-xl py-1 z-50 overflow-hidden text-left max-h-48 overflow-y-auto">
-                          {matchingCustomers.length === 0 ? (
-                            <div className="px-4 py-3 text-xs italic text-slate-400">
-                              No matching clients found in active directory
-                            </div>
-                          ) : (
-                            matchingCustomers.map((cust) => (
-                              <button
-                                key={cust.id}
-                                type="button"
-                                onClick={() => handleSelectCustomer(cust)}
-                                className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-[#F0EBFF] hover:text-[#683EFF] flex justify-between items-center transition-colors"
-                              >
-                                <span>{cust.companyName}</span>
-                                <span className="text-[10px] text-slate-404 font-mono font-bold uppercase">{cust.country}</span>
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
-                      Location / Training Site Address *
-                    </label>
-                    <input
-                      type="text"
-                      className={`w-full text-xs px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans ${
-                        formErrors.location ? "border-rose-300 focus:ring-rose-500" : "border-slate-200"
-                      }`}
-                      value={formValues.location}
-                      onChange={(e) => setFormValues({ ...formValues, location: e.target.value })}
-                      placeholder="Auto-populated or input manual training facility venue address..."
-                    />
-                    {formErrors.location && <p className="text-[10px] text-rose-500 font-semibold mt-1">{formErrors.location}</p>}
-                  </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-sans">Maximum Horizontal Outreach</label>
+                  <input
+                    type="text"
+                    className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                    value={formValues.maxOutreach}
+                    onChange={(e) => setFormValues({ ...formValues, maxOutreach: e.target.value })}
+                  />
                 </div>
               </div>
 
-              {/* SECTION 3: ATTENTION DETAILS */}
-              <div className="space-y-4">
-                <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-bold flex items-center gap-2 select-none">
-                  <Icons.Contact className="w-4 h-4" />
-                  <span>3. Representative Attention Details</span>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-sans">Max Bucket Capacity</label>
+                  <input
+                    type="text"
+                    className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                    value={formValues.bucketCapacity}
+                    onChange={(e) => setFormValues({ ...formValues, bucketCapacity: e.target.value })}
+                  />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
-                      Attention Location
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
-                      value={formValues.attentionLocation}
-                      onChange={(e) => setFormValues({ ...formValues, attentionLocation: e.target.value })}
-                      placeholder="e.g. Eastern Province / Tabuk / Dubai"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
-                      Phone Number
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
-                      value={formValues.attentionPhone}
-                      onChange={(e) => setFormValues({ ...formValues, attentionPhone: e.target.value })}
-                      placeholder="e.g. +966 13 874 1122"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-sans">Manufacturer</label>
+                  <input
+                    type="text"
+                    className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                    value={formValues.manufacturer}
+                    onChange={(e) => setFormValues({ ...formValues, manufacturer: e.target.value })}
+                  />
                 </div>
               </div>
 
-              {/* SECTION 4: MACHINE DETAILS */}
-              <div className="space-y-4 pb-2">
-                <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-bold flex items-center gap-2 select-none font-display">
-                  <Icons.Cpu className="w-4 h-4" />
-                  <span>4. Dynamic Technical Machine Specifications</span>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-sans">Engine Power</label>
+                  <input
+                    type="text"
+                    className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                    value={formValues.enginePower}
+                    onChange={(e) => setFormValues({ ...formValues, enginePower: e.target.value })}
+                  />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-slate-100 pb-6">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
-                      Machine Name
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
-                      value={formValues.machineName}
-                      onChange={(e) => setFormValues({ ...formValues, machineName: e.target.value })}
-                      placeholder="e.g. Heavy Duty Excavator / Hydraulic Crane Simulator"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
-                      Number of Count
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
-                      value={formValues.machineCount}
-                      onChange={(e) => setFormValues({ ...formValues, machineCount: e.target.value })}
-                      placeholder="e.g. 2"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-sans">Boom Length</label>
+                  <input
+                    type="text"
+                    className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                    value={formValues.boomLength}
+                    onChange={(e) => setFormValues({ ...formValues, boomLength: e.target.value })}
+                  />
                 </div>
+              </div>
 
-                {/* OPERATOR TABLE IN MODAL */}
-                <div className="space-y-4 pt-4">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 font-display">
-                    <Icons.Users className="w-3.5 h-3.5" />
-                    <span>Operator Assignment</span>
-                  </div>
-                  
-                  <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[10px] font-semibold uppercase tracking-wider">
-                          <th className="p-3 w-10 text-center border-r border-slate-200">
-                            <input type="checkbox" className="w-3.5 h-3.5 rounded border-slate-300" disabled />
-                          </th>
-                          <th className="p-3 w-12 text-center border-r border-slate-200">No.</th>
-                          <th className="p-3 border-r border-slate-200">Operator Card</th>
-                          <th className="p-3">Operator</th>
-                          <th className="p-3 w-10 text-center">
-                            <Icons.Settings className="w-3.5 h-3.5 mx-auto opacity-40" />
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {operatorRows.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} className="p-12 text-center bg-white">
-                              <div className="flex flex-col items-center gap-2 text-slate-400">
-                                <Icons.ClipboardList className="w-10 h-10 opacity-20" />
-                                <span className="text-[11px] font-medium font-sans uppercase tracking-widest">No Data</span>
-                              </div>
-                            </td>
-                          </tr>
-                        ) : (
-                          operatorRows.map((row, idx) => (
-                            <tr key={row.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
-                               <td className="p-2.5 text-center border-r border-slate-100">
-                                 <input type="checkbox" className="w-3.5 h-3.5 rounded border-slate-300" />
-                               </td>
-                               <td className="p-2.5 text-center border-r border-slate-100 text-[11px] font-medium text-slate-500 font-sans">
-                                 {idx + 1}
-                               </td>
-                               <td className="p-2 border-r border-slate-100">
-                                 <input 
-                                   type="text" 
-                                   className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-[#683EFF] outline-none font-sans"
-                                   placeholder="e.g. CARD-2024-01"
-                                   value={row.card}
-                                   onChange={(e) => updateOperatorRow(row.id, 'card', e.target.value)}
-                                 />
-                               </td>
-                               <td className="p-2">
-                                 <input 
-                                   type="text" 
-                                   className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-[#683EFF] outline-none font-sans"
-                                   placeholder="Operator Full Name"
-                                   value={row.name}
-                                   onChange={(e) => updateOperatorRow(row.id, 'name', e.target.value)}
-                                 />
-                               </td>
-                               <td className="p-2 text-center">
-                                 <button 
-                                   type="button"
-                                   onClick={() => removeOperatorRow(row.id)}
-                                   className="text-slate-300 hover:text-rose-500 transition-colors p-1"
-                                 >
-                                   <Icons.X className="w-4 h-4" />
-                                 </button>
-                               </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={addOperatorRow}
-                    className="bg-slate-100 hover:bg-slate-200 text-[#0E1B2D] text-[11px] font-semibold py-2 px-4 rounded-lg transition-colors font-sans flex items-center gap-2"
-                  >
-                    <Icons.Plus className="w-3.5 h-3.5" />
-                    <span>Add Row</span>
-                  </button>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-sans">Wheel Type</label>
+                  <input
+                    type="text"
+                    className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                    value={formValues.wheelType}
+                    onChange={(e) => setFormValues({ ...formValues, wheelType: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-sans">Max Platform Height</label>
+                  <input
+                    type="text"
+                    className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                    value={formValues.maxPlatformHeight}
+                    onChange={(e) => setFormValues({ ...formValues, maxPlatformHeight: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-sans">Hoe Bucket Capacity</label>
+                  <input
+                    type="text"
+                    className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                    value={formValues.heoBucketCapacity}
+                    onChange={(e) => setFormValues({ ...formValues, heoBucketCapacity: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-sans">Engine Speed</label>
+                  <input
+                    type="text"
+                    className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                    value={formValues.engineSpeed}
+                    onChange={(e) => setFormValues({ ...formValues, engineSpeed: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-sans">Angle of Span</label>
+                  <input
+                    type="text"
+                    className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                    value={formValues.angleOfSpan}
+                    onChange={(e) => setFormValues({ ...formValues, angleOfSpan: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-sans">Person Allowed</label>
+                  <input
+                    type="text"
+                    className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                    value={formValues.personAllowed}
+                    onChange={(e) => setFormValues({ ...formValues, personAllowed: e.target.value })}
+                  />
                 </div>
               </div>
 
@@ -2164,10 +1897,10 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
               </button>
               <button
                 type="button"
-                onClick={handleCreateJob}
+                onClick={() => handleCreateMachine()}
                 className="bg-[#683EFF] hover:bg-[#5229E0] text-white text-xs font-semibold py-2 px-5 rounded-lg shadow-sm transition-all cursor-pointer font-sans"
               >
-                Generate Job Order
+                Add machine Model
               </button>
             </div>
 
@@ -2183,9 +1916,9 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
               <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mb-4">
                 <Icons.AlertTriangle className="w-6 h-6 text-rose-500" />
               </div>
-              <h3 className="text-lg font-bold text-slate-800 font-sans">Delete Training Job?</h3>
+              <h3 className="text-lg font-bold text-slate-800 font-sans">Delete Machine Asset?</h3>
               <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                Are you sure you want to permanently delete this training job record? This action cannot be undone.
+                Are you sure you want to permanently delete this heavy machine asset record? This action cannot be undone.
               </p>
               <div className="flex gap-3 mt-6 w-full">
                 <button
@@ -2195,7 +1928,7 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                   Cancel
                 </button>
                 <button
-                  onClick={() => handleDeleteJob(confirmDeleteId)}
+                  onClick={() => handleDeleteMachine(confirmDeleteId)}
                   className="flex-1 px-4 py-2 text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-lg transition-all shadow-md shadow-rose-200"
                 >
                   Delete

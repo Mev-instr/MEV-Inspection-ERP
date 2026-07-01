@@ -142,25 +142,19 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
     showToast(`✓ Exporting ${count} inspection reports to CSV...`);
     
     const headers = [
-      "ID", "Report Name", "Asset Tested", "Inspector", "Test Date", 
-      "Compliance Score", "Status", "Naming Series", "Trainer ID", "Inspection Start Date", 
-      "Inspection End Date", "Client Name", "Attention Location", "Attention Phone", 
-      "Machine Name", "Machine Count", "Location", "Checklist Number", "Sticker No", 
-      "Final Result", "Job Number", "Equipment Name", "Inspection Date", "Expiration Date", 
-      "Travel To/From", "Time Sheet Number", "Validity", "Type of Inspection", "Address", 
-      "Equipment Location", "Recommendation"
+      "Naming Series ID", "Checklist Number", "Sticker no", "Job Number",
+      "Time Sheet Number", "Type of inspection", "Equipment name", "Equipment Location",
+      "Client name", "Address", "Inspection date", "Expiration data",
+      "Validity", "Travel to/from", "Final Result", "Recommendation"
     ].join(",");
 
     const rows = reports
       .filter(j => selectedReportIds.includes(j.id))
       .map(j => [
-        j.id, j.reportName, j.assetTested, j.inspector, j.testDate,
-        j.complianceScore, j.status, j.namingSeries, j.trainerId, j.inspectionStartDate,
-        j.inspectionEndDate, j.clientName, j.attentionLocation, j.attentionPhone,
-        j.machineName, j.machineCount, j.location, j.checklistNumber, j.stickerNo,
-        j.finalResult, j.jobNumber, j.equipmentName, j.inspectionDate, j.expirationDate,
-        j.travelToFrom, j.timeSheetNumber, j.validity, j.typeOfInspection, j.address,
-        j.equipmentLocation, j.recommendation
+        j.namingSeries, j.checklistNumber, j.stickerNo, j.jobNumber,
+        j.timeSheetNumber, j.typeOfInspection, j.equipmentName, j.equipmentLocation,
+        j.clientName, j.address, j.inspectionDate, j.expirationData,
+        j.validity, j.travelToFrom, j.finalResult, j.recommendation
       ].map(field => `"${String(field || "").replace(/"/g, '""')}"`).join(","))
       .join("\n");
 
@@ -175,6 +169,134 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
 
     setSelectedReportIds([]);
     setShowBulkActionDropdown(false);
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const parseCSVLine = (line: string): string[] => {
+      const result: string[] = [];
+      let current = "";
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          result.push(current);
+          current = "";
+        } else {
+          current += char;
+        }
+      }
+      result.push(current);
+      return result;
+    };
+
+    const parseCSV = (text: string): string[][] => {
+      const lines = text.split(/\r?\n/);
+      return lines
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .map(parseCSVLine);
+    };
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (!text) return;
+
+      try {
+        const rows = parseCSV(text);
+        if (rows.length < 2) {
+          showToast("⚠ CSV file is empty or missing data rows.");
+          return;
+        }
+
+        const csvHeaders = rows[0].map(h => h.trim().toLowerCase());
+        const importedReports: any[] = [];
+
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (row.length === 0 || !row[0]) continue;
+
+          const getVal = (headerName: string) => {
+            const idx = csvHeaders.indexOf(headerName.toLowerCase());
+            return idx !== -1 && idx < row.length ? row[idx] : "";
+          };
+
+          const namingSeries = getVal("Naming Series ID") || "MEV-IR-26";
+          const clientName = getVal("Client name");
+          if (!clientName) continue;
+
+          const finalId = calculateNextSequenceId(namingSeries);
+
+          const checklistNumber = getVal("Checklist Number");
+          const stickerNo = getVal("Sticker no");
+          const jobNumber = getVal("Job Number");
+          const timeSheetNumber = getVal("Time Sheet Number");
+          const typeOfInspection = getVal("Type of inspection");
+          const equipmentName = getVal("Equipment name") || "Heavy Machine";
+          const equipmentLocation = getVal("Equipment Location");
+          const address = getVal("Address");
+          const inspectionDate = getVal("Inspection date") || new Date().toISOString().split("T")[0];
+          const expirationData = getVal("Expiration data") || new Date().toISOString().split("T")[0];
+          const validity = getVal("Validity");
+          const travelToFrom = getVal("Travel to/from");
+          const finalResult = getVal("Final Result") || "Pass";
+          const recommendation = getVal("Recommendation");
+
+          const report = {
+            id: finalId,
+            reportName: equipmentName ? `Equipment: ${equipmentName} Inspection` : "General Heavy Machine Inspection",
+            inspector: checklistNumber || "Inspector",
+            testDate: expirationData || inspectionDate,
+            complianceScore: 100,
+            status: finalResult === "Pass" ? "Completed" : finalResult === "Fail" ? "Cancelled" : "In Progress",
+            location: equipmentLocation || address || "",
+            namingSeries: namingSeries,
+            checklistNumber: checklistNumber,
+            stickerNo: stickerNo,
+            finalResult: finalResult,
+            jobNumber: jobNumber,
+            equipmentName: equipmentName,
+            inspectionDate: inspectionDate,
+            expirationData: expirationData,
+            expirationDate: expirationData,
+            travelToFrom: travelToFrom,
+            timeSheetNumber: timeSheetNumber,
+            validity: validity,
+            typeOfInspection: typeOfInspection,
+            clientName: clientName,
+            address: address,
+            equipmentLocation: equipmentLocation,
+            recommendation: recommendation,
+            loadChartData: []
+          };
+
+          importedReports.push(report);
+        }
+
+        if (importedReports.length > 0) {
+          onReportsChange((prev) => [...importedReports, ...prev]);
+          showToast(`✓ Successfully imported ${importedReports.length} inspection reports.`);
+        } else {
+          showToast("⚠ No valid inspection report entries found in the CSV.");
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("⚠ Error parsing CSV file.");
+      }
+      e.target.value = "";
+    };
+
+    reader.readAsText(file);
   };
 
   const handleBulkDeleteItems = () => {
@@ -1273,6 +1395,23 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
               </>
             )}
           </div>
+
+          {/* Import CSV Button */}
+          <button
+            onClick={() => document.getElementById("csv-import-reports-input")?.click()}
+            className="px-4 py-2 text-sm font-bold text-slate-700 bg-white border border-slate-300 hover:border-[#683EFF] hover:text-[#683EFF] rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+            title="Import Inspection Reports from CSV"
+          >
+            <Icons.Upload className="w-4 h-4 text-slate-400 hover:text-[#683EFF]" />
+            <span>Import</span>
+          </button>
+          <input
+            id="csv-import-reports-input"
+            type="file"
+            accept=".csv"
+            onChange={handleImportCSV}
+            className="hidden"
+          />
 
           {/* Refresh Action Trigger */}
           <button

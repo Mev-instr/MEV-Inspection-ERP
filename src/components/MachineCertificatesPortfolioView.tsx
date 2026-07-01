@@ -1,3 +1,4 @@
+import { LoadChartDataEditor } from "./LoadChartDataEditor";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -71,6 +72,7 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
     authorizedBySignature: "",
     recommendation: "",
     status: "Scheduled" as const,
+    loadChartData: [],
   };
 
   const [formValues, setFormValues] = useState(initialFormState);
@@ -145,21 +147,23 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
     showToast(`✓ Exporting ${count} machine certificates to CSV...`);
     
     const headers = [
-      "ID", "Naming Series", "Inspection Report No", "Job Number", "Equipment Name", 
-      "Sticker Number", "Time Sheet Number", "Result", "Validity", "Check List", 
-      "Client Name", "Inspection Date", "Location", "Expiration Date", 
-      "Equipment Location", "Type of Inspection", "Next Inspection Date", "Reference Standard", 
-      "Inspected By", "Authorized By", "Status"
+      "Naming Series Code prefix", "Inspection Report No", "Job Number", "Equipment Name",
+      "Sticker Number", "Time Sheet Number", "Result", "Validity",
+      "Check List", "Initial Status", "Client Name", "Location",
+      "Equipment Location", "Inspection Date", "Expiration Date", "Type of Inspection",
+      "Next Inspection Date", "Reference Standard", "Authorized By", "Inspected By",
+      "Recommendation"
     ].join(",");
 
     const rows = certificates
       .filter(j => selectedCertificateIds.includes(j.id))
       .map(j => [
-        j.id, j.namingSeries, j.inspectionReportNo, j.jobNumber, j.equipmentName,
-        j.stickerNumber, j.timeSheetNumber, j.result, j.validity, j.checkList,
-        j.clientName, j.inspectionDate, j.location, j.expirationDate,
-        j.equipmentLocation, j.typeOfInspection, j.nextInspectionDate, j.referenceStandard,
-        j.inspectedBy, j.authorizedBy, j.status
+        j.namingSeries, j.inspectionReportNo, j.jobNumber, j.equipmentName,
+        j.stickerNumber, j.timeSheetNumber, j.result, j.validity,
+        j.checkList, j.status, j.clientName, j.location,
+        j.equipmentLocation, j.inspectionDate, j.expirationDate, j.typeOfInspection,
+        j.nextInspectionDate, j.referenceStandard, j.authorizedBy, j.inspectedBy,
+        j.recommendation
       ].map(field => `"${String(field || "").replace(/"/g, '""')}"`).join(","))
       .join("\n");
 
@@ -174,6 +178,140 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
 
     setSelectedCertificateIds([]);
     setShowBulkActionDropdown(false);
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const parseCSVLine = (line: string): string[] => {
+      const result: string[] = [];
+      let current = "";
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          result.push(current);
+          current = "";
+        } else {
+          current += char;
+        }
+      }
+      result.push(current);
+      return result;
+    };
+
+    const parseCSV = (text: string): string[][] => {
+      const lines = text.split(/\r?\n/);
+      return lines
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .map(parseCSVLine);
+    };
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (!text) return;
+
+      try {
+        const rows = parseCSV(text);
+        if (rows.length < 2) {
+          showToast("⚠ CSV file is empty or missing data rows.");
+          return;
+        }
+
+        const csvHeaders = rows[0].map(h => h.trim().toLowerCase());
+        const importedCertificates: any[] = [];
+
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (row.length === 0 || !row[0]) continue;
+
+          const getVal = (headerName: string) => {
+            const idx = csvHeaders.indexOf(headerName.toLowerCase());
+            return idx !== -1 && idx < row.length ? row[idx] : "";
+          };
+
+          const namingSeries = getVal("Naming Series Code prefix") || "MEV-MC-26";
+          const clientName = getVal("Client Name");
+          if (!clientName) continue;
+
+          const finalId = calculateNextSequenceId(namingSeries);
+
+          const inspectionReportNo = getVal("Inspection Report No");
+          const jobNumber = getVal("Job Number");
+          const equipmentName = getVal("Equipment Name") || "Heavy Machine";
+          const stickerNumber = getVal("Sticker Number");
+          const timeSheetNumber = getVal("Time Sheet Number");
+          const result = getVal("Result") || "Pass";
+          const validity = getVal("Validity");
+          const checkList = getVal("Check List");
+          const status = getVal("Initial Status") || "Active";
+          const location = getVal("Location");
+          const equipmentLocation = getVal("Equipment Location");
+          const inspectionDate = getVal("Inspection Date") || new Date().toISOString().split("T")[0];
+          const expirationDate = getVal("Expiration Date") || new Date().toISOString().split("T")[0];
+          const typeOfInspection = getVal("Type of Inspection");
+          const nextInspectionDate = getVal("Next Inspection Date");
+          const referenceStandard = getVal("Reference Standard");
+          const authorizedBy = getVal("Authorized By");
+          const inspectedBy = getVal("Inspected By");
+          const recommendation = getVal("Recommendation");
+
+          const certificate = {
+            id: finalId,
+            namingSeries: namingSeries,
+            inspectionReportNo: inspectionReportNo,
+            jobNumber: jobNumber,
+            equipmentName: equipmentName,
+            stickerNumber: stickerNumber,
+            timeSheetNumber: timeSheetNumber,
+            result: result,
+            validity: validity,
+            checkList: checkList,
+            clientName: clientName,
+            inspectionDate: inspectionDate,
+            location: location,
+            expirationDate: expirationDate,
+            equipmentLocation: equipmentLocation,
+            typeOfInspection: typeOfInspection,
+            nextInspectionDate: nextInspectionDate,
+            referenceStandard: referenceStandard,
+            inspectedBy: inspectedBy,
+            inspectedBySignature: "",
+            authorizedBy: authorizedBy,
+            authorizedBySignature: "",
+            recommendation: recommendation,
+            status: status,
+            operators: [],
+            loadChartData: []
+          };
+
+          importedCertificates.push(certificate);
+        }
+
+        if (importedCertificates.length > 0) {
+          onCertificatesChange((prev) => [...importedCertificates, ...prev]);
+          showToast(`✓ Successfully imported ${importedCertificates.length} certificates.`);
+        } else {
+          showToast("⚠ No valid certificate entries found in the CSV.");
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("⚠ Error parsing CSV file.");
+      }
+      e.target.value = "";
+    };
+
+    reader.readAsText(file);
   };
 
   const handleBulkDeleteItems = () => {
@@ -1162,6 +1300,15 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
 
 
                     <div className="md:col-span-2">
+                      <LoadChartDataEditor
+                        data={isEditingInDetail && editFormValues ? (editFormValues.loadChartData || []) : (certificate.loadChartData || [])}
+                        onChange={(data) => {
+                          if (editFormValues) setEditFormValues({ ...editFormValues, loadChartData: data });
+                        }}
+                        disabled={!isEditingInDetail}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
                         Recommendation
                       </label>
@@ -1455,6 +1602,23 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
               </>
             )}
           </div>
+
+          {/* Import CSV Button */}
+          <button
+            onClick={() => document.getElementById("csv-import-certificates-input")?.click()}
+            className="px-4 py-2 text-sm font-bold text-slate-700 bg-white border border-slate-300 hover:border-[#683EFF] hover:text-[#683EFF] rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+            title="Import Machine Certificates from CSV"
+          >
+            <Icons.Upload className="w-4 h-4 text-slate-400 hover:text-[#683EFF]" />
+            <span>Import</span>
+          </button>
+          <input
+            id="csv-import-certificates-input"
+            type="file"
+            accept=".csv"
+            onChange={handleImportCSV}
+            className="hidden"
+          />
 
           {/* Refresh Action Trigger */}
           <button
@@ -2357,6 +2521,12 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                     </div>
                   </div>
                   
+                  <div className="md:col-span-2">
+                    <LoadChartDataEditor
+                      data={formValues.loadChartData || []}
+                      onChange={(data) => setFormValues({ ...formValues, loadChartData: data })}
+                    />
+                  </div>
                   <div className="md:col-span-2">
                     <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
                       Recommendation

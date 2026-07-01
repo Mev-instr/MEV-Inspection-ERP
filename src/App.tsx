@@ -26,6 +26,7 @@ import { InspectionJobsPortfolioView } from "./components/InspectionJobsPortfoli
 import { InspectionReportsPortfolioView } from "./components/InspectionReportsPortfolioView";
 import { OperatorDirectoryView } from "./components/OperatorDirectoryView";
 import { OperatorDetailView } from "./components/OperatorDetailView";
+import { MachineDetailsPortfolioView } from "./components/MachineDetailsPortfolioView";
 import { OperatorCard } from "./types";
 import {
   initAuth,
@@ -76,6 +77,7 @@ export default function App() {
     | "INSPECTION_REPORTS"
     | "OPERATORS"
     | "MACHINE_CERTIFICATES"
+    | "MACHINE_DETAILS"
     | "CLOUD_DRIVE"
   >("DASHBOARD");
   const [viewOperatorId, setViewOperatorId] = useState<string | null>(null);
@@ -422,7 +424,7 @@ export default function App() {
         },
         {
           category: ERPCategory.MACHINE_DETAILS,
-          title: "Machine Details",
+          title: "Machine Models",
           iconName: "Award",
         },
       ],
@@ -485,6 +487,9 @@ export default function App() {
       setActiveCategory(null);
     } else if (category === ERPCategory.MACHINE_CERTIFICATES) {
       setCurrentTab("MACHINE_CERTIFICATES");
+      setActiveCategory(null);
+    } else if (category === ERPCategory.MACHINE_DETAILS) {
+      setCurrentTab("MACHINE_DETAILS");
       setActiveCategory(null);
     } else {
       setCurrentTab("DASHBOARD");
@@ -679,10 +684,14 @@ export default function App() {
                   onClick={() =>
                     handleNavCategoryClick(ERPCategory.MACHINE_DETAILS)
                   }
-                  className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all"
+                  className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    currentTab === "MACHINE_DETAILS"
+                      ? "bg-[#F0EBFF] text-[#683EFF] font-semibold"
+                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                  }`}
                 >
                   <Icons.Settings className="w-5 h-5" />
-                  {!sidebarCollapsed && <span>Machine Details</span>}
+                  {!sidebarCollapsed && <span>Machine Models</span>}
                 </button>
 
                 <button
@@ -690,7 +699,11 @@ export default function App() {
                   onClick={() =>
                     handleNavCategoryClick(ERPCategory.MACHINE_CERTIFICATES)
                   }
-                  className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all"
+                  className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    currentTab === "MACHINE_CERTIFICATES"
+                      ? "bg-[#F0EBFF] text-[#683EFF] font-semibold"
+                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                  }`}
                 >
                   <Icons.ShieldAlert className="w-5 h-5" />
                   {!sidebarCollapsed && <span>Machine Certificate</span>}
@@ -712,7 +725,11 @@ export default function App() {
                   onClick={() =>
                     handleNavCategoryClick(ERPCategory.OPERATOR_CARD)
                   }
-                  className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all"
+                  className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    currentTab === "OPERATORS"
+                      ? "bg-[#F0EBFF] text-[#683EFF] font-semibold"
+                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                  }`}
                 >
                   <Icons.Contact className="w-5 h-5" />
                   {!sidebarCollapsed && <span>Operator Directory</span>}
@@ -931,7 +948,7 @@ export default function App() {
                     className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-500"
                   >
                     <Icons.Settings className="w-5 h-5" />
-                    <span>Machine Details</span>
+                    <span>Machine Models</span>
                   </button>
                   <button
                     onClick={() =>
@@ -1225,6 +1242,22 @@ export default function App() {
               </motion.div>
             )}
 
+            {/* MACHINE DETAILS PORTFOLIO ROUTE */}
+            {currentTab === "MACHINE_DETAILS" && (
+              <motion.div
+                key="machine-details"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.18 }}
+              >
+                <MachineDetailsPortfolioView
+                  machines={machineDetails}
+                  onMachinesChange={setMachineDetails}
+                />
+              </motion.div>
+            )}
+
             {/* OPERATOR DIRECTORY PORTFOLIO ROUTE */}
             {currentTab === "OPERATORS" && (
               <motion.div
@@ -1310,6 +1343,16 @@ export default function App() {
                               onClick={() => {
                                 if (
                                   card.category ===
+                                  ERPCategory.CUSTOMER_DETAILS
+                                ) {
+                                  setCurrentTab("PORTFOLIO");
+                                } else if (
+                                  card.category ===
+                                  ERPCategory.INSPECTION_REPORT
+                                ) {
+                                  setCurrentTab("INSPECTION_REPORTS");
+                                } else if (
+                                  card.category ===
                                   ERPCategory.TRAINING_JOB_ORDER_CARD
                                 ) {
                                   setCurrentTab("TRAINING");
@@ -1318,6 +1361,7 @@ export default function App() {
                                   ERPCategory.INSPECTION_JOB_ORDER_CARD
                                 ) {
                                   setCurrentTab("INSPECTION");
+                                  setActiveCategory(null);
                                 } else if (
                                   card.category === ERPCategory.OPERATOR_CARD
                                 ) {
@@ -1327,6 +1371,11 @@ export default function App() {
                                   ERPCategory.MACHINE_CERTIFICATES
                                 ) {
                                   setCurrentTab("MACHINE_CERTIFICATES");
+                                } else if (
+                                  card.category ===
+                                  ERPCategory.MACHINE_DETAILS
+                                ) {
+                                  setCurrentTab("MACHINE_DETAILS");
                                 } else {
                                   setActiveCategory(card.category);
                                 }

@@ -215,25 +215,15 @@ export function OperatorDirectoryView({ operators, onOperatorsChange, onViewOper
     showToast(`✓ Exporting ${count} operators to CSV...`);
     
     const headers = [
-      "ID", "Operator Name", "First Name", "Last Name", "License Number", 
-      "License Expiry", "Certified Machines", "Status", "Photo URL", "Sponsor Name", 
-      "Iqama Number", "Job Title", "Nationality", "Passport Number", "Birth Date", 
-      "Blood Group", "Issued Date", "Issue Date", "Badge Number", "Authorized Equipment", 
-      "Machine Operator", "ID Number", "Photo Attachment", "Authorized By Signature", 
-      "Trained By Signature", "Naming Series", "Level Type", "Company", "Trained By", 
-      "Safety Index"
+      "Naming Series ID", "ID Number", "Full Operator Name", "Machine Operator",
+      "Company", "Level / Type", "Trained By", "Issue Date (Official)", "Expiry Date (Certification)"
     ].join(",");
 
     const rows = operators
       .filter(o => selectedOperatorIds.includes(o.id))
       .map(o => [
-        o.id, o.operatorName, o.firstName, o.lastName, o.licenseNumber,
-        o.licenseExpiry, o.certifiedMachines, o.status, o.photoUrl, o.sponsorName,
-        o.iqamaNumber, o.jobTitle, o.nationality, o.passportNumber, o.birthDate,
-        o.bloodGroup, o.issuedDate, o.issueDate, o.badgeNumber, o.authorizedEquipment,
-        o.machineOperator, o.idNumber, o.photoAttachment, o.authorizedBySignature,
-        o.trainedBySignature, o.namingSeries, o.levelType, o.company, o.trainedBy,
-        o.safetyIndex
+        o.namingSeries || "", o.idNumber || "", o.operatorName || "", o.machineOperator || "",
+        o.company || "", o.levelType || "", o.trainedBy || "", o.issueDate || "", o.licenseExpiry || ""
       ].map(field => `"${String(field || "").replace(/"/g, '""')}"`).join(","))
       .join("\n");
 
@@ -248,6 +238,139 @@ export function OperatorDirectoryView({ operators, onOperatorsChange, onViewOper
 
     setSelectedOperatorIds([]);
     setShowBulkActionDropdown(false);
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const parseCSVLine = (line: string): string[] => {
+      const result: string[] = [];
+      let current = "";
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          result.push(current);
+          current = "";
+        } else {
+          current += char;
+        }
+      }
+      result.push(current);
+      return result;
+    };
+
+    const parseCSV = (text: string): string[][] => {
+      const lines = text.split(/\r?\n/);
+      return lines
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .map(parseCSVLine);
+    };
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (!text) return;
+
+      try {
+        const rows = parseCSV(text);
+        if (rows.length < 2) {
+          showToast("⚠ CSV file is empty or missing data rows.");
+          return;
+        }
+
+        const csvHeaders = rows[0].map(h => h.trim().toLowerCase());
+        const importedOperators: any[] = [];
+
+        // Helper to generate next ID inside loop safely
+        const localGetNextId = (prefix: string, offset: number) => {
+          const relevant = operators.filter(o => o.id.startsWith(prefix));
+          let startBase = 1100;
+          if (relevant.length > 0) {
+            const ids = relevant.map(o => {
+              const parts = o.id.split("-");
+              const last = parts[parts.length - 1];
+              return parseInt(last, 10);
+            }).filter(n => !isNaN(n));
+            if (ids.length > 0) {
+              startBase = Math.max(...ids) + 1;
+            }
+          }
+          return `${prefix}${startBase + offset}`;
+        };
+
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (row.length === 0 || !row[0]) continue;
+
+          const getVal = (headerName: string) => {
+            const idx = csvHeaders.indexOf(headerName.toLowerCase());
+            return idx !== -1 && idx < row.length ? row[idx] : "";
+          };
+
+          const namingSeries = getVal("Naming Series ID") || "MEV-OC-26-";
+          const idNumber = getVal("ID Number");
+          const operatorName = getVal("Full Operator Name");
+          if (!operatorName || !idNumber) continue;
+
+          let finalId = namingSeries;
+          const prefix = "MEV-OC-26-";
+          if (!finalId || finalId === prefix) {
+            finalId = localGetNextId(prefix, importedOperators.length);
+          }
+
+          const machineOperator = getVal("Machine Operator");
+          const company = getVal("Company");
+          const levelType = getVal("Level / Type");
+          const trainedBy = getVal("Trained By");
+          const issueDate = getVal("Issue Date (Official)") || new Date().toISOString().split("T")[0];
+          const licenseExpiry = getVal("Expiry Date (Certification)") || new Date().toISOString().split("T")[0];
+
+          const operator = {
+            id: finalId,
+            operatorName: operatorName,
+            badgeNumber: idNumber,
+            authorizedEquipment: [levelType].filter(Boolean),
+            safetyIndex: 100,
+            licenseExpiry: licenseExpiry,
+            status: "Fully Certified",
+            photoAttachment: undefined,
+            machineOperator: machineOperator,
+            idNumber: idNumber,
+            company: company,
+            issueDate: issueDate,
+            levelType: levelType,
+            trainedBy: trainedBy,
+            authorizedBySignature: undefined,
+            trainedBySignature: undefined
+          };
+
+          importedOperators.push(operator);
+        }
+
+        if (importedOperators.length > 0) {
+          onOperatorsChange((prev) => [...importedOperators, ...prev]);
+          showToast(`✓ Successfully imported ${importedOperators.length} operators.`);
+        } else {
+          showToast("⚠ No valid operator entries found in the CSV.");
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("⚠ Error parsing CSV file.");
+      }
+      e.target.value = "";
+    };
+
+    reader.readAsText(file);
   };
 
   const handleBulkDeleteItems = () => {
@@ -443,6 +566,23 @@ export function OperatorDirectoryView({ operators, onOperatorsChange, onViewOper
               </>
             )}
           </div>
+
+          {/* Import CSV Button */}
+          <button
+            onClick={() => document.getElementById("csv-import-operators-input")?.click()}
+            className="px-4 py-2 text-sm font-bold text-slate-700 bg-white border border-slate-300 hover:border-[#683EFF] hover:text-[#683EFF] rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+            title="Import Operators from CSV"
+          >
+            <Icons.Upload className="w-4 h-4 text-slate-400 hover:text-[#683EFF]" />
+            <span>Import</span>
+          </button>
+          <input
+            id="csv-import-operators-input"
+            type="file"
+            accept=".csv"
+            onChange={handleImportCSV}
+            className="hidden"
+          />
 
           <button
             onClick={handleRefresh}
