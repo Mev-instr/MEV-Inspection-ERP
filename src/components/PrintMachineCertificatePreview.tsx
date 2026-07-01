@@ -63,11 +63,11 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
   return (
     <div className="flex flex-col min-h-[calc(100vh-140px)] bg-slate-900 rounded-3xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-300">
       {/* Top Header */}
-      <div className="flex items-center justify-between p-4 px-6 bg-slate-900 border-b border-white/10 shrink-0">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col p-4 px-6 bg-slate-900 border-b border-white/10 shrink-0 gap-4">
+        <div className="flex items-center w-full">
           <button 
             onClick={onClose}
-            className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 text-white flex items-center justify-center transition-colors"
+            className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 text-white flex items-center justify-center transition-colors mr-4"
           >
             <Icons.ArrowLeft className="w-5 h-5" />
           </button>
@@ -77,13 +77,13 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-400">Template</span>
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full">
+          <div className="flex items-center gap-2 w-full">
+            <span className="text-xs font-bold text-slate-400 shrink-0">Template</span>
             <select 
               value={template}
               onChange={(e) => setTemplate(e.target.value)}
-              className="bg-white/10 border border-white/20 text-white text-sm font-bold rounded-lg px-3 py-2 outline-none focus:border-[#683EFF]"
+              className="bg-white/10 border border-white/20 text-white text-sm font-bold rounded-lg px-3 py-2 outline-none focus:border-[#683EFF] w-full"
             >
               {templates.map(t => (
                 <option key={t.id} value={t.id} className="bg-slate-800">{t.name}</option>
@@ -92,7 +92,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
           </div>
           <button
             onClick={() => handleDownloadPDF()}
-            className="flex items-center gap-2 px-6 py-2.5 bg-[#683EFF] hover:bg-[#582DE5] text-white rounded-lg text-sm font-bold transition-colors shadow-lg"
+            className="flex items-center justify-center gap-2 px-6 py-2.5 bg-[#683EFF] hover:bg-[#582DE5] text-white rounded-lg text-sm font-bold transition-colors shadow-lg w-full sm:w-auto whitespace-nowrap"
           >
             <Icons.Download className="w-4 h-4" />
             Print / Save as PDF
@@ -101,12 +101,12 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
       </div>
 
       {/* Preview Area Container */}
-      <div className="flex-1 overflow-auto p-4 sm:p-8 flex flex-col items-center gap-10 pb-16 bg-slate-800">
+      <div className="flex-1 overflow-auto p-1 sm:p-8 flex flex-col items-center gap-4 pb-16 bg-slate-800">
         {template === "template1" && (
-          <div className="flex flex-col gap-12 items-center justify-center transform origin-top w-full scale-[0.85] sm:scale-100 print:scale-100 print:transform-none">
+          <div className="flex flex-col gap-4 items-center justify-center transform origin-top w-full scale-[0.5] sm:scale-75 md:scale-90 lg:scale-100 print:scale-100 print:transform-none">
               
               {/* ------------ CERTIFICATE ------------ */}
-              <div className="flex flex-col gap-2 shadow-2xl print:shadow-none">
+              <div className="flex flex-col gap-2 shadow-2xl print:shadow-none max-w-full">
                 <span className="text-xs font-bold text-slate-400 tracking-widest uppercase ml-2">Certificate</span>
                  {/* A4 wrapper: Aspect Ratio 1:1.414, setting fixed width to easily map px to mm. 
                      A4 at 96 DPI is approx 794x1123px. We'll use 800x1131px to keep it simple. */}
@@ -399,10 +399,10 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
         )}
         {/* --- TEMPLATE (APPROVED) --- */}
         {template === "template_approved" && (
-          <div className="flex flex-col gap-12 items-center justify-center transform origin-top w-full scale-[0.85] sm:scale-100 print:scale-100 print:transform-none">
+          <div className="flex flex-col gap-4 items-center justify-center transform origin-top w-full scale-[0.5] sm:scale-75 md:scale-90 lg:scale-100 print:scale-100 print:transform-none">
               
               {/* ------------ CERTIFICATE ------------ */}
-              <div className="flex flex-col gap-2 shadow-2xl print:shadow-none">
+              <div className="flex flex-col gap-2 shadow-2xl print:shadow-none max-w-full">
                 <span className="text-xs font-bold text-slate-400 tracking-widest uppercase ml-2">Certificate</span>
                  {/* A4 wrapper: Aspect Ratio 1:1.414, setting fixed width to easily map px to mm. 
                      A4 at 96 DPI is approx 794x1123px. We'll use 800x1131px to keep it simple. */}
@@ -701,8 +701,8 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
         )}
         {/* --- TEMPLATE 2 (Classic Detailed) --- */}
         {template === "template2" && (
-          <div className="flex flex-col gap-12 items-center justify-center transform origin-top w-full scale-[0.85] sm:scale-100 print:scale-100 print:transform-none">
-              <div className="flex flex-col gap-2 shadow-2xl print:shadow-none">
+          <div className="flex flex-col gap-4 items-center justify-center transform origin-top w-full scale-[0.5] sm:scale-75 md:scale-90 lg:scale-100 print:scale-100 print:transform-none">
+              <div className="flex flex-col gap-2 shadow-2xl print:shadow-none max-w-full">
                 <span className="text-xs font-bold text-slate-400 tracking-widest uppercase ml-2">Certificate (Classic)</span>
                  <div 
                    ref={certRef}

@@ -675,23 +675,24 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
           </div>
 
           {/* Action Row Sidebar side buttons */}
-          <div className="flex items-center gap-2.5 self-stretch md:self-auto justify-end">
+          <div className="flex items-center flex-wrap gap-2 self-stretch md:self-auto justify-end">
             
             {/* Action buttons (Print, Export, Delete) */}
             <button
               onClick={() => handlePrintCertificate(certificate)}
-              className="px-4 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-600 rounded-lg shadow-sm transition-colors flex items-center gap-2 text-xs font-bold"
+              className="px-3 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-600 rounded-lg shadow-sm transition-colors flex items-center gap-2 text-xs font-bold"
             >
               <Icons.Printer className="w-4 h-4" />
-              <span>Print certificate</span>
+              <span>Print</span>
             </button>
 
             <button
               onClick={() => setConfirmDeleteId(certificate.id)}
               title="Permamently Delete"
-              className="p-2 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors"
+              className="px-3 py-2 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold"
             >
               <Icons.Trash2 className="w-4 h-4" />
+              <span>Delete</span>
             </button>
 
             {/* Pagination Controls between records */}
@@ -718,7 +719,7 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
             {isEditingInDetail ? (
               <button
                 onClick={handleSaveDetailChanges}
-                className="bg-[#683EFF] hover:bg-[#5229E0] text-white px-5 py-2 rounded-lg flex items-center gap-1.5 font-bold text-sm shadow-sm transition-all"
+                className="bg-[#683EFF] hover:bg-[#5229E0] text-white px-4 py-2 rounded-lg flex items-center justify-center gap-1.5 font-bold text-sm shadow-sm transition-all w-full md:w-auto"
               >
                 <Icons.Save className="w-4 h-4" />
                 <span>SAVE</span>
@@ -726,7 +727,7 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
             ) : (
               <button
                 onClick={() => setIsEditingInDetail(true)}
-                className="bg-[#683EFF] hover:bg-[#5229E0] text-white px-5 py-2 rounded-lg flex items-center gap-1.5 font-bold text-sm shadow-sm transition-all"
+                className="bg-[#683EFF] hover:bg-[#5229E0] text-white px-4 py-2 rounded-lg flex items-center justify-center gap-1.5 font-bold text-sm shadow-sm transition-all w-full md:w-auto"
               >
                 <Icons.Edit className="w-4 h-4" />
                 <span>EDIT DETAILS</span>
