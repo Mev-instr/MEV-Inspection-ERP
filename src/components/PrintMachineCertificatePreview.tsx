@@ -589,7 +589,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                   </div>
 
                   {/* Recommendation Box */}
-                  <div className="mx-10 mt-[7px] border border-emerald-600 rounded-xl overflow-hidden bg-emerald-50/50 flex py-[16px] px-6 gap-6 items-center">
+                  <div className="mx-10 mt-[7px] border border-emerald-600 rounded-xl overflow-hidden bg-emerald-50/50 flex py-[40px] px-6 gap-6 items-center">
                      <div className="shrink-0 text-emerald-600">
                         <Icons.ShieldCheck className="w-[60px] h-[60px] stroke-2" />
                      </div>
@@ -602,9 +602,9 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                   </div>
 
                   {/* Signatures Section */}
-                  <div className="px-10 mt-[30px] flex justify-between items-end relative">
+                  <div className="px-10 mt-[4px] flex justify-between items-end relative">
                      {/* Inspected By */}
-                     <div className="flex flex-col w-[220px] text-center relative -top-[20px]">
+                     <div className="flex flex-col w-[220px] text-center relative">
                         <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest leading-[1.2em] mb-[3px]">Inspected By</span>
                         <span className="text-[12px] font-bold text-slate-800 uppercase tracking-widest">{certificate.inspectedBy || "Zaid Mansoor"}</span>
                         <div className="h-24 flex items-center justify-center relative">
@@ -617,7 +617,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                      </div>
 
                      {/* QR Code */}
-                     <div className="absolute left-1/2 -translate-x-1/2 bottom-[30px] flex flex-col items-center w-64 text-center">
+                     <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center w-64 text-center">
                         <div className="p-0 bg-white rounded-xl shadow-sm border border-slate-200">
                            <QRCodeSVG 
                              value={`https://mev-ins.com/verify/${certificate.id}`}
@@ -631,7 +631,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                      </div>
 
                      {/* Authorized By */}
-                     <div className="flex flex-col w-[220px] text-center relative -top-[20px]">
+                     <div className="flex flex-col w-[220px] text-center relative">
                         <span className="text-[13px] font-bold text-[#683EFF] uppercase tracking-widest leading-[1.2em] mb-[3px]">Authorized By</span>
                         <span className="text-[12px] font-bold text-slate-800 uppercase tracking-widest">{certificate.authorizedBy || "Ali Ahmed"}</span>
                         <div className="h-24 flex items-center justify-center relative">
@@ -647,13 +647,13 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                   {/* Statement Box */}
                   <div className="px-10 mt-[2px] mb-[5px] flex gap-2">
                      <div className="bg-slate-50 border border-slate-200 rounded-xl py-[5px] px-[15px] flex-1 flex items-center">
-                        <p className="text-[10px] font-medium text-slate-800 leading-relaxed text-left">
+                        <p className="text-[8px] font-medium text-slate-800 leading-relaxed text-left">
                            This certificate relates only to the equipment inspected on the date stated, and it shall not be reproduced except in full without the written approval of MEV.
                         </p>
                      </div>
                      <div className="bg-slate-50 border border-slate-200 rounded-xl py-[5px] px-[15px] flex-1 flex flex-col justify-center text-left">
                         <span className="text-[10px] font-bold text-[#683EFF] uppercase tracking-widest mb-0.5">Accreditation Statement</span>
-                        <p className="text-[10px] font-medium text-slate-800 leading-relaxed">
+                        <p className="text-[8px] font-medium text-slate-800 leading-relaxed">
                            This inspection was conducted under MEV's scope of accreditation as a Type A Inspection Body, in accordance with ISO/IEC 17020.
                         </p>
                      </div>
