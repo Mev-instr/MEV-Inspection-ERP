@@ -21,6 +21,7 @@ import {
 import { DetailModal, LucideIcon } from "./components/DetailModal";
 import { CustomerPortfolioView } from "./components/CustomerPortfolioView";
 import { TrainingJobsPortfolioView } from "./components/TrainingJobsPortfolioView";
+import { LiftingToolCertificatesPortfolioView } from "./components/LiftingToolCertificatesPortfolioView";
 import { MachineCertificatesPortfolioView } from "./components/MachineCertificatesPortfolioView";
 import { InspectionJobsPortfolioView } from "./components/InspectionJobsPortfolioView";
 import { InspectionReportsPortfolioView } from "./components/InspectionReportsPortfolioView";
@@ -77,6 +78,7 @@ export default function App() {
     | "INSPECTION_REPORTS"
     | "OPERATORS"
     | "MACHINE_CERTIFICATES"
+    | "LIFTING_TOOL_CERTIFICATE"
     | "MACHINE_DETAILS"
     | "CLOUD_DRIVE"
   >("DASHBOARD");
@@ -488,6 +490,9 @@ export default function App() {
     } else if (category === ERPCategory.MACHINE_CERTIFICATES) {
       setCurrentTab("MACHINE_CERTIFICATES");
       setActiveCategory(null);
+    } else if (category === ERPCategory.LIFTING_TOOL_CERTIFICATE) {
+      setCurrentTab("LIFTING_TOOL_CERTIFICATE");
+      setActiveCategory(null);
     } else if (category === ERPCategory.MACHINE_DETAILS) {
       setCurrentTab("MACHINE_DETAILS");
       setActiveCategory(null);
@@ -717,7 +722,7 @@ export default function App() {
                   className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all"
                 >
                   <Icons.Anchor className="w-5 h-5" />
-                  {!sidebarCollapsed && <span>Lifting Tool Certs</span>}
+                  {!sidebarCollapsed && <span>Lifting Tool Certificate</span>}
                 </button>
 
                 <button
@@ -968,7 +973,7 @@ export default function App() {
                     className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-500"
                   >
                     <Icons.Anchor className="w-5 h-5" />
-                    <span>Lifting Tool Certs</span>
+                    <span>Lifting Tool Certificate</span>
                   </button>
                   <button
                     onClick={() =>
@@ -1220,6 +1225,23 @@ export default function App() {
                   reports={inspectionReports}
                   onReportsChange={setInspectionReports}
                   inspectionJobs={inspectionJobs}
+                />
+              </motion.div>
+            )}
+
+            {/* LIFTING TOOL CERTIFICATES PORTFOLIO ROUTE */}
+            {currentTab === "LIFTING_TOOL_CERTIFICATE" && (
+              <motion.div
+                key="lifting-tool-certificates"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.18 }}
+              >
+                <LiftingToolCertificatesPortfolioView
+                  certificates={liftingToolCerts}
+                  onCertificatesChange={setLiftingToolCerts}
+                  inspectionReports={inspectionReports}
                 />
               </motion.div>
             )}

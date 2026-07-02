@@ -163,6 +163,7 @@ export interface InspectionReport {
   machineName?: string;
   machineCount?: string | number;
   operators?: any[];
+  
   location?: string;
   checklistNumber?: string;
   stickerNo?: string;
@@ -234,6 +235,46 @@ export interface LiftingToolCert {
   issueDate?: string;
   expiryDate?: string;
   status?: string;
+  namingSeries?: string;
+  inspectionReportNo?: string;
+  jobNumber?: string;
+  stickerNumber?: string;
+  timeSheetNumber?: string;
+  result?: string;
+  validity?: string;
+  checkList?: string;
+  clientName?: string;
+  location?: string;
+  equipmentLocation?: string;
+  typeOfInspection?: string;
+  nextInspectionDate?: string;
+  referenceStandard?: string;
+  inspectedBy?: string;
+  inspectedBySignature?: string;
+  authorizedBy?: string;
+  authorizedBySignature?: string;
+  recommendation?: string;
+  operators?: any[];
+  colorCode?: string;
+  accessoriesData?: { no: number, idNo: string, description: string, type: string, swl: string, sizeWidth: string, length: string, color: string, result: string, remark: string }[];
+  loadChartData?: { boom: string, radius: string, swl: string, testLoad: string }[];
+  loadLimit?: string;
+  maxOutreach?: string;
+  bucketCapacity?: string;
+  enginePower?: string;
+  boomLength?: string;
+  wheelType?: string;
+  maxPlatformHeight?: string;
+  heoBucketCapacity?: string;
+  engineSpeed?: string;
+  angleOfSpan?: string;
+  personAllowed?: string;
+  manufacturer?: string;
+  modelName?: string;
+  serialNumber?: string;
+  dateOfMfg?: string;
+  ownerId?: string;
+  previousInspection?: string;
 }
 
 export interface MachineDetail {

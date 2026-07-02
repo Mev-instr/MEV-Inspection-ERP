@@ -361,7 +361,35 @@ export const initialMachineCertificates: MachineCertificate[] = [
   }
 ];
 
-export const initialLiftingToolCerts: LiftingToolCert[] = [];
+export const initialLiftingToolCerts: LiftingToolCert[] = [
+  {
+    id: "LTC-001",
+    toolName: "Chain Pulley Block",
+    safeWorkingLoad: "5 Tons",
+    certificateNo: "LTC-2026-001",
+    issueDate: "2026-01-10",
+    expiryDate: "2026-07-10",
+    status: "Active"
+  },
+  {
+    id: "LTC-002",
+    toolName: "Webbing Sling",
+    safeWorkingLoad: "10 Tons",
+    certificateNo: "LTC-2026-002",
+    issueDate: "2026-02-15",
+    expiryDate: "2026-08-15",
+    status: "Active"
+  },
+  {
+    id: "LTC-003",
+    toolName: "Wire Rope Sling",
+    safeWorkingLoad: "25 Tons",
+    certificateNo: "LTC-2026-003",
+    issueDate: "2025-12-05",
+    expiryDate: "2026-06-05",
+    status: "Expired"
+  }
+];
 
 export const initialMachineDetails: MachineDetail[] = [
   {
