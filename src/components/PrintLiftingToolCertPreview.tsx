@@ -128,7 +128,7 @@ export function PrintLiftingToolCertPreview({ certificate, onClose }: PrintLifti
                     </div>
                     {/* Right Titles */}
                     <div className="flex flex-col items-end mt-1">
-                       <h1 className="text-[44px] font-bebas font-medium text-[#683EFF] uppercase tracking-wide leading-none">Lifting Tool Certificate</h1>
+                       <h1 className="text-[50px] font-bebas font-medium text-[#683EFF] uppercase tracking-wide leading-none">Lifting Tool Certificate</h1>
                        <div className="flex items-center gap-4 w-full">
                          <div className="h-[2px] bg-slate-800 flex-1"></div>
                          <h2 className="text-[17px] font-semibold tracking-widest uppercase text-slate-800">{certificate.namingSeries || "N/A"}</h2>

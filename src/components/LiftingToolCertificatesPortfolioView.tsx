@@ -948,7 +948,7 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
 
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Equipment Location
+                        Inspection Location
                       </label>
                       <input
                         type="text"
@@ -2245,7 +2245,7 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
 
                   <div>
                     <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
-                      Equipment Location
+                      Inspection Location
                     </label>
                     <input
                       type="text"
