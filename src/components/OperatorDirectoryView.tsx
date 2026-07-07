@@ -5,10 +5,11 @@
 
 import React, { useState } from "react";
 import * as Icons from "lucide-react";
-import { OperatorCard } from "../types";
+import { OperatorCard, EmployeeDetail } from "../types";
 import { formatDate } from "../utils";
 
 interface OperatorDirectoryProps {
+  employees: EmployeeDetail[];
   operators: OperatorCard[];
   onOperatorsChange: React.Dispatch<React.SetStateAction<OperatorCard[]>>;
   onViewOperator: (id: string) => void;
@@ -16,7 +17,7 @@ interface OperatorDirectoryProps {
   onDeleteImage?: (url: string) => Promise<void>;
 }
 
-export function OperatorDirectoryView({ operators, onOperatorsChange, onViewOperator, onUploadImage, onDeleteImage }: OperatorDirectoryProps) {
+export function OperatorDirectoryView({ employees,  operators, onOperatorsChange, onViewOperator, onUploadImage, onDeleteImage }: OperatorDirectoryProps) {
   // View states
   const [viewMode, setViewMode] = useState<"list" | "grid" | "compact">("list");
   const [showViewDropdown, setShowViewDropdown] = useState(false);

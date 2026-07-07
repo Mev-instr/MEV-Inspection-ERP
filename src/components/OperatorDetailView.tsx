@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import * as Icons from "lucide-react";
-import { OperatorCard } from "../types";
+import { OperatorCard, EmployeeDetail } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { PrintCardPreview } from "./PrintCardPreview";
 import { ImageUploadPicker } from "./ImageUploadPicker";
 
 interface OperatorDetailViewProps {
   operator: OperatorCard;
+  employees: EmployeeDetail[];
   onBack: () => void;
   onUpdate: (updated: OperatorCard) => void;
   onDelete: (id: string) => void;
@@ -14,7 +15,7 @@ interface OperatorDetailViewProps {
   onDeleteImage?: (url: string) => Promise<void>;
 }
 
-export function OperatorDetailView({ operator, onBack, onUpdate, onDelete, onUploadImage, onDeleteImage }: OperatorDetailViewProps) {
+export function OperatorDetailView({ employees,  operator, onBack, onUpdate, onDelete, onUploadImage, onDeleteImage }: OperatorDetailViewProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedFields, setEditedFields] = useState<OperatorCard>({ ...operator });
   const [showToast, setShowToast] = useState<string | null>(null);
@@ -310,6 +311,20 @@ export function OperatorDetailView({ operator, onBack, onUpdate, onDelete, onUpl
                   />
                 ) : (
                   <p className="text-sm font-bold text-slate-700">{operator.trainedBy || "N/A"}</p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Authorized By</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editedFields.authorizedBy || ""}
+                    onChange={(e) => setEditedFields({ ...editedFields, authorizedBy: e.target.value })}
+                    className="w-full text-sm font-bold text-slate-700 bg-slate-50 border-b border-slate-200 focus:border-[#683EFF] focus:outline-none p-1"
+                  />
+                ) : (
+                  <p className="text-sm font-bold text-slate-700">{operator.authorizedBy || "N/A"}</p>
                 )}
               </div>
 

@@ -128,13 +128,7 @@ export function CustomerDetailPage({
   
   // Local form states matching the fields
   const [companyName, setCompanyName] = useState("");
-  const [territory, setTerritory] = useState("");
   const [customerType, setCustomerType] = useState("");
-  const [fromLead, setFromLead] = useState("Select lead");
-  const [customerGroup, setCustomerGroup] = useState("Regular Customers");
-  const [fromOpportunity, setFromOpportunity] = useState("Select opportunity");
-  const [accountManager, setAccountManager] = useState("Mohammed Khan");
-  const [assignedTo, setAssignedTo] = useState("Mohammed Khan");
   
   // Contacts
   const [trainingContactPerson, setTrainingContactPerson] = useState("");
@@ -142,9 +136,19 @@ export function CustomerDetailPage({
   const [inspectionContactPerson, setInspectionContactPerson] = useState("");
   const [inspectionContactPhone, setInspectionContactPhone] = useState("");
   
-  // Contact & Address tab states
+  const [territory, setTerritory] = useState("");
+  const [fromLead, setFromLead] = useState("Select lead");
+  const [customerGroup, setCustomerGroup] = useState("Regular Customers");
+  const [fromOpportunity, setFromOpportunity] = useState("Select opportunity");
+  const [accountManager, setAccountManager] = useState("Mohammed Khan");
+  const [assignedTo, setAssignedTo] = useState("Mohammed Khan");
   const [primaryEmail, setPrimaryEmail] = useState("");
   const [primaryMobile, setPrimaryMobile] = useState("");
+  
+  // Contact & Address tab states
+  const [country, setCountry] = useState("Saudi Arabia");
+  const [trainingSiteAddress, setTrainingSiteAddress] = useState("");
+  const [inspectionSiteAddress, setInspectionSiteAddress] = useState("");
   const [addressLine1, setAddressLine1] = useState("");
   const [addressLine2, setAddressLine2] = useState("");
   const [cityAddress, setCityAddress] = useState("");
@@ -256,18 +260,22 @@ export function CustomerDetailPage({
   useEffect(() => {
     if (customer) {
       setCompanyName(customer.companyName || "");
-      setTerritory(customer.country || "Jeddah, KSA");
+      setCountry(customer.country || "Saudi Arabia");
       setCustomerType(customer.customerType || "Company");
       setStatus(customer.status || "Active");
+      
+      setTerritory(customer.country || "Jeddah, KSA");
+      setPrimaryEmail(customer.email || "");
+      setPrimaryMobile(customer.phone || "");
       
       // Load fallback or existing custom options
       setTrainingContactPerson(customer.trainingContactPerson || "");
       setTrainingContactPhone(customer.trainingContactPhone || "");
+      setTrainingSiteAddress(customer.trainingSiteAddress || "");
       setInspectionContactPerson(customer.inspectionContactPerson || "");
       setInspectionContactPhone(customer.inspectionContactPhone || "");
+      setInspectionSiteAddress(customer.inspectionSiteAddress || "");
       
-      setPrimaryEmail(customer.email || "");
-      setPrimaryMobile(customer.phone || "");
       
       setAddressLine1(customer.addressLine1 || "");
       setAddressLine2(customer.addressLine2 || "");
@@ -889,11 +897,20 @@ export function CustomerDetailPage({
       {/* HEADER SECTION WITH BREADCRUMB, ACTIONS AND SAVE CONTROLS */}
       {/* ======================================================== */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#ECECF3] pb-4 select-none">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5 text-xs text-slate-400 font-medium font-sans">
-            <button onClick={onBack} className="hover:text-[#683EFF] font-semibold transition-colors">Customer</button>
-            <Icons.ChevronRight className="w-3 h-3 text-slate-350" />
-            <span className="font-bold text-slate-700 truncate max-w-[200px]">{companyName || "Saudi Aramco"}</span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="p-2 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-[#683EFF] hover:border-[#683EFF] transition-all shadow-sm group animate-in fade-in"
+            title="Go Back"
+          >
+            <Icons.ArrowLeft className="w-4.5 h-4.5 group-active:-translate-x-1 transition-transform" />
+          </button>
+          <div>
+            <div className="flex items-center gap-2 mb-1.5 text-xs text-slate-400 font-medium font-sans">
+              <button onClick={onBack} className="hover:text-[#683EFF] font-semibold transition-colors">Customer</button>
+              <Icons.ChevronRight className="w-3 h-3 text-slate-350" />
+              <span className="font-bold text-slate-700 truncate max-w-[200px]">{companyName || "Saudi Aramco"}</span>
+            </div>
           </div>
         </div>
 
@@ -1132,58 +1149,36 @@ export function CustomerDetailPage({
             {activeTab === "DETAILS" && (
               <div className="space-y-6">
                 
-                {/* A. Customer Information Card */}
+                {/* 1. Company Details */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-                  <h4 className="text-xs font-semibold text-[#0E1B2D] uppercase tracking-widest flex items-center gap-1.5 select-none font-display">
-                    <Icons.Building className="w-4 h-4 text-[#683EFF]" />
-                    <span>Customer Information</span>
-                  </h4>
+                  <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-bold flex items-center gap-2 select-none">
+                    <Icons.Building className="w-4 h-4" />
+                    <span>Company Details</span>
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    
-                    {/* CUSTOMER NAME * */}
                     <div>
-                      <label className="block text-[10px] font-medium text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600 font-sans">
+                      <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
                         Customer Name *
                       </label>
                       <input
                         type="text"
+                        required
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-normal text-slate-700 font-sans"
                         placeholder="e.g. Saudi Aramco Logistics"
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
                       />
                     </div>
 
-                    {/* TERRITORY */}
                     <div>
-                      <label className="block text-[10px] font-medium text-slate-655 uppercase tracking-widest mb-1.5 text-slate-600 font-sans">
-                        Territory
-                      </label>
-                      <select
-                        value={territory}
-                        onChange={(e) => setTerritory(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-medium text-slate-700"
-                      >
-                        <option value="Jeddah, KSA">Jeddah, KSA</option>
-                        <option value="Riyadh, KSA">Riyadh, KSA</option>
-                        <option value="Dammam, KSA">Dammam, KSA</option>
-                        <option value="Al Khobar, KSA">Al Khobar, KSA</option>
-                        <option value="Jebel Ali, UAE">Jebel Ali, UAE</option>
-                        <option value="Abu Dhabi, UAE">Abu Dhabi, UAE</option>
-                        <option value="Other Middle East">Other Middle East</option>
-                      </select>
-                    </div>
-
-                    {/* CUSTOMER TYPE * */}
-                    <div>
-                      <label className="block text-[10px] font-medium text-slate-655 uppercase tracking-widest mb-1.5 text-slate-600 font-sans">
+                      <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
                         Customer Type *
                       </label>
                       <select
                         value={customerType}
                         onChange={(e) => setCustomerType(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-medium text-slate-700"
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] text-slate-700 bg-slate-50"
                       >
                         <option value="Company">Company</option>
                         <option value="Individual">Individual</option>
@@ -1192,153 +1187,54 @@ export function CustomerDetailPage({
                       </select>
                     </div>
 
-                    {/* FROM LEAD */}
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-655 uppercase tracking-widest mb-1.5 text-slate-600">
-                        From Lead
+                      <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
+                        Country Gateway
                       </label>
                       <select
-                        value={fromLead}
-                        onChange={(e) => setFromLead(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-medium text-slate-700"
+                        value={country}
+                        onChange={(e) => setCountry(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] text-slate-700 bg-slate-50"
                       >
-                        <option value="Select lead">Select lead</option>
-                        <option value="Direct Outreach">Direct Outreach</option>
-                        <option value="Referral Operations">Referral Operations</option>
-                        <option value="Portal Campaign">Portal Campaign</option>
-                        <option value="Trade Fair Gulf">Trade Fair Gulf</option>
+                        <option value="Saudi Arabia">Saudi Arabia</option>
+                        <option value="United Arab Emirates">United Arab Emirates</option>
+                        <option value="Qatar">Qatar</option>
+                        <option value="Oman">Oman</option>
+                        <option value="Kuwait">Kuwait</option>
+                        <option value="Bahrain">Bahrain</option>
                       </select>
                     </div>
 
-                    {/* CUSTOMER GROUP */}
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-655 uppercase tracking-widest mb-1.5 text-slate-600">
-                        Customer Group
+                      <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
+                        Initial Status
                       </label>
-                      <select
-                        value={customerGroup}
-                        onChange={(e) => setCustomerGroup(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-medium text-slate-700"
-                      >
-                        <option value="Regular Customers">Regular Customers</option>
-                        <option value="Corporate Partners">Corporate Partners</option>
-                        <option value="Government / Enterprise">Government / Enterprise</option>
-                        <option value="VIP Tier-1">VIP Tier-1</option>
-                      </select>
-                    </div>
-
-                    {/* FROM OPPORTUNITY */}
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-655 uppercase tracking-widest mb-1.5 text-slate-600">
-                        From Opportunity
-                      </label>
-                      <select
-                        value={fromOpportunity}
-                        onChange={(e) => setFromOpportunity(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-medium text-slate-700"
-                      >
-                        <option value="Select opportunity">Select opportunity</option>
-                        <option value="Dammam Refinery Lift">Dammam Refinery Lift</option>
-                        <option value="Riyadh Subway Ext">Riyadh Subway Ext</option>
-                        <option value="Jubail Port Upgrade">Jubail Port Upgrade</option>
-                        <option value="Macedon Yard Expansion">Macedon Yard Expansion</option>
-                      </select>
-                    </div>
-
-                    {/* ACCOUNT MANAGER */}
-                    <div className="md:col-span-2">
-                      <label className="block text-[10px] font-bold text-slate-655 uppercase tracking-widest mb-1.5 text-slate-600">
-                        Account Manager
-                      </label>
-                      <select
-                        value={accountManager}
-                        onChange={(e) => {
-                          setAccountManager(e.target.value);
-                          setAssignedTo(e.target.value);
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-medium text-slate-700"
-                      >
-                        <option value="Mohammed Khan">Mohammed Khan</option>
-                        <option value="Sarah Ahmed">Sarah Ahmed</option>
-                        <option value="Zaid Sulaiman">Zaid Sulaiman</option>
-                        <option value="Eng. Tariq">Eng. Tariq</option>
-                      </select>
+                      <span className="flex items-center gap-2 mt-2">
+                        <input
+                          type="radio"
+                          id="status-active-dtl"
+                          name="status-dtl"
+                          checked={status === "Active"}
+                          onChange={() => setStatus("Active")}
+                          className="text-[#683EFF] focus:ring-[#683EFF]"
+                        />
+                        <label htmlFor="status-active-dtl" className="text-xs text-slate-600 font-bold cursor-pointer">Enabled / Active</label>
+                        
+                        <input
+                          type="radio"
+                          id="status-review-dtl"
+                          name="status-dtl"
+                          checked={status === "Pending Review"}
+                          onChange={() => setStatus("Pending Review")}
+                          className="text-[#683EFF] focus:ring-[#683EFF] ml-3"
+                        />
+                        <label htmlFor="status-review-dtl" className="text-xs text-slate-600 font-bold cursor-pointer">Pending Review</label>
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                {/* B. Contact Representatives Card */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-widest flex items-center gap-1.5 select-none text-slate-700">
-                    <Icons.Contact className="w-4 h-4 text-[#683EFF]" />
-                    <span>Contact Representatives</span>
-                  </h4>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    
-                    {/* TRAINING CONTACT PERSON */}
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
-                        Training Contact Person
-                      </label>
-                      <div className="relative">
-                        <Icons.User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                        <input
-                          type="text"
-                          value={trainingContactPerson}
-                          onChange={(e) => setTrainingContactPerson(e.target.value)}
-                          placeholder="Enter representative name"
-                          className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
-                        />
-                      </div>
-                    </div>
-
-                    {/* INSPECTION CONTACT PERSON */}
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
-                        Inspection Contact Person
-                      </label>
-                      <div className="relative">
-                        <Icons.User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                        <input
-                          type="text"
-                          value={inspectionContactPerson}
-                          onChange={(e) => setInspectionContactPerson(e.target.value)}
-                          placeholder="Enter representative name"
-                          className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
-                        />
-                      </div>
-                    </div>
-
-                    {/* TRAINING CONTACT PHONE */}
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
-                        Training Contact Phone
-                      </label>
-                      <PhoneCountryCodeInput
-                        id="training-contact-phone-dtl"
-                        value={trainingContactPhone}
-                        onChange={setTrainingContactPhone}
-                        placeholder="Phone number"
-                      />
-                    </div>
-
-                    {/* INSPECTION CONTACT PHONE */}
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
-                        Inspection Contact Phone
-                      </label>
-                      <PhoneCountryCodeInput
-                        id="inspection-contact-phone-dtl"
-                        value={inspectionContactPhone}
-                        onChange={setInspectionContactPhone}
-                        placeholder="Phone number"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 1. Activity & Operational Overview */}
+                {/* 2. Activity & Operational Overview */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
                     <div className="text-left">
@@ -1611,120 +1507,175 @@ export function CustomerDetailPage({
             {activeTab === "CONTACT_ADDRESS" && (
               <div className="space-y-6 animate-in fade-in duration-100">
                 
-                {/* C. Primary Contact Details Card */}
+                {/* 1. Office Address Details Section */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-widest flex items-center gap-1.5 select-none text-slate-700">
-                    <Icons.Mail className="w-4 h-4 text-[#683EFF]" />
-                    <span>Primary Contact Details</span>
-                  </h4>
+                  <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-bold flex items-center gap-2 select-none">
+                    <Icons.MapPin className="w-4 h-4" />
+                    <span>Office Address Details</span>
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    
-                    {/* PRIMARY EMAIL */}
-                    <div>
+                    <div className="md:col-span-2">
                       <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
-                        Primary Email Address
-                      </label>
-                      <input
-                        type="email"
-                        value={primaryEmail}
-                        onChange={(e) => setPrimaryEmail(e.target.value)}
-                        placeholder="corporate.liaison@client.com"
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
-                      />
-                    </div>
-
-                    {/* PRIMARY MOBILE */}
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
-                        Primary Mobile / Hotline Number
-                      </label>
-                      <PhoneCountryCodeInput
-                        id="primary-mobile-dtl"
-                        value={primaryMobile}
-                        onChange={setPrimaryMobile}
-                        placeholder="Enter mobile number"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* D. Primary Address Details Card */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-widest flex items-center gap-1.5 select-none text-slate-700">
-                    <Icons.MapPin className="w-4 h-4 text-[#683EFF]" />
-                    <span>Headquarters Address Details</span>
-                  </h4>
-
-                  <div className="space-y-4">
-                    {/* ADDRESS LINE 1 */}
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
-                        Address Line 1 / Street details
+                        Address Line 1
                       </label>
                       <input
                         type="text"
                         value={addressLine1}
                         onChange={(e) => setAddressLine1(e.target.value)}
-                        placeholder="Aramco Main HQ Complex, Tower Section B"
+                        placeholder="e.g. Aramco Main HQ Complex, Tower Section B"
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
+                        City Address
+                      </label>
+                      <input
+                        type="text"
+                        value={cityAddress}
+                        onChange={(e) => setCityAddress(e.target.value)}
+                        placeholder="e.g. Jeddah / Dhahran"
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
+                        Address Line 2
+                      </label>
+                      <input
+                        type="text"
+                        value={addressLine2}
+                        onChange={(e) => setAddressLine2(e.target.value)}
+                        placeholder="e.g. King Abdulaziz Road"
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
+                        State / Province
+                      </label>
+                      <input
+                        type="text"
+                        value={stateProvince}
+                        onChange={(e) => setStateProvince(e.target.value)}
+                        placeholder="e.g. Eastern Province"
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
+                        ZIP / Postal Code
+                      </label>
+                      <input
+                        type="text"
+                        value={zipPostalCode}
+                        onChange={(e) => setZipPostalCode(e.target.value)}
+                        placeholder="e.g. 31311"
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Training Site Details Section */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                  <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-bold flex items-center gap-2 select-none">
+                    <Icons.Award className="w-4 h-4" />
+                    <span>Training Site Details</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
+                        Training Site Address
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={trainingSiteAddress}
+                        onChange={(e) => setTrainingSiteAddress(e.target.value)}
+                        placeholder="e.g. Highway 40, Training Depot Site Alpha, Jubail"
                         className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
                       />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* CITY */}
                       <div>
                         <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
-                          City Address
+                          Training Contact Person
                         </label>
                         <input
                           type="text"
-                          value={cityAddress}
-                          onChange={(e) => setCityAddress(e.target.value)}
-                          placeholder="Jeddah / Dhahran"
+                          value={trainingContactPerson}
+                          onChange={(e) => setTrainingContactPerson(e.target.value)}
+                          placeholder="e.g. Zaid Sulaiman"
                           className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
                         />
                       </div>
 
-                      {/* ADDRESS LINE 2 */}
                       <div>
                         <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
-                          Address Line 2 (Building / Floor)
+                          Training Contact Phone Number
+                        </label>
+                        <PhoneCountryCodeInput
+                          id="training-phone-dtl"
+                          value={trainingContactPhone}
+                          onChange={setTrainingContactPhone}
+                          placeholder="Enter phone number"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Inspection Site Details Section */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                  <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-bold flex items-center gap-2 select-none">
+                    <Icons.Activity className="w-4 h-4" />
+                    <span>Inspection Site Details</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
+                        Inspection Site Address
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={inspectionSiteAddress}
+                        onChange={(e) => setInspectionSiteAddress(e.target.value)}
+                        placeholder="e.g. Jetty Wharf 12, Heavy Rigs Terminal, Jebel Ali Freezone"
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
+                          Inspection Contact Person
                         </label>
                         <input
                           type="text"
-                          value={addressLine2}
-                          onChange={(e) => setAddressLine2(e.target.value)}
-                          placeholder="King Abdulaziz Road"
+                          value={inspectionContactPerson}
+                          onChange={(e) => setInspectionContactPerson(e.target.value)}
+                          placeholder="e.g. Eng. Tariq"
                           className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
                         />
                       </div>
 
-                      {/* STATE / PROVINCE */}
                       <div>
                         <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
-                          State / Province
+                          Inspection Contact Phone Number
                         </label>
-                        <input
-                          type="text"
-                          value={stateProvince}
-                          onChange={(e) => setStateProvince(e.target.value)}
-                          placeholder="Eastern Province"
-                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
-                        />
-                      </div>
-
-                      {/* ZIP / POSTAL CODE */}
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-650 uppercase tracking-widest mb-1.5 text-slate-600">
-                          ZIP / Postal Code
-                        </label>
-                        <input
-                          type="text"
-                          value={zipPostalCode}
-                          onChange={(e) => setZipPostalCode(e.target.value)}
-                          placeholder="31311"
-                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
+                        <PhoneCountryCodeInput
+                          id="inspection-phone-dtl"
+                          value={inspectionContactPhone}
+                          onChange={setInspectionContactPhone}
+                          placeholder="Enter phone number"
                         />
                       </div>
                     </div>

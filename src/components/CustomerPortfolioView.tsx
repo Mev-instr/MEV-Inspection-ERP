@@ -1041,7 +1041,7 @@ export function CustomerPortfolioView({ customers, onCustomersChange, onUploadIm
                 <div className="space-y-4">
                   <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-bold flex items-center gap-2 select-none">
                     <Icons.Building className="w-4 h-4" />
-                    <span>1. Core Corporate Identity Fields</span>
+                    <span>1. Company Details</span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1127,160 +1127,11 @@ export function CustomerPortfolioView({ customers, onCustomersChange, onUploadIm
                   </div>
                 </div>
 
-                {/* 2. Training Information Section */}
-                <div className="space-y-4">
-                  <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-bold flex items-center gap-2 select-none">
-                    <Icons.Award className="w-4 h-4" />
-                    <span>2. QHSE Safety & Operator Training Setup</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-1">
-                        Training Site Address
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={formValues.trainingSiteAddress}
-                        onChange={(e) => setFormValues({ ...formValues, trainingSiteAddress: e.target.value })}
-                        placeholder="e.g. Highway 40, Training Depot Site Alpha, Jubail"
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-1">
-                          Training Contact Person
-                        </label>
-                        <input
-                          type="text"
-                          value={formValues.trainingContactPerson}
-                          onChange={(e) => setFormValues({ ...formValues, trainingContactPerson: e.target.value })}
-                          placeholder="e.g. Zaid Sulaiman"
-                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-1">
-                          Training Contact Phone Number
-                        </label>
-                        <PhoneCountryCodeInput
-                          id="training-phone"
-                          value={formValues.trainingContactPhone}
-                          onChange={(val) => setFormValues({ ...formValues, trainingContactPhone: val })}
-                          placeholder="Enter phone number"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3. Inspection Information Section */}
-                <div className="space-y-4">
-                  <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-bold flex items-center gap-2 select-none">
-                    <Icons.Activity className="w-4 h-4" />
-                    <span>3. Machinery Load-Test & Auditing Hub Details</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-1">
-                        Inspection Site Address
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={formValues.inspectionSiteAddress}
-                        onChange={(e) => setFormValues({ ...formValues, inspectionSiteAddress: e.target.value })}
-                        placeholder="e.g. Jetty Wharf 12, Heavy Rigs Terminal, Jebel Ali Freezone"
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-1">
-                          Inspection Contact Person
-                        </label>
-                        <input
-                          type="text"
-                          value={formValues.inspectionContactPerson}
-                          onChange={(e) => setFormValues({ ...formValues, inspectionContactPerson: e.target.value })}
-                          placeholder="e.g. Eng. Tariq"
-                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-1">
-                          Contact Phone Number
-                        </label>
-                        <PhoneCountryCodeInput
-                          id="inspection-phone"
-                          value={formValues.inspectionContactPhone}
-                          onChange={(val) => setFormValues({ ...formValues, inspectionContactPhone: val })}
-                          placeholder="Enter phone number"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-1">
-                          Mobile Number
-                        </label>
-                        <PhoneCountryCodeInput
-                          id="inspection-mobile"
-                          value={formValues.inspectionMobile}
-                          onChange={(val) => setFormValues({ ...formValues, inspectionMobile: val })}
-                          placeholder="Enter phone number"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 4. Primary Contact Details Section */}
-                <div className="space-y-4">
-                  <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-bold flex items-center gap-2 select-none">
-                    <Icons.Mail className="w-4 h-4" />
-                    <span>4. Main Corporate Communication Nodes</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-1">
-                        Email ID
-                      </label>
-                      <input
-                        type="email"
-                        value={formValues.primaryEmail}
-                        onChange={(e) => setFormValues({ ...formValues, primaryEmail: e.target.value })}
-                        placeholder="e.g. corporate.liaison@client.com"
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-1">
-                        Mobile Number
-                      </label>
-                      <PhoneCountryCodeInput
-                        id="primary-mobile"
-                        value={formValues.primaryMobile}
-                        onChange={(val) => setFormValues({ ...formValues, primaryMobile: val })}
-                        placeholder="Enter phone number"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 5. Primary Address Details Section */}
+                {/* 2. Office Address Details Section */}
                 <div className="space-y-4 pb-2">
                   <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-bold flex items-center gap-2 select-none">
                     <Icons.MapPin className="w-4 h-4" />
-                    <span>5. Global Logistics HQ Address Details</span>
+                    <span>2. Office Address Details</span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1347,6 +1198,106 @@ export function CustomerPortfolioView({ customers, onCustomersChange, onUploadIm
                         placeholder="e.g. 31311"
                         className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
                       />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Training Information Section */}
+                <div className="space-y-4">
+                  <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-bold flex items-center gap-2 select-none">
+                    <Icons.Award className="w-4 h-4" />
+                    <span>3. Training Site Details</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-1">
+                        Training Site Address
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={formValues.trainingSiteAddress}
+                        onChange={(e) => setFormValues({ ...formValues, trainingSiteAddress: e.target.value })}
+                        placeholder="e.g. Highway 40, Training Depot Site Alpha, Jubail"
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-1">
+                          Training Contact Person
+                        </label>
+                        <input
+                          type="text"
+                          value={formValues.trainingContactPerson}
+                          onChange={(e) => setFormValues({ ...formValues, trainingContactPerson: e.target.value })}
+                          placeholder="e.g. Zaid Sulaiman"
+                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-1">
+                          Training Contact Phone Number
+                        </label>
+                        <PhoneCountryCodeInput
+                          id="training-phone"
+                          value={formValues.trainingContactPhone}
+                          onChange={(val) => setFormValues({ ...formValues, trainingContactPhone: val })}
+                          placeholder="Enter phone number"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Inspection Information Section */}
+                <div className="space-y-4">
+                  <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-bold flex items-center gap-2 select-none">
+                    <Icons.Activity className="w-4 h-4" />
+                    <span>4. Inspection Site Details</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-1">
+                        Inspection Site Address
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={formValues.inspectionSiteAddress}
+                        onChange={(e) => setFormValues({ ...formValues, inspectionSiteAddress: e.target.value })}
+                        placeholder="e.g. Jetty Wharf 12, Heavy Rigs Terminal, Jebel Ali Freezone"
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-1">
+                          Inspection Contact Person
+                        </label>
+                        <input
+                          type="text"
+                          value={formValues.inspectionContactPerson}
+                          onChange={(e) => setFormValues({ ...formValues, inspectionContactPerson: e.target.value })}
+                          placeholder="e.g. Eng. Tariq"
+                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-1">
+                          Inspection Contact Phone Number
+                        </label>
+                        <PhoneCountryCodeInput
+                          id="inspection-phone"
+                          value={formValues.inspectionContactPhone}
+                          onChange={(val) => setFormValues({ ...formValues, inspectionContactPhone: val })}
+                          placeholder="Enter phone number"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -6,20 +6,22 @@ import { LoadChartDataEditor } from "./LoadChartDataEditor";
 
 import React, { useState, useEffect } from "react";
 import * as Icons from "lucide-react";
-import { MachineCertificate, InspectionReport } from "../types";
+import { MachineCertificate, InspectionReport, MachineDetail, EmployeeDetail } from "../types";
 import { initialCustomers } from "../data";
 import { formatDate } from "../utils";
 import { PrintMachineCertificatePreview } from "./PrintMachineCertificatePreview";
 import { ImageUploadPicker } from "./ImageUploadPicker";
 
 interface MachineCertificatesPortfolioProps {
+  employees: EmployeeDetail[];
   certificates: MachineCertificate[];
   onCertificatesChange: React.Dispatch<React.SetStateAction<MachineCertificate[]>>;
   inspectionReports?: InspectionReport[];
+  machineDetails?: MachineDetail[];
   onUploadImage?: (file: File, clientName: string, subfolder: string, entityId?: string) => Promise<string>;
 }
 
-export function MachineCertificatesPortfolioView({ certificates, onCertificatesChange, inspectionReports = [], onUploadImage }: MachineCertificatesPortfolioProps) {
+export function MachineCertificatesPortfolioView({ employees,  certificates, onCertificatesChange, inspectionReports = [], machineDetails = [], onUploadImage }: MachineCertificatesPortfolioProps) {
   // View states
   const [viewMode, setViewMode] = useState<"list" | "grid" | "compact">("list");
   const [showViewDropdown, setShowViewDropdown] = useState(false);
@@ -41,11 +43,11 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
 
   // Add Machine Certificate modal states
   const [showAddModal, setShowAddModal] = useState(false);
-  const [activeFormTab, setActiveFormTab] = useState<"basic" | "client" | "attention" | "machine">("basic");
 
   // Autocomplete client dropdown states
   const [showClientAutocomplete, setShowClientAutocomplete] = useState(false);
   const [showReportAutocomplete, setShowReportAutocomplete] = useState(false);
+  const [showMachineAutocomplete, setShowMachineAutocomplete] = useState(false);
 
   // New Machine Certificate Form State
   const initialFormState = {
@@ -73,6 +75,25 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
     recommendation: "",
     status: "Scheduled" as const,
     loadChartData: [],
+    // Equipment Details
+    machineId: "",
+    manufacturer: "",
+    modelName: "",
+    serialNumber: "",
+    dateOfMfg: "",
+    ownerId: "",
+    // Technical Details
+    loadLimit: "",
+    maxOutreach: "",
+    bucketCapacity: "",
+    enginePower: "",
+    boomLength: "",
+    wheelType: "",
+    maxPlatformHeight: "",
+    heoBucketCapacity: "",
+    engineSpeed: "",
+    angleOfSpan: "",
+    personAllowed: "",
   };
 
   const [formValues, setFormValues] = useState(initialFormState);
@@ -404,19 +425,23 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
   });
 
   // Auto-fill form values on selecting customer
-  const handleSelectCustomer = (cust: typeof initialCustomers[0]) => {
-    setFormValues((prev) => ({
-      ...prev,
+  const handleSelectCustomer = (cust: typeof initialCustomers[0], isEditMode: boolean = false) => {
+    const updates = {
       clientName: cust.companyName,
-      location: cust.trainingSiteAddress || cust.addressLine1 || "Dhahran, KSA",
-      equipmentLocation: cust.cityAddress || "Eastern Province",
-      timeSheetNumber: cust.trainingContactPhone || cust.phone || "+966 13 874 1122"
-    }));
+      location: cust.inspectionSiteAddress || "",
+      equipmentLocation: cust.inspectionContactPerson || "",
+      timeSheetNumber: cust.inspectionContactPhone || ""
+    };
+    if (isEditMode && editFormValues) {
+      setEditFormValues(prev => prev ? ({ ...prev, ...updates }) : prev);
+    } else {
+      setFormValues((prev) => ({ ...prev, ...updates }));
+    }
     setShowClientAutocomplete(false);
     showToast(`✓ Client details loaded from "${cust.companyName}". autofilled locations & contacts.`);
   };
 
-  const handleSelectReport = (report: InspectionReport) => {
+  const handleSelectReport = (report: InspectionReport, isEditMode: boolean = false) => {
     let nextDate = "";
     if (report.expirationDate) {
       const expDate = new Date(report.expirationDate);
@@ -426,8 +451,7 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
       }
     }
 
-    setFormValues((prev) => ({
-      ...prev,
+    const updates = {
       inspectionReportNo: report.id,
       jobNumber: report.jobNumber || "",
       equipmentName: report.equipmentName || report.assetTested || "",
@@ -443,9 +467,50 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
       equipmentLocation: report.equipmentLocation || "",
       typeOfInspection: report.typeOfInspection || "",
       nextInspectionDate: nextDate
-    }));
+    };
+    if (isEditMode && editFormValues) {
+      setEditFormValues(prev => prev ? ({ ...prev, ...updates }) : prev);
+    } else {
+      setFormValues((prev) => ({ ...prev, ...updates }));
+    }
     setShowReportAutocomplete(false);
     showToast(`✓ Fetched data from inspection report "${report.id}".`);
+  };
+
+  // Autocomplete machine suggestions
+  const matchingMachines = (machineDetails || []).filter((m) => {
+    if (!formValues.machineId.trim()) return true;
+    return m.id.toLowerCase().includes(formValues.machineId.toLowerCase());
+  }).slice(0, 5);
+
+  const handleSelectMachine = (m: MachineDetail, isEditMode: boolean = false) => {
+    const updates = {
+      machineId: m.id,
+      equipmentName: m.machineName || "",
+      manufacturer: m.manufacturer || "",
+      modelName: "", // Explicitly blank as requested
+      serialNumber: "", // Explicitly blank as requested
+      dateOfMfg: "", // Explicitly blank as requested
+      // Technical
+      loadLimit: m.swl || "",
+      maxOutreach: m.maxOutreach || "",
+      bucketCapacity: m.bucketCapacity || "",
+      enginePower: m.enginePower || "",
+      boomLength: m.boomLength || "",
+      wheelType: m.wheelType || "",
+      maxPlatformHeight: m.maxPlatformHeight || "",
+      heoBucketCapacity: m.heoBucketCapacity || "",
+      engineSpeed: m.engineSpeed || "",
+      angleOfSpan: m.angleOfSpan || "",
+      personAllowed: m.personAllowed || "",
+    };
+    if (isEditMode && editFormValues) {
+      setEditFormValues(prev => prev ? ({ ...prev, ...updates }) : prev);
+    } else {
+      setFormValues((prev) => ({ ...prev, equipmentName: m.machineName || prev.equipmentName, ...updates }));
+    }
+    setShowMachineAutocomplete(false);
+    showToast(`✓ Machine model details loaded for "${m.id}". Equipment details (Model/Serial/Mfg) left blank for manual entry.`);
   };
 
   // Helper calculation to auto-generate the next MEV-CRT-26-XXXX sequence
@@ -489,7 +554,6 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
-      setActiveFormTab("basic");
       return;
     }
 
@@ -521,13 +585,30 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
       authorizedBySignature: formValues.authorizedBySignature,
       recommendation: formValues.recommendation,
       status: formValues.status,
+      // Equipment Details
+      manufacturer: formValues.manufacturer,
+      modelName: formValues.modelName,
+      serialNumber: formValues.serialNumber,
+      dateOfMfg: formValues.dateOfMfg,
+      ownerId: formValues.ownerId,
+      // Technical Details
+      loadLimit: formValues.loadLimit,
+      maxOutreach: formValues.maxOutreach,
+      bucketCapacity: formValues.bucketCapacity,
+      enginePower: formValues.enginePower,
+      boomLength: formValues.boomLength,
+      wheelType: formValues.wheelType,
+      maxPlatformHeight: formValues.maxPlatformHeight,
+      heoBucketCapacity: formValues.heoBucketCapacity,
+      engineSpeed: formValues.engineSpeed,
+      angleOfSpan: formValues.angleOfSpan,
+      personAllowed: formValues.personAllowed,
     };
 
     onCertificatesChange((prev) => [newCertificate, ...prev]);
     setShowAddModal(false);
     setFormValues(initialFormState);
     setFormErrors({});
-    setActiveFormTab("basic");
     showToast(`✓ Machine certificate ${newCertificate.id} generated successfully.`);
   };
 
@@ -664,13 +745,22 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
 
         {/* 1. Header with Breadcrumbs, actions and navigation */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#ECECF3] pb-4 select-none">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5 text-xs text-slate-400 font-medium font-sans">
-              <button onClick={() => setSelectedCertificateDetail(null)} className="hover:text-[#683EFF] font-semibold transition-colors">
-                Machine Certificates
-              </button>
-              <Icons.ChevronRight className="w-3 h-3 text-slate-350" />
-              <span className="font-bold text-slate-700 truncate max-w-[200px]">{certificate.id}</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSelectedCertificateDetail(null)}
+              className="p-2 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-[#683EFF] hover:border-[#683EFF] transition-all shadow-sm group animate-in fade-in"
+              title="Go Back"
+            >
+              <Icons.ArrowLeft className="w-4.5 h-4.5 group-active:-translate-x-1 transition-transform" />
+            </button>
+            <div>
+              <div className="flex items-center gap-2 mb-1.5 text-xs text-slate-400 font-medium font-sans">
+                <button onClick={() => setSelectedCertificateDetail(null)} className="hover:text-[#683EFF] font-semibold transition-colors">
+                  Machine Certificates
+                </button>
+                <Icons.ChevronRight className="w-3 h-3 text-slate-350" />
+                <span className="font-bold text-slate-700 truncate max-w-[200px]">{certificate.id}</span>
+              </div>
             </div>
           </div>
 
@@ -876,457 +966,809 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
             {activeDetailTab === "DETAILS" && (
               <div className="space-y-6">
                 
-                {/* 2.1 General & Inspection Report card */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
-                  <h4 className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 select-none text-slate-700">
-                    <Icons.FileText className="w-4 h-4 text-[#683EFF]" />
-                    <span>General & Inspection Report</span>
-                  </h4>
+              {/* SECTION 1: BASIC INFORMATION */}
+              <div className="space-y-6">
+                <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-semibold flex items-center gap-2 select-none font-display">
+                  <Icons.FileText className="w-4 h-4" />
+                  <span>1. Machine Certificate Details</span>
+                </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Certificate ID *
-                      </label>
-                      <input
-                        type="text"
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                      Naming Series Code prefix
+                    </label>
+                    <input
                         disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.id : certificate.id}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, id: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-mono font-bold text-slate-700 disabled:opacity-85"
-                      />
-                    </div>
+                      type="text"
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal text-slate-800 font-sans"
+                      value={isEditingInDetail && editFormValues ? editFormValues.namingSeries || "" : certificate.namingSeries || ""}
+                      onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, namingSeries: e.target.value }); }}
+                      placeholder="MEV-CRT-26"
+                    />
+                  </div>
 
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Naming Series ID
-                      </label>
+                  <div className="relative">
+                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                      Inspection Report No
+                    </label>
+                    <div className="relative">
                       <input
-                        type="text"
                         disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.namingSeries || "" : certificate.namingSeries || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, namingSeries: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Inspection Report No
-                      </label>
-                      <input
                         type="text"
-                        disabled={!isEditingInDetail}
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans pr-8"
                         value={isEditingInDetail && editFormValues ? editFormValues.inspectionReportNo || "" : certificate.inspectionReportNo || ""}
                         onChange={(e) => {
                           if (editFormValues) setEditFormValues({ ...editFormValues, inspectionReportNo: e.target.value });
+                          setShowReportAutocomplete(true);
                         }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
+                        onFocus={() => setShowReportAutocomplete(true)}
+                        placeholder="Search inspection reports..."
                       />
+                      <Icons.ChevronDown className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     </div>
+                    
+                    {/* Autocomplete Overlay menu */}
+                    {showReportAutocomplete && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setShowReportAutocomplete(false)} />
+                        <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-xl py-1 z-50 overflow-hidden text-left max-h-48 overflow-y-auto">
+                          {inspectionReports.length === 0 ? (
+                            <div className="px-4 py-3 text-xs text-slate-500 italic text-center">
+                              No reports found.
+                            </div>
+                          ) : (
+                            inspectionReports
+                              .filter((report) => report.id.toLowerCase().includes((isEditingInDetail && editFormValues ? editFormValues.inspectionReportNo : certificate.inspectionReportNo).toLowerCase()))
+                              .map((report) => (
+                                <button
+                                  key={report.id}
+                                  type="button"
+                                  onClick={() => handleSelectReport(report, true)}
+                                  className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-[#F0EBFF] hover:text-[#683EFF] flex justify-between items-center transition-colors"
+                                >
+                                  <span>{report.id}</span>
+                                  <span className="text-[10px] text-slate-400 font-mono font-bold uppercase">{report.jobNumber || "N/A"}</span>
+                                </button>
+                              ))
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
 
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Job Number
-                      </label>
-                      <input
-                        type="text"
+                  <div>
+                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                      Job Number
+                    </label>
+                    <input
                         disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.jobNumber || "" : certificate.jobNumber || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, jobNumber: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
-                      />
-                    </div>
+                      type="text"
+                      
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                      value={isEditingInDetail && editFormValues ? editFormValues.jobNumber || "" : certificate.jobNumber || ""}
+                      onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, jobNumber: e.target.value }); }}
+                    />
+                  </div>
 
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Client Name
-                      </label>
-                      <input
-                        type="text"
+                  <div>
+                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                      Equipment Name *
+                    </label>
+                    <input
                         disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.clientName || "" : certificate.clientName || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, clientName: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
-                      />
-                    </div>
+                      type="text"
+                      
+                      className={`w-full text-xs px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans border-slate-200`}
+                      value={isEditingInDetail && editFormValues ? editFormValues.equipmentName || "" : certificate.equipmentName || ""}
+                      onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, equipmentName: e.target.value }); }}
+                    />
+                  </div>
 
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Location
-                      </label>
-                      <input
-                        type="text"
+                  <div>
+                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                      Sticker Number
+                    </label>
+                    <input
                         disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.location || "" : certificate.location || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, location: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
-                      />
-                    </div>
+                      type="text"
+                      
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                      value={isEditingInDetail && editFormValues ? editFormValues.stickerNumber || "" : certificate.stickerNumber || ""}
+                      onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, stickerNumber: e.target.value }); }}
+                    />
+                  </div>
 
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Equipment Location
-                      </label>
-                      <input
-                        type="text"
+                  <div>
+                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                      Time Sheet Number
+                    </label>
+                    <input
                         disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.equipmentLocation || "" : certificate.equipmentLocation || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, equipmentLocation: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
-                      />
-                    </div>
+                      type="text"
+                      
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                      value={isEditingInDetail && editFormValues ? editFormValues.timeSheetNumber || "" : certificate.timeSheetNumber || ""}
+                      onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, timeSheetNumber: e.target.value }); }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                      Result
+                    </label>
+                    <input
+                        disabled={!isEditingInDetail}
+                      type="text"
+                      
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                      value={isEditingInDetail && editFormValues ? editFormValues.result || "" : certificate.result || ""}
+                      onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, result: e.target.value }); }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                      Validity
+                    </label>
+                    <input
+                        disabled={!isEditingInDetail}
+                      type="text"
+                      
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                      value={isEditingInDetail && editFormValues ? editFormValues.validity || "" : certificate.validity || ""}
+                      onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, validity: e.target.value }); }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                      Check List
+                    </label>
+                    <input
+                        disabled={!isEditingInDetail}
+                      type="text"
+                      
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                      value={isEditingInDetail && editFormValues ? editFormValues.checkList || "" : certificate.checkList || ""}
+                      onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, checkList: e.target.value }); }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                      Initial Status
+                    </label>
+                    <select
+                        disabled={!isEditingInDetail}
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none bg-slate-50 font-normal font-sans"
+                      value={isEditingInDetail && editFormValues ? editFormValues.status || "" : certificate.status || ""}
+                      onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, status: e.target.value as any }) }}
+                    >
+                      <option value="Scheduled">Scheduled</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Completed">Completed</option>
+                      <option value="Cancelled">Cancelled</option>
+                    </select>
                   </div>
                 </div>
 
-                {/* 2.2 Equipment Details card */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
-                  <h4 className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 select-none text-slate-700">
-                    <Icons.Cpu className="w-4 h-4 text-[#683EFF]" />
-                    <span>Equipment Details</span>
-                  </h4>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Equipment Name
-                      </label>
-                      <input
-                        type="text"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.equipmentName || "" : certificate.equipmentName || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, equipmentName: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Sticker Number
-                      </label>
-                      <input
-                        type="text"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.stickerNumber || "" : certificate.stickerNumber || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, stickerNumber: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Type of Inspection
-                      </label>
-                      <input
-                        type="text"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.typeOfInspection || "" : certificate.typeOfInspection || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, typeOfInspection: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Validity
-                      </label>
-                      <input
-                        type="text"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.validity || "" : certificate.validity || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, validity: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Check List
-                      </label>
-                      <input
-                        type="text"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.checkList || "" : certificate.checkList || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, checkList: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Time Sheet Number
-                      </label>
-                      <input
-                        type="text"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.timeSheetNumber || "" : certificate.timeSheetNumber || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, timeSheetNumber: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
-                      />
-                    </div>
+                {/* SECTION 3: INSPECTION DATES & DETAILS (Relocated to Basic tab) */}
+                <div className="space-y-4 mt-6">
+                  <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-bold flex items-center gap-2 select-none">
+                    <Icons.Calendar className="w-4 h-4" />
+                    <span>2. Inspection Dates & Specifications</span>
                   </div>
-                </div>
 
-                {/* 2.3 Inspection Results card */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
-                  <h4 className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 select-none text-slate-700">
-                    <Icons.ClipboardCheck className="w-4 h-4 text-[#683EFF]" />
-                    <span>Inspection Results</span>
-                  </h4>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Result
-                      </label>
-                      <input
-                        type="text"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.result || "" : certificate.result || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, result: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
                         Inspection Date
                       </label>
                       <input
-                        type="date"
                         disabled={!isEditingInDetail}
+                        type="date"
+                        
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                         value={isEditingInDetail && editFormValues ? editFormValues.inspectionDate || "" : certificate.inspectionDate || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, inspectionDate: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-mono text-slate-700 disabled:opacity-85"
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, inspectionDate: e.target.value }); }}
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
                         Expiration Date
                       </label>
                       <input
-                        type="date"
                         disabled={!isEditingInDetail}
+                        type="date"
+                        
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                         value={isEditingInDetail && editFormValues ? editFormValues.expirationDate || "" : certificate.expirationDate || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, expirationDate: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-mono text-slate-700 disabled:opacity-85"
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, expirationDate: e.target.value }); }}
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Type of Inspection
+                      </label>
+                      <input
+                        disabled={!isEditingInDetail}
+                        type="text"
+                        
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={isEditingInDetail && editFormValues ? editFormValues.typeOfInspection || "" : certificate.typeOfInspection || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, typeOfInspection: e.target.value }); }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
                         Next Inspection Date
                       </label>
                       <input
-                        type="date"
                         disabled={!isEditingInDetail}
+                        type="date"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                         value={isEditingInDetail && editFormValues ? editFormValues.nextInspectionDate || "" : certificate.nextInspectionDate || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, nextInspectionDate: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-mono text-slate-700"
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, nextInspectionDate: e.target.value }); }}
                       />
                     </div>
-                  </div>
-                </div>
 
-                {/* 2.4 Certification & Standards card */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
-                  <h4 className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 select-none text-slate-700">
-                    <Icons.Award className="w-4 h-4 text-[#683EFF]" />
-                    <span>Certification & Standards</span>
-                  </h4>
-
-                  <div className="space-y-6">
-                    <div className="w-full">
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
                         Reference Standard
                       </label>
                       <input
-                        type="text"
                         disabled={!isEditingInDetail}
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                         value={isEditingInDetail && editFormValues ? editFormValues.referenceStandard || "" : certificate.referenceStandard || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, referenceStandard: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, referenceStandard: e.target.value }); }}
                         placeholder="e.g. ANSI/ASME B30.5"
                       />
                     </div>
+                  </div>
+                </div>
+              </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Authorized By Section */}
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                            Authorized by
-                          </label>
-                          <input
-                            type="text"
-                            disabled={!isEditingInDetail}
-                            value={isEditingInDetail && editFormValues ? editFormValues.authorizedBy || "" : certificate.authorizedBy || ""}
-                            onChange={(e) => {
-                              if (editFormValues) setEditFormValues({ ...editFormValues, authorizedBy: e.target.value });
-                            }}
-                            className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
-                          />
-                        </div>
+              {/* SECTION 2: CLIENT & LOCATION DETAILS */}
+              <div className="space-y-4">
+                <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-semibold flex items-center gap-2 select-none font-display">
+                  <Icons.Building className="w-4 h-4" />
+                  <span>3. Client & Location Details</span>
+                </div>
 
-                        {/* Authorized Signature Box */}
-                        <div className="bg-white border rounded-xl p-6 flex flex-col items-center justify-center min-h-[120px] relative w-full group overflow-hidden border-slate-200">
-                          {isEditingInDetail ? (
-                            <>
-                              <Icons.Upload className="w-5 h-5 text-slate-400 mb-2 opacity-50 relative z-10" />
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest relative z-10">Authorized Signature</span>
-                              {(editFormValues?.authorizedBySignature) ? (
-                                <div className="relative group/sig">
-                                  <img src={editFormValues.authorizedBySignature} alt="Authorized" className="max-h-16 object-contain mt-2 z-10 relative" />
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (editFormValues) setEditFormValues({ ...editFormValues, authorizedBySignature: "" });
-                                      showToast("✓ Authorized signature removed.");
-                                    }}
-                                    className="absolute -top-1 -right-1 p-1.5 bg-rose-500 text-white rounded-full shadow-lg z-30 hover:bg-rose-600 transition-colors"
-                                  >
-                                    <Icons.X className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-slate-400 font-bold relative z-10 mt-1">Upload Signature</span>
-                              )}
-                              <div onClick={() => setPickerTarget({ field: "authorizedBySignature", mode: "edit" })} className="absolute inset-0 z-20 cursor-pointer"></div>
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest absolute top-4 left-4">Authorized Signature</span>
-                              {certificate.authorizedBySignature ? (
-                                <img src={certificate.authorizedBySignature} alt="Authorized" className="max-h-16 object-contain mt-4" />
-                              ) : (
-                                <span className="text-sm font-bold text-slate-400 mt-4">No Signature</span>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Inspected By Section */}
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                            Inspected by
-                          </label>
-                          <input
-                            type="text"
-                            disabled={!isEditingInDetail}
-                            value={isEditingInDetail && editFormValues ? editFormValues.inspectedBy || "" : certificate.inspectedBy || ""}
-                            onChange={(e) => {
-                              if (editFormValues) setEditFormValues({ ...editFormValues, inspectedBy: e.target.value });
-                            }}
-                            className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
-                          />
-                        </div>
-
-                        {/* Inspected Signature Box */}
-                        <div className="bg-white border rounded-xl p-6 flex flex-col items-center justify-center min-h-[120px] relative w-full group overflow-hidden border-slate-200">
-                          {isEditingInDetail ? (
-                            <>
-                              <Icons.Upload className="w-5 h-5 text-slate-400 mb-2 opacity-50 relative z-10" />
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest relative z-10">Inspected Signature</span>
-                              {(editFormValues?.inspectedBySignature) ? (
-                                <div className="relative group/sig">
-                                  <img src={editFormValues.inspectedBySignature} alt="Inspected" className="max-h-16 object-contain mt-2 z-10 relative" />
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (editFormValues) setEditFormValues({ ...editFormValues, inspectedBySignature: "" });
-                                      showToast("✓ Inspected signature removed.");
-                                    }}
-                                    className="absolute -top-1 -right-1 p-1.5 bg-rose-500 text-white rounded-full shadow-lg z-30 hover:bg-rose-600 transition-colors"
-                                  >
-                                    <Icons.X className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-slate-400 font-bold relative z-10 mt-1">Upload Signature</span>
-                              )}
-                              <div onClick={() => setPickerTarget({ field: "inspectedBySignature", mode: "edit" })} className="absolute inset-0 z-20 cursor-pointer"></div>
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest absolute top-4 left-4">Inspected Signature</span>
-                              {certificate.inspectedBySignature ? (
-                                <img src={certificate.inspectedBySignature} alt="Inspected" className="max-h-16 object-contain mt-4" />
-                              ) : (
-                                <span className="text-sm font-bold text-slate-400 mt-4">No Signature</span>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="relative">
+                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                      Client Name *
+                    </label>
+                    <div className="relative">
+                      <input
+                        disabled={!isEditingInDetail}
+                        type="text"
+                        
+                        className={`w-full text-xs px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans border-slate-200`}
+                        onFocus={() => setShowClientAutocomplete(true)}
+                        value={isEditingInDetail && editFormValues ? editFormValues.clientName || "" : certificate.clientName || ""}
+                        onChange={(e) => {
+                          if (editFormValues) setEditFormValues({ ...editFormValues, clientName: e.target.value });
+                          setShowClientAutocomplete(true);
+                        }}
+                        placeholder="e.g. Aramco, NEOM..."
+                      />
+                      <Icons.ChevronDown className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     </div>
 
+                    {/* Autocomplete Overlay menu */}
+                    {showClientAutocomplete && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setShowClientAutocomplete(false)} />
+                        <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-xl py-1 z-50 overflow-hidden text-left max-h-48 overflow-y-auto">
+                          {matchingCustomers.length === 0 ? (
+                            <div className="px-4 py-3 text-xs italic text-slate-400">
+                              No matching clients found in active directory
+                            </div>
+                          ) : (
+                            matchingCustomers.map((cust) => (
+                              <button
+                                key={cust.id}
+                                type="button"
+                                onClick={() => handleSelectCustomer(cust, true)}
+                                className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-[#F0EBFF] hover:text-[#683EFF] flex justify-between items-center transition-colors"
+                              >
+                                <span>{cust.companyName}</span>
+                                <span className="text-[10px] text-slate-404 font-mono font-bold uppercase">{cust.country}</span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
 
-                    <div className="md:col-span-2">
-                      <LoadChartDataEditor
-                        data={isEditingInDetail && editFormValues ? (editFormValues.loadChartData || []) : (certificate.loadChartData || [])}
-                        onChange={(data) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, loadChartData: data });
-                        }}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
+                      Location *
+                    </label>
+                    <input
                         disabled={!isEditingInDetail}
+                      type="text"
+                      
+                      className={`w-full text-xs px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans border-slate-200`}
+                      value={isEditingInDetail && editFormValues ? editFormValues.location || "" : certificate.location || ""}
+                      onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, location: e.target.value }); }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                      Equipment Location
+                    </label>
+                    <input
+                        disabled={!isEditingInDetail}
+                      type="text"
+                      
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                      value={isEditingInDetail && editFormValues ? editFormValues.equipmentLocation || "" : certificate.equipmentLocation || ""}
+                      onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, equipmentLocation: e.target.value }); }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 3: Equipment details */}
+              <div className="space-y-6">
+                <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-semibold flex items-center gap-2 select-none font-display">
+                  <Icons.Settings className="w-4 h-4" />
+                  <span>4. Equipment details</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="relative">
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Machine ID
+                      </label>
+                      <div className="relative">
+                        <input
+                        disabled={!isEditingInDetail}
+                          type="text"
+                          className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                          value={isEditingInDetail && editFormValues ? editFormValues.machineId || "" : certificate.machineId || ""}
+                          onChange={(e) => {
+                            if (editFormValues) setEditFormValues({ ...editFormValues, machineId: e.target.value });
+                            setShowMachineAutocomplete(true);
+                          }}
+                          onFocus={() => setShowMachineAutocomplete(true)}
+                          placeholder="Search machine ID..."
+                        />
+                        <Icons.ChevronDown className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
+
+                      {showMachineAutocomplete && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowMachineAutocomplete(false)} />
+                          <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-xl py-1 z-50 overflow-hidden text-left max-h-48 overflow-y-auto">
+                            {matchingMachines.length === 0 ? (
+                              <div className="px-4 py-3 text-xs italic text-slate-400 text-center">
+                                No machine models found.
+                              </div>
+                            ) : (
+                              matchingMachines.map((m) => (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  onClick={() => handleSelectMachine(m, true)}
+                                  className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-[#F0EBFF] hover:text-[#683EFF] flex justify-between items-center transition-colors"
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="font-bold">{m.id}</span>
+                                    <span className="text-[10px] text-slate-400">{m.machineName}</span>
+                                  </div>
+                                  <Icons.ArrowRight className="w-3 h-3 text-slate-300" />
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Equipment Name
+                      </label>
+                      <input
+                        disabled={!isEditingInDetail}
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={isEditingInDetail && editFormValues ? editFormValues.equipmentName || "" : certificate.equipmentName || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, equipmentName: e.target.value }); }}
                       />
                     </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Recommendation
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Manufacturer
                       </label>
-                      <textarea
+                      <input
                         disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.recommendation || "" : certificate.recommendation || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, recommendation: e.target.value });
-                        }}
-                        rows={3}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-sans text-slate-700 resize-none"
-                        placeholder="Additional recommendations or notes..."
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={isEditingInDetail && editFormValues ? editFormValues.manufacturer || "" : certificate.manufacturer || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, manufacturer: e.target.value }); }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Model
+                      </label>
+                      <input
+                        disabled={!isEditingInDetail}
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={isEditingInDetail && editFormValues ? editFormValues.modelName || "" : certificate.modelName || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, modelName: e.target.value }); }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Serial Number
+                      </label>
+                      <input
+                        disabled={!isEditingInDetail}
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={isEditingInDetail && editFormValues ? editFormValues.serialNumber || "" : certificate.serialNumber || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, serialNumber: e.target.value }); }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Date of Mfg
+                      </label>
+                      <input
+                        disabled={!isEditingInDetail}
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={isEditingInDetail && editFormValues ? editFormValues.dateOfMfg || "" : certificate.dateOfMfg || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, dateOfMfg: e.target.value }); }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Owner ID / Plate No.
+                      </label>
+                      <input
+                        disabled={!isEditingInDetail}
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={isEditingInDetail && editFormValues ? editFormValues.ownerId || "" : certificate.ownerId || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, ownerId: e.target.value }); }}
                       />
                     </div>
                   </div>
                 </div>
 
+              {/* SECTION 4: Technical details */}
+              <div className="space-y-6">
+                <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-semibold flex items-center gap-2 select-none font-display">
+                  <Icons.Cpu className="w-4 h-4" />
+                  <span>5. Technical details</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-3 relative">
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Machine ID
+                      </label>
+                      <div className="relative">
+                        <input
+                        disabled={!isEditingInDetail}
+                          type="text"
+                          className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                          value={isEditingInDetail && editFormValues ? editFormValues.machineId || "" : certificate.machineId || ""}
+                          onChange={(e) => {
+                            if (editFormValues) setEditFormValues({ ...editFormValues, machineId: e.target.value });
+                            setShowMachineAutocomplete(true);
+                          }}
+                          onFocus={() => setShowMachineAutocomplete(true)}
+                          placeholder="Search machine ID..."
+                        />
+                        <Icons.ChevronDown className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
+
+                      {showMachineAutocomplete && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowMachineAutocomplete(false)} />
+                          <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-xl py-1 z-50 overflow-hidden text-left max-h-48 overflow-y-auto">
+                            {matchingMachines.length === 0 ? (
+                              <div className="px-4 py-3 text-xs italic text-slate-400 text-center">
+                                No machine models found.
+                              </div>
+                            ) : (
+                              matchingMachines.map((m) => (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  onClick={() => handleSelectMachine(m, true)}
+                                  className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-[#F0EBFF] hover:text-[#683EFF] flex justify-between items-center transition-colors"
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="font-bold">{m.id}</span>
+                                    <span className="text-[10px] text-slate-400">{m.machineName}</span>
+                                  </div>
+                                  <Icons.ArrowRight className="w-3 h-3 text-slate-300" />
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Load Limit (S.W.L)
+                      </label>
+                      <input
+                        disabled={!isEditingInDetail}
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={isEditingInDetail && editFormValues ? editFormValues.loadLimit || "" : certificate.loadLimit || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, loadLimit: e.target.value }); }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Max Horizontal Outreach
+                      </label>
+                      <input
+                        disabled={!isEditingInDetail}
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={isEditingInDetail && editFormValues ? editFormValues.maxOutreach || "" : certificate.maxOutreach || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, maxOutreach: e.target.value }); }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Bucket Capacity
+                      </label>
+                      <input
+                        disabled={!isEditingInDetail}
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={isEditingInDetail && editFormValues ? editFormValues.bucketCapacity || "" : certificate.bucketCapacity || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, bucketCapacity: e.target.value }); }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Engine Power
+                      </label>
+                      <input
+                        disabled={!isEditingInDetail}
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={isEditingInDetail && editFormValues ? editFormValues.enginePower || "" : certificate.enginePower || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, enginePower: e.target.value }); }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Boom Length
+                      </label>
+                      <input
+                        disabled={!isEditingInDetail}
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={isEditingInDetail && editFormValues ? editFormValues.boomLength || "" : certificate.boomLength || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, boomLength: e.target.value }); }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Wheel Type
+                      </label>
+                      <input
+                        disabled={!isEditingInDetail}
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={isEditingInDetail && editFormValues ? editFormValues.wheelType || "" : certificate.wheelType || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, wheelType: e.target.value }); }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Max Platform Height
+                      </label>
+                      <input
+                        disabled={!isEditingInDetail}
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={isEditingInDetail && editFormValues ? editFormValues.maxPlatformHeight || "" : certificate.maxPlatformHeight || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, maxPlatformHeight: e.target.value }); }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Hoe Bucket Capacity
+                      </label>
+                      <input
+                        disabled={!isEditingInDetail}
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={isEditingInDetail && editFormValues ? editFormValues.heoBucketCapacity || "" : certificate.heoBucketCapacity || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, heoBucketCapacity: e.target.value }); }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Engine Speed
+                      </label>
+                      <input
+                        disabled={!isEditingInDetail}
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={isEditingInDetail && editFormValues ? editFormValues.engineSpeed || "" : certificate.engineSpeed || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, engineSpeed: e.target.value }); }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Angle of Span
+                      </label>
+                      <input
+                        disabled={!isEditingInDetail}
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={isEditingInDetail && editFormValues ? editFormValues.angleOfSpan || "" : certificate.angleOfSpan || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, angleOfSpan: e.target.value }); }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Person Allowed
+                      </label>
+                      <input
+                        disabled={!isEditingInDetail}
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={isEditingInDetail && editFormValues ? editFormValues.personAllowed || "" : certificate.personAllowed || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, personAllowed: e.target.value }); }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+              {/* SECTION 6: RECOMMENDATIONS & DATA */}
+              <div className="space-y-6">
+                <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-semibold flex items-center gap-2 select-none font-display">
+                  <Icons.FileText className="w-4 h-4" />
+                  <span>6. Recommendations & Data</span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 pt-2">
+                  <div className="mt-4">
+                    <LoadChartDataEditor
+                      data={(isEditingInDetail && editFormValues ? editFormValues.loadChartData : certificate.loadChartData) || []}
+                      onChange={(data) => { if (editFormValues) setEditFormValues({ ...editFormValues, loadChartData: data }) }}
+                    />
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
+                      Recommendation
+                    </label>
+                    <textarea
+                        disabled={!isEditingInDetail}
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans min-h-[80px]"
+                      value={isEditingInDetail && editFormValues ? editFormValues.recommendation || "" : certificate.recommendation || ""}
+                      onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, recommendation: e.target.value }); }}
+                      placeholder="Enter recommendations..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 7: AUTHORIZED & INSPECTED SIGNATURES */}
+              <div className="space-y-6">
+                <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-semibold flex items-center gap-2 select-none font-display">
+                  <Icons.PenTool className="w-4 h-4" />
+                  <span>7. Authorized and Inspected Signatures</span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 pt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Authorized By Section */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
+                          Authorized By
+                        </label>
+                        <input
+                        disabled={!isEditingInDetail}
+                          type="text"
+                          className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                          value={isEditingInDetail && editFormValues ? editFormValues.authorizedBy || "" : certificate.authorizedBy || ""}
+                          onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, authorizedBy: e.target.value }); }}
+                        />
+                      </div>
+
+                      {/* Authorized Signature Box */}
+                      <div className="bg-white border rounded-xl p-6 flex flex-col items-center justify-center min-h-[120px] relative w-full group overflow-hidden border-slate-200">
+                        <Icons.Upload className="w-5 h-5 text-slate-400 mb-2 opacity-50 relative z-10" />
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest relative z-10">Authorized Signature</span>
+                        {(isEditingInDetail && editFormValues ? editFormValues.authorizedBySignature : certificate.authorizedBySignature) ? (
+                          <div className="relative group/sig">
+                            <img src={(isEditingInDetail && editFormValues ? editFormValues.authorizedBySignature : certificate.authorizedBySignature)} alt="Authorized" className="max-h-16 object-contain mt-2 z-10 relative" />
+                            {isEditingInDetail && (<button type="button" onClick={(e) => { e.stopPropagation(); if (editFormValues) setEditFormValues({ ...editFormValues, authorizedBySignature: "" }); showToast("✓ Signature removed."); }} className="absolute -top-1 -right-1 p-1.5 bg-rose-500 text-white rounded-full shadow-lg z-30 hover:bg-rose-600 transition-colors"><Icons.X className="w-3 h-3" /></button>)}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400 font-bold relative z-10 mt-1">Upload Signature</span>
+                        )}
+                        <div onClick={() => { if (isEditingInDetail) setPickerTarget({ field: "authorizedBySignature", mode: "edit" }); }} className="absolute inset-0 z-20 cursor-pointer"></div>
+                      </div>
+                    </div>
+
+                    {/* Inspected By Section */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
+                          Inspected By
+                        </label>
+                        <input
+                        list="employees-list"
+                        disabled={!isEditingInDetail}
+                          type="text"
+                          className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                          value={isEditingInDetail && editFormValues ? editFormValues.inspectedBy || "" : certificate.inspectedBy || ""}
+                          onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, inspectedBy: e.target.value }); }}
+                          placeholder="Search employee..."
+                        />
+                        <datalist id="employees-list">
+                          {employees?.map(e => <option key={e.id} value={e.name || e.firstName || e.id}>{e.id} - {e.role || e.designation}</option>)}
+                        </datalist>
+                      </div>
+
+                      {/* Inspected Signature Box */}
+                      <div className="bg-white border rounded-xl p-6 flex flex-col items-center justify-center min-h-[120px] relative w-full group overflow-hidden border-slate-200">
+                        <Icons.Upload className="w-5 h-5 text-slate-400 mb-2 opacity-50 relative z-10" />
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest relative z-10">Inspected Signature</span>
+                        {(isEditingInDetail && editFormValues ? editFormValues.inspectedBySignature : certificate.inspectedBySignature) ? (
+                          <div className="relative group/sig">
+                            <img src={(isEditingInDetail && editFormValues ? editFormValues.inspectedBySignature : certificate.inspectedBySignature)} alt="Inspected" className="max-h-16 object-contain mt-2 z-10 relative" />
+                            {isEditingInDetail && (<button type="button" onClick={(e) => { e.stopPropagation(); if (editFormValues) setEditFormValues({ ...editFormValues, inspectedBySignature: "" }); showToast("✓ Signature removed."); }} className="absolute -top-1 -right-1 p-1.5 bg-rose-500 text-white rounded-full shadow-lg z-30 hover:bg-rose-600 transition-colors"><Icons.X className="w-3 h-3" /></button>)}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400 font-bold relative z-10 mt-1">Upload Signature</span>
+                        )}
+                        <div onClick={() => { if (isEditingInDetail) setPickerTarget({ field: "inspectedBySignature", mode: "edit" }); }} className="absolute inset-0 z-20 cursor-pointer"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+
+            
                 {/* 2. Timeline and comments double column layout */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
                   {/* Left: Activity Timeline */}
@@ -2094,10 +2536,10 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
             </div>
 
             {/* Scrollable Form body */}
-            <form onSubmit={handleCreateCertificate} className="flex-1 overflow-y-auto p-6 space-y-6">
+            <form onSubmit={handleCreateCertificate} className="flex-1 overflow-y-auto p-6 space-y-8">
               
               {/* SECTION 1: BASIC INFORMATION */}
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-semibold flex items-center gap-2 select-none font-display">
                   <Icons.FileText className="w-4 h-4" />
                   <span>1. Machine Certificate Details</span>
@@ -2171,8 +2613,8 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                     </label>
                     <input
                       type="text"
-                      readOnly
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed"
+                      
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                       value={formValues.jobNumber}
                       onChange={(e) => setFormValues({ ...formValues, jobNumber: e.target.value })}
                     />
@@ -2184,8 +2626,8 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                     </label>
                     <input
                       type="text"
-                      readOnly
-                      className={`w-full text-xs px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed ${
+                      
+                      className={`w-full text-xs px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans ${
                         formErrors.equipmentName ? "border-rose-300 focus:ring-rose-500" : "border-slate-200"
                       }`}
                       value={formValues.equipmentName}
@@ -2200,8 +2642,8 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                     </label>
                     <input
                       type="text"
-                      readOnly
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed"
+                      
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                       value={formValues.stickerNumber}
                       onChange={(e) => setFormValues({ ...formValues, stickerNumber: e.target.value })}
                     />
@@ -2213,8 +2655,8 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                     </label>
                     <input
                       type="text"
-                      readOnly
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed"
+                      
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                       value={formValues.timeSheetNumber}
                       onChange={(e) => setFormValues({ ...formValues, timeSheetNumber: e.target.value })}
                     />
@@ -2226,8 +2668,8 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                     </label>
                     <input
                       type="text"
-                      readOnly
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed"
+                      
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                       value={formValues.result}
                       onChange={(e) => setFormValues({ ...formValues, result: e.target.value })}
                     />
@@ -2239,8 +2681,8 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                     </label>
                     <input
                       type="text"
-                      readOnly
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed"
+                      
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                       value={formValues.validity}
                       onChange={(e) => setFormValues({ ...formValues, validity: e.target.value })}
                     />
@@ -2252,8 +2694,8 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                     </label>
                     <input
                       type="text"
-                      readOnly
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed"
+                      
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                       value={formValues.checkList}
                       onChange={(e) => setFormValues({ ...formValues, checkList: e.target.value })}
                     />
@@ -2275,13 +2717,87 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                     </select>
                   </div>
                 </div>
+
+                {/* SECTION 3: INSPECTION DATES & DETAILS (Relocated to Basic tab) */}
+                <div className="space-y-4 mt-6">
+                  <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-bold flex items-center gap-2 select-none">
+                    <Icons.Calendar className="w-4 h-4" />
+                    <span>2. Inspection Dates & Specifications</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Inspection Date
+                      </label>
+                      <input
+                        type="date"
+                        
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.inspectionDate}
+                        onChange={(e) => setFormValues({ ...formValues, inspectionDate: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Expiration Date
+                      </label>
+                      <input
+                        type="date"
+                        
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.expirationDate}
+                        onChange={(e) => setFormValues({ ...formValues, expirationDate: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Type of Inspection
+                      </label>
+                      <input
+                        type="text"
+                        
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.typeOfInspection}
+                        onChange={(e) => setFormValues({ ...formValues, typeOfInspection: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Next Inspection Date
+                      </label>
+                      <input
+                        type="date"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.nextInspectionDate}
+                        onChange={(e) => setFormValues({ ...formValues, nextInspectionDate: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Reference Standard
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.referenceStandard}
+                        onChange={(e) => setFormValues({ ...formValues, referenceStandard: e.target.value })}
+                        placeholder="e.g. ANSI/ASME B30.5"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* SECTION 2: CLIENT & LOCATION DETAILS */}
               <div className="space-y-4">
                 <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-semibold flex items-center gap-2 select-none font-display">
                   <Icons.Building className="w-4 h-4" />
-                  <span>2. Client & Location Details</span>
+                  <span>3. Client & Location Details</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2292,8 +2808,8 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                     <div className="relative">
                       <input
                         type="text"
-                        readOnly
-                        className={`w-full text-xs px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed ${
+                        
+                        className={`w-full text-xs px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans ${
                           formErrors.clientName ? "border-rose-300 focus:ring-rose-500" : "border-slate-200"
                         }`}
                         onFocus={() => setShowClientAutocomplete(true)}
@@ -2341,8 +2857,8 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                     </label>
                     <input
                       type="text"
-                      readOnly
-                      className={`w-full text-xs px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed ${
+                      
+                      className={`w-full text-xs px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans ${
                         formErrors.location ? "border-rose-300 focus:ring-rose-500" : "border-slate-200"
                       }`}
                       value={formValues.location}
@@ -2357,8 +2873,8 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                     </label>
                     <input
                       type="text"
-                      readOnly
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed"
+                      
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                       value={formValues.equipmentLocation}
                       onChange={(e) => setFormValues({ ...formValues, equipmentLocation: e.target.value })}
                     />
@@ -2366,169 +2882,342 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                 </div>
               </div>
 
-              {/* SECTION 3: INSPECTION DATES & DETAILS */}
-              <div className="space-y-4">
-                <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-bold flex items-center gap-2 select-none">
-                  <Icons.Calendar className="w-4 h-4" />
-                  <span>3. Inspection Dates & Specifications</span>
+              {/* SECTION 3: Equipment details */}
+              <div className="space-y-6">
+                <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-semibold flex items-center gap-2 select-none font-display">
+                  <Icons.Settings className="w-4 h-4" />
+                  <span>4. Equipment details</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
-                      Inspection Date
-                    </label>
-                    <input
-                      type="date"
-                      readOnly
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed"
-                      value={formValues.inspectionDate}
-                      onChange={(e) => setFormValues({ ...formValues, inspectionDate: e.target.value })}
-                    />
-                  </div>
+                    <div className="relative">
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Machine ID
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                          value={formValues.machineId}
+                          onChange={(e) => {
+                            setFormValues({ ...formValues, machineId: e.target.value });
+                            setShowMachineAutocomplete(true);
+                          }}
+                          onFocus={() => setShowMachineAutocomplete(true)}
+                          placeholder="Search machine ID..."
+                        />
+                        <Icons.ChevronDown className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
 
-                  <div>
-                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
-                      Expiration Date
-                    </label>
-                    <input
-                      type="date"
-                      readOnly
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed"
-                      value={formValues.expirationDate}
-                      onChange={(e) => setFormValues({ ...formValues, expirationDate: e.target.value })}
-                    />
-                  </div>
+                      {showMachineAutocomplete && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowMachineAutocomplete(false)} />
+                          <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-xl py-1 z-50 overflow-hidden text-left max-h-48 overflow-y-auto">
+                            {matchingMachines.length === 0 ? (
+                              <div className="px-4 py-3 text-xs italic text-slate-400 text-center">
+                                No machine models found.
+                              </div>
+                            ) : (
+                              matchingMachines.map((m) => (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  onClick={() => handleSelectMachine(m)}
+                                  className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-[#F0EBFF] hover:text-[#683EFF] flex justify-between items-center transition-colors"
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="font-bold">{m.id}</span>
+                                    <span className="text-[10px] text-slate-400">{m.machineName}</span>
+                                  </div>
+                                  <Icons.ArrowRight className="w-3 h-3 text-slate-300" />
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
 
-                  <div>
-                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
-                      Type of Inspection
-                    </label>
-                    <input
-                      type="text"
-                      readOnly
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed"
-                      value={formValues.typeOfInspection}
-                      onChange={(e) => setFormValues({ ...formValues, typeOfInspection: e.target.value })}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
-                      Next Inspection Date
-                    </label>
-                    <input
-                      type="date"
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
-                      value={formValues.nextInspectionDate}
-                      onChange={(e) => setFormValues({ ...formValues, nextInspectionDate: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="md:col-span-2 space-y-4">
                     <div>
                       <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
-                        Reference Standard
+                        Equipment Name
                       </label>
                       <input
                         type="text"
                         className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
-                        value={formValues.referenceStandard}
-                        onChange={(e) => setFormValues({ ...formValues, referenceStandard: e.target.value })}
-                        placeholder="e.g. ANSI/ASME B30.5"
+                        value={formValues.equipmentName}
+                        onChange={(e) => setFormValues({ ...formValues, equipmentName: e.target.value })}
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                      {/* Authorized By Section */}
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
-                            Authorized By
-                          </label>
-                          <input
-                            type="text"
-                            className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
-                            value={formValues.authorizedBy}
-                            onChange={(e) => setFormValues({ ...formValues, authorizedBy: e.target.value })}
-                          />
-                        </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Manufacturer
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.manufacturer}
+                        onChange={(e) => setFormValues({ ...formValues, manufacturer: e.target.value })}
+                      />
+                    </div>
 
-                        {/* Authorized Signature Box */}
-                        <div className="bg-white border rounded-xl p-6 flex flex-col items-center justify-center min-h-[120px] relative w-full group overflow-hidden border-slate-200">
-                          <Icons.Upload className="w-5 h-5 text-slate-400 mb-2 opacity-50 relative z-10" />
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest relative z-10">Authorized Signature</span>
-                          {formValues.authorizedBySignature ? (
-                            <div className="relative group/sig">
-                              <img src={formValues.authorizedBySignature} alt="Authorized" className="max-h-16 object-contain mt-2 z-10 relative" />
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setFormValues({ ...formValues, authorizedBySignature: "" });
-                                  showToast("✓ Authorized signature removed.");
-                                }}
-                                className="absolute -top-1 -right-1 p-1.5 bg-rose-500 text-white rounded-full shadow-lg z-30 hover:bg-rose-600 transition-colors"
-                              >
-                                <Icons.X className="w-3 h-3" />
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-slate-400 font-bold relative z-10 mt-1">Upload Signature</span>
-                          )}
-                          <div onClick={() => setPickerTarget({ field: "authorizedBySignature", mode: "create" })} className="absolute inset-0 z-20 cursor-pointer"></div>
-                        </div>
-                      </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Model
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.modelName}
+                        onChange={(e) => setFormValues({ ...formValues, modelName: e.target.value })}
+                      />
+                    </div>
 
-                      {/* Inspected By Section */}
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
-                            Inspected By
-                          </label>
-                          <input
-                            type="text"
-                            className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
-                            value={formValues.inspectedBy}
-                            onChange={(e) => setFormValues({ ...formValues, inspectedBy: e.target.value })}
-                          />
-                        </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Serial Number
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.serialNumber}
+                        onChange={(e) => setFormValues({ ...formValues, serialNumber: e.target.value })}
+                      />
+                    </div>
 
-                        {/* Inspected Signature Box */}
-                        <div className="bg-white border rounded-xl p-6 flex flex-col items-center justify-center min-h-[120px] relative w-full group overflow-hidden border-slate-200">
-                          <Icons.Upload className="w-5 h-5 text-slate-400 mb-2 opacity-50 relative z-10" />
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest relative z-10">Inspected Signature</span>
-                          {formValues.inspectedBySignature ? (
-                            <div className="relative group/sig">
-                              <img src={formValues.inspectedBySignature} alt="Inspected" className="max-h-16 object-contain mt-2 z-10 relative" />
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setFormValues({ ...formValues, inspectedBySignature: "" });
-                                  showToast("✓ Inspected signature removed.");
-                                }}
-                                className="absolute -top-1 -right-1 p-1.5 bg-rose-500 text-white rounded-full shadow-lg z-30 hover:bg-rose-600 transition-colors"
-                              >
-                                <Icons.X className="w-3 h-3" />
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-slate-400 font-bold relative z-10 mt-1">Upload Signature</span>
-                          )}
-                          <div onClick={() => setPickerTarget({ field: "inspectedBySignature", mode: "create" })} className="absolute inset-0 z-20 cursor-pointer"></div>
-                        </div>
-                      </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Date of Mfg
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.dateOfMfg}
+                        onChange={(e) => setFormValues({ ...formValues, dateOfMfg: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Owner ID / Plate No.
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.ownerId}
+                        onChange={(e) => setFormValues({ ...formValues, ownerId: e.target.value })}
+                      />
                     </div>
                   </div>
-                  
-                  <div className="md:col-span-2">
+                </div>
+
+              {/* SECTION 4: Technical details */}
+              <div className="space-y-6">
+                <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-semibold flex items-center gap-2 select-none font-display">
+                  <Icons.Cpu className="w-4 h-4" />
+                  <span>5. Technical details</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-3 relative">
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Machine ID
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                          value={formValues.machineId}
+                          onChange={(e) => {
+                            setFormValues({ ...formValues, machineId: e.target.value });
+                            setShowMachineAutocomplete(true);
+                          }}
+                          onFocus={() => setShowMachineAutocomplete(true)}
+                          placeholder="Search machine ID..."
+                        />
+                        <Icons.ChevronDown className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
+
+                      {showMachineAutocomplete && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowMachineAutocomplete(false)} />
+                          <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-xl py-1 z-50 overflow-hidden text-left max-h-48 overflow-y-auto">
+                            {matchingMachines.length === 0 ? (
+                              <div className="px-4 py-3 text-xs italic text-slate-400 text-center">
+                                No machine models found.
+                              </div>
+                            ) : (
+                              matchingMachines.map((m) => (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  onClick={() => handleSelectMachine(m)}
+                                  className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-[#F0EBFF] hover:text-[#683EFF] flex justify-between items-center transition-colors"
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="font-bold">{m.id}</span>
+                                    <span className="text-[10px] text-slate-400">{m.machineName}</span>
+                                  </div>
+                                  <Icons.ArrowRight className="w-3 h-3 text-slate-300" />
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Load Limit (S.W.L)
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.loadLimit}
+                        onChange={(e) => setFormValues({ ...formValues, loadLimit: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Max Horizontal Outreach
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.maxOutreach}
+                        onChange={(e) => setFormValues({ ...formValues, maxOutreach: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Bucket Capacity
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.bucketCapacity}
+                        onChange={(e) => setFormValues({ ...formValues, bucketCapacity: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Engine Power
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.enginePower}
+                        onChange={(e) => setFormValues({ ...formValues, enginePower: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Boom Length
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.boomLength}
+                        onChange={(e) => setFormValues({ ...formValues, boomLength: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Wheel Type
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.wheelType}
+                        onChange={(e) => setFormValues({ ...formValues, wheelType: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Max Platform Height
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.maxPlatformHeight}
+                        onChange={(e) => setFormValues({ ...formValues, maxPlatformHeight: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Hoe Bucket Capacity
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.heoBucketCapacity}
+                        onChange={(e) => setFormValues({ ...formValues, heoBucketCapacity: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Engine Speed
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.engineSpeed}
+                        onChange={(e) => setFormValues({ ...formValues, engineSpeed: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Angle of Span
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.angleOfSpan}
+                        onChange={(e) => setFormValues({ ...formValues, angleOfSpan: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                        Person Allowed
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        value={formValues.personAllowed}
+                        onChange={(e) => setFormValues({ ...formValues, personAllowed: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+              {/* SECTION 6: RECOMMENDATIONS & DATA */}
+              <div className="space-y-6">
+                <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-semibold flex items-center gap-2 select-none font-display">
+                  <Icons.FileText className="w-4 h-4" />
+                  <span>6. Recommendations & Data</span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 pt-2">
+                  <div className="mt-4">
                     <LoadChartDataEditor
                       data={formValues.loadChartData || []}
                       onChange={(data) => setFormValues({ ...formValues, loadChartData: data })}
                     />
                   </div>
-                  <div className="md:col-span-2">
+
+                  <div className="mt-4">
                     <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
                       Recommendation
                     </label>
@@ -2540,8 +3229,105 @@ export function MachineCertificatesPortfolioView({ certificates, onCertificatesC
                     />
                   </div>
                 </div>
-
               </div>
+
+              {/* SECTION 7: AUTHORIZED & INSPECTED SIGNATURES */}
+              <div className="space-y-6">
+                <div className="bg-[#F0EBFF]/30 border border-[#DED3FF] p-3 rounded-lg text-xs text-[#683EFF] font-semibold flex items-center gap-2 select-none font-display">
+                  <Icons.PenTool className="w-4 h-4" />
+                  <span>7. Authorized and Inspected Signatures</span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 pt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Authorized By Section */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
+                          Authorized By
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                          value={formValues.authorizedBy}
+                          onChange={(e) => setFormValues({ ...formValues, authorizedBy: e.target.value })}
+                        />
+                      </div>
+
+                      {/* Authorized Signature Box */}
+                      <div className="bg-white border rounded-xl p-6 flex flex-col items-center justify-center min-h-[120px] relative w-full group overflow-hidden border-slate-200">
+                        <Icons.Upload className="w-5 h-5 text-slate-400 mb-2 opacity-50 relative z-10" />
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest relative z-10">Authorized Signature</span>
+                        {formValues.authorizedBySignature ? (
+                          <div className="relative group/sig">
+                            <img src={formValues.authorizedBySignature} alt="Authorized" className="max-h-16 object-contain mt-2 z-10 relative" />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFormValues({ ...formValues, authorizedBySignature: "" });
+                                showToast("✓ Authorized signature removed.");
+                              }}
+                              className="absolute -top-1 -right-1 p-1.5 bg-rose-500 text-white rounded-full shadow-lg z-30 hover:bg-rose-600 transition-colors"
+                            >
+                              <Icons.X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400 font-bold relative z-10 mt-1">Upload Signature</span>
+                        )}
+                        <div onClick={() => setPickerTarget({ field: "authorizedBySignature", mode: "create" })} className="absolute inset-0 z-20 cursor-pointer"></div>
+                      </div>
+                    </div>
+
+                    {/* Inspected By Section */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
+                          Inspected By
+                        </label>
+                        <input
+                          type="text"
+                          list="employees-list"
+                          className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                          value={formValues.inspectedBy}
+                          onChange={(e) => setFormValues({ ...formValues, inspectedBy: e.target.value })}
+                          placeholder="Search employee..."
+                        />
+                        <datalist id="employees-list">
+                          {employees?.map(e => <option key={e.id} value={e.name || e.firstName || e.id}>{e.id} - {e.role || e.designation}</option>)}
+                        </datalist>
+                      </div>
+
+                      {/* Inspected Signature Box */}
+                      <div className="bg-white border rounded-xl p-6 flex flex-col items-center justify-center min-h-[120px] relative w-full group overflow-hidden border-slate-200">
+                        <Icons.Upload className="w-5 h-5 text-slate-400 mb-2 opacity-50 relative z-10" />
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest relative z-10">Inspected Signature</span>
+                        {formValues.inspectedBySignature ? (
+                          <div className="relative group/sig">
+                            <img src={formValues.inspectedBySignature} alt="Inspected" className="max-h-16 object-contain mt-2 z-10 relative" />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFormValues({ ...formValues, inspectedBySignature: "" });
+                                showToast("✓ Inspected signature removed.");
+                              }}
+                              className="absolute -top-1 -right-1 p-1.5 bg-rose-500 text-white rounded-full shadow-lg z-30 hover:bg-rose-600 transition-colors"
+                            >
+                              <Icons.X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400 font-bold relative z-10 mt-1">Upload Signature</span>
+                        )}
+                        <div onClick={() => setPickerTarget({ field: "inspectedBySignature", mode: "create" })} className="absolute inset-0 z-20 cursor-pointer"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
 
             </form>
 

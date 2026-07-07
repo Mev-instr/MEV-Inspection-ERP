@@ -5,16 +5,18 @@
 
 import React, { useState, useEffect } from "react";
 import * as Icons from "lucide-react";
-import { TrainingJob } from "../types";
+import { TrainingJob, CustomerDetail, EmployeeDetail } from "../types";
 import { initialCustomers } from "../data";
 import { formatDate } from "../utils";
 
 interface TrainingJobsPortfolioProps {
   jobs: TrainingJob[];
+  customers: CustomerDetail[];
+  employees: EmployeeDetail[];
   onJobsChange: React.Dispatch<React.SetStateAction<TrainingJob[]>>;
 }
 
-export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPortfolioProps) {
+export function TrainingJobsPortfolioView({ jobs, customers, employees, onJobsChange }: TrainingJobsPortfolioProps) {
   // View states
   const [viewMode, setViewMode] = useState<"list" | "grid" | "compact">("list");
   const [showViewDropdown, setShowViewDropdown] = useState(false);
@@ -39,6 +41,7 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
 
   // Autocomplete client dropdown states
   const [showClientAutocomplete, setShowClientAutocomplete] = useState(false);
+  const [showDetailClientAutocomplete, setShowDetailClientAutocomplete] = useState(false);
 
   // New Training Job Form State
   const initialFormState = {
@@ -127,7 +130,7 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
     
     const headers = [
       "Naming Series Code prefix", "Trainer ID", "Training Start Date", "Training End Date",
-      "Initial Status", "Client Name", "Location / Training Site Address", "Attention Location",
+      "Initial Status", "Client Name", "Location / Training Site Address", "Attention",
       "Phone Number", "Machine Name", "Number of Count"
     ].join(",");
 
@@ -224,7 +227,7 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
           const trainingEndDate = getVal("Training End Date") || new Date().toISOString().split("T")[0];
           const status = getVal("Initial Status") || "Scheduled";
           const location = getVal("Location / Training Site Address") || "Main Training Hub";
-          const attentionLocation = getVal("Attention Location");
+          const attentionLocation = getVal("Attention");
           const attentionPhone = getVal("Phone Number");
           const machineName = getVal("Machine Name") || "Crane Safe Simulator";
           const machineCount = getVal("Number of Count") || "1";
@@ -352,21 +355,41 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
   };
 
   // Autocomplete search suggestions
-  const matchingCustomers = initialCustomers.filter((cust) => {
+  const matchingCustomers = customers.filter((cust) => {
     if (!formValues.clientName.trim()) return true;
-    return cust.companyName.toLowerCase().includes(formValues.clientName.toLowerCase());
-  });
+    return cust.companyName?.toLowerCase().includes(formValues.clientName.toLowerCase());
+  }).slice(0, formValues.clientName.trim() ? undefined : 5);
 
   // Auto-fill form values on selecting customer
-  const handleSelectCustomer = (cust: typeof initialCustomers[0]) => {
+  const handleSelectCustomer = (cust: CustomerDetail) => {
     setFormValues((prev) => ({
       ...prev,
-      clientName: cust.companyName,
-      location: cust.trainingSiteAddress || cust.addressLine1 || "Dhahran, KSA",
-      attentionLocation: cust.cityAddress || "Eastern Province",
-      attentionPhone: cust.trainingContactPhone || cust.phone || "+966 13 874 1122"
+      clientName: cust.companyName || "",
+      location: cust.trainingSiteAddress || "",
+      attentionLocation: cust.trainingContactPerson || "",
+      attentionPhone: cust.trainingContactPhone || ""
     }));
     setShowClientAutocomplete(false);
+    showToast(`✓ Client details loaded from "${cust.companyName}". autofilled locations & contacts.`);
+  };
+
+  const matchingDetailCustomers = customers.filter((cust) => {
+    const searchVal = editFormValues?.clientName || "";
+    if (!searchVal.trim()) return true;
+    return cust.companyName?.toLowerCase().includes(searchVal.toLowerCase());
+  }).slice(0, (editFormValues?.clientName || "").trim() ? undefined : 5);
+
+  const handleSelectDetailCustomer = (cust: CustomerDetail) => {
+    if (editFormValues) {
+      setEditFormValues({
+        ...editFormValues,
+        clientName: cust.companyName || "",
+        location: cust.trainingSiteAddress || "",
+        attentionLocation: cust.trainingContactPerson || "",
+        attentionPhone: cust.trainingContactPhone || ""
+      });
+    }
+    setShowDetailClientAutocomplete(false);
     showToast(`✓ Client details loaded from "${cust.companyName}". autofilled locations & contacts.`);
   };
 
@@ -578,13 +601,22 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
 
         {/* 1. Header with Breadcrumbs, actions and navigation */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#ECECF3] pb-4 select-none">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5 text-xs text-slate-400 font-medium font-sans">
-              <button onClick={() => setSelectedJobDetail(null)} className="hover:text-[#683EFF] font-semibold transition-colors">
-                Training Jobs
-              </button>
-              <Icons.ChevronRight className="w-3 h-3 text-slate-350" />
-              <span className="font-bold text-slate-700 truncate max-w-[200px]">{job.id}</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSelectedJobDetail(null)}
+              className="p-2 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-[#683EFF] hover:border-[#683EFF] transition-all shadow-sm group animate-in fade-in"
+              title="Go Back"
+            >
+              <Icons.ArrowLeft className="w-4.5 h-4.5 group-active:-translate-x-1 transition-transform" />
+            </button>
+            <div>
+              <div className="flex items-center gap-2 mb-1.5 text-xs text-slate-400 font-medium font-sans">
+                <button onClick={() => setSelectedJobDetail(null)} className="hover:text-[#683EFF] font-semibold transition-colors">
+                  Training Jobs
+                </button>
+                <Icons.ChevronRight className="w-3 h-3 text-slate-350" />
+                <span className="font-bold text-slate-700 truncate max-w-[200px]">{job.id}</span>
+              </div>
             </div>
           </div>
 
@@ -822,14 +854,18 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                       </label>
                       <input
                         type="text"
+                        list="employees-list"
                         disabled={!isEditingInDetail}
                         value={isEditingInDetail && editFormValues ? editFormValues.trainerId || "" : dispTrainer}
                         onChange={(e) => {
                           if (editFormValues) setEditFormValues({ ...editFormValues, trainerId: e.target.value, instructor: e.target.value });
                         }}
                         className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
-                        placeholder="TR-ZAID-09"
+                        placeholder="Search employee..."
                       />
+                      <datalist id="employees-list">
+                        {employees.map(e => <option key={e.id} value={e.name || e.firstName || e.id}>{e.id} - {e.role || e.designation}</option>)}
+                      </datalist>
                     </div>
 
                     <div>
@@ -874,20 +910,55 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                   </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
+                    <div className="relative">
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
                         Client Name
                       </label>
-                      <input
-                        type="text"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.clientName || "" : dispClient}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, clientName: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
-                        placeholder="Saudi Aramco"
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          disabled={!isEditingInDetail}
+                          value={isEditingInDetail && editFormValues ? editFormValues.clientName || "" : dispClient}
+                          onFocus={() => { if (isEditingInDetail) setShowDetailClientAutocomplete(true); }}
+                          onChange={(e) => {
+                            if (editFormValues) {
+                              setEditFormValues({ ...editFormValues, clientName: e.target.value });
+                              setShowDetailClientAutocomplete(true);
+                            }
+                          }}
+                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
+                          placeholder="Saudi Aramco"
+                        />
+                        {isEditingInDetail && (
+                          <Icons.ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        )}
+                      </div>
+                      
+                      {/* Autocomplete Overlay menu */}
+                      {showDetailClientAutocomplete && isEditingInDetail && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowDetailClientAutocomplete(false)} />
+                          <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-xl py-1 z-50 overflow-hidden text-left max-h-48 overflow-y-auto">
+                            {matchingDetailCustomers.length === 0 ? (
+                              <div className="px-4 py-3 text-xs italic text-slate-400">
+                                No matching clients found in active directory
+                              </div>
+                            ) : (
+                              matchingDetailCustomers.map((cust) => (
+                                <button
+                                  key={cust.id}
+                                  type="button"
+                                  onClick={() => handleSelectDetailCustomer(cust)}
+                                  className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-[#F0EBFF] hover:text-[#683EFF] flex justify-between items-center transition-colors text-left"
+                                >
+                                  <span>{cust.companyName}</span>
+                                  <span className="text-[10px] text-slate-400 font-mono font-bold uppercase">{cust.country || "KSA"}</span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     <div>
@@ -918,7 +989,7 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Location
+                        Attention
                       </label>
                       <input
                         type="text"
@@ -1552,7 +1623,7 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                       const dispEndDate = job.trainingEndDate || job.targetDate || "N/A";
                       const dispLoc = job.location || "Gulf Yard Hub";
                       
-                      // Combined Attention Location/Phone info
+                      // Combined Attention/Phone info
                       const dispAttLoc = job.attentionLocation || (dispClient === "Saudi Aramco" ? "Dhahran" : dispClient === "NEOM Construction" ? "Tabuk" : "Jeddah");
                       const dispAttPhone = job.attentionPhone || (dispClient === "Saudi Aramco" ? "+966 13 874 1122" : dispClient === "NEOM Construction" ? "+966 14 551 4488" : "+966 12 604 1155");
 
@@ -1864,13 +1935,17 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                     </label>
                     <input
                       type="text"
+                      list="employees-list"
                       className={`w-full text-xs px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans ${
                         formErrors.trainerId ? "border-rose-300 focus:ring-rose-500" : "border-slate-200"
                       }`}
                       value={formValues.trainerId}
                       onChange={(e) => setFormValues({ ...formValues, trainerId: e.target.value })}
-                      placeholder="e.g. TR-ZAID-09"
+                      placeholder="Search employee..."
                     />
+                    <datalist id="employees-list">
+                      {employees.map(e => <option key={e.id} value={e.name || e.firstName || e.id}>{e.id} - {e.role || e.designation}</option>)}
+                    </datalist>
                     {formErrors.trainerId && <p className="text-[10px] text-rose-500 font-semibold mt-1">{formErrors.trainerId}</p>}
                   </div>
 
@@ -2002,7 +2077,7 @@ export function TrainingJobsPortfolioView({ jobs, onJobsChange }: TrainingJobsPo
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">
-                      Attention Location
+                      Attention
                     </label>
                     <input
                       type="text"

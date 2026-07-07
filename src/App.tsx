@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import * as Icons from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { ERPSection, ERPCategory, DashboardCard } from "./types";
@@ -20,6 +20,7 @@ import {
 } from "./data";
 import { DetailModal, LucideIcon } from "./components/DetailModal";
 import { CustomerPortfolioView } from "./components/CustomerPortfolioView";
+import { UserManagementView } from "./components/UserManagementView";
 import { TrainingJobsPortfolioView } from "./components/TrainingJobsPortfolioView";
 import { LiftingToolCertificatesPortfolioView } from "./components/LiftingToolCertificatesPortfolioView";
 import { MachineCertificatesPortfolioView } from "./components/MachineCertificatesPortfolioView";
@@ -29,6 +30,8 @@ import { OperatorDirectoryView } from "./components/OperatorDirectoryView";
 import { OperatorDetailView } from "./components/OperatorDetailView";
 import { MachineDetailsPortfolioView } from "./components/MachineDetailsPortfolioView";
 import { OperatorCard } from "./types";
+import { LoginPage } from "./components/LoginPage";
+import { PublicVerificationView } from "./components/PublicVerificationView";
 import {
   initAuth,
   signInWithGoogle,
@@ -50,11 +53,13 @@ export default function App() {
   const [loginLogoUrl, setLoginLogoUrl] = useState<string | null>(null);
 
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const isAdmin = currentUser?.email === "shahzaibkamran44@gmail.com";
   const [cloudMessage, setCloudMessage] = useState<string | null>(null);
 
   // ERP Tables Core Database State
   const [customers, setCustomers] = useState(initialCustomers);
   const [employees, setEmployees] = useState(initialEmployees);
+  const currentEmployee = employees.find(e => e.email === currentUser?.email);
   const [trainingJobs, setTrainingJobs] = useState(initialTrainingJobs);
   const [inspectionJobs, setInspectionJobs] = useState(initialInspectionJobs);
   const [inspectionReports, setInspectionReports] = useState(
@@ -73,6 +78,7 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<
     | "DASHBOARD"
     | "PORTFOLIO"
+    | "USER_MANAGEMENT"
     | "TRAINING"
     | "INSPECTION"
     | "INSPECTION_REPORTS"
@@ -88,7 +94,10 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState<ERPCategory | null>(
     null,
   );
+  
   const [showNotifications, setShowNotifications] = useState(false);
+  const [dismissedNotifications, setDismissedNotifications] = useState<string[]>([]);
+
 
   // Toast trigger for Cloud status
   const triggerCloudToast = (msg: string) => {
@@ -276,6 +285,20 @@ export default function App() {
             await seedFirestore("inspectionReports", initialInspectionReports);
           }
 
+          const syncedLifting = await fetchCollection("liftingToolCerts");
+          if (syncedLifting && syncedLifting.length > 0) {
+            setLiftingToolCerts(syncedLifting);
+          } else {
+            await seedFirestore("liftingToolCerts", initialLiftingToolCerts);
+          }
+
+          const syncedDetails = await fetchCollection("machineDetails");
+          if (syncedDetails && syncedDetails.length > 0) {
+            setMachineDetails(syncedDetails);
+          } else {
+            await seedFirestore("machineDetails", initialMachineDetails);
+          }
+
           triggerCloudToast(
             "✓ Real-time database synced with Google Firestore!",
           );
@@ -298,11 +321,10 @@ export default function App() {
   }, [customers, currentUser]);
 
   useEffect(() => {
-    // Save operators even if not signed in, as long as data differs from initial
-    if (operators !== initialOperators) {
+    if (currentUser && operators !== initialOperators) {
       operators.forEach((op) => saveDocument("operators", op.id, op));
     }
-  }, [operators]);
+  }, [operators, currentUser]);
 
   useEffect(() => {
     if (currentUser && machineCertificates !== initialMachineCertificates) {
@@ -334,6 +356,48 @@ export default function App() {
     }
   }, [inspectionReports, currentUser]);
 
+  useEffect(() => {
+    if (currentUser && liftingToolCerts !== initialLiftingToolCerts) {
+      liftingToolCerts.forEach((cert) =>
+        saveDocument("liftingToolCerts", cert.id, cert),
+      );
+    }
+  }, [liftingToolCerts, currentUser]);
+
+  useEffect(() => {
+    if (currentUser && machineDetails !== initialMachineDetails) {
+      machineDetails.forEach((detail) =>
+        saveDocument("machineDetails", detail.id, detail),
+      );
+    }
+  }, [machineDetails, currentUser]);
+
+
+  // Role-Based Filtering
+  const filteredTrainingJobs = isAdmin ? trainingJobs : trainingJobs.filter(j => 
+    j.trainerId === currentEmployee?.id || j.trainerId === currentEmployee?.name || j.trainerId === currentEmployee?.firstName || j.instructor === currentEmployee?.name
+  );
+
+  const filteredInspectionJobs = isAdmin ? inspectionJobs : inspectionJobs.filter(j => 
+    j.inspectorId === currentEmployee?.id || j.inspectorId === currentEmployee?.name || j.inspectorId === currentEmployee?.firstName || j.inspector === currentEmployee?.name
+  );
+
+  const filteredInspectionReports = isAdmin ? inspectionReports : inspectionReports.filter(j => 
+    j.trainerId === currentEmployee?.id || j.inspector === currentEmployee?.name || j.inspector === currentEmployee?.firstName || j.inspector === currentEmployee?.id
+  );
+
+  const filteredMachineCertificates = isAdmin ? machineCertificates : machineCertificates.filter(j => 
+    j.inspectedBy === currentEmployee?.id || j.inspectedBy === currentEmployee?.name || j.inspectedBy === currentEmployee?.firstName
+  );
+
+  const filteredLiftingToolCerts = isAdmin ? liftingToolCerts : liftingToolCerts.filter(j => 
+    j.inspectedBy === currentEmployee?.id || j.inspectedBy === currentEmployee?.name || j.inspectedBy === currentEmployee?.firstName
+  );
+
+  const filteredOperators = isAdmin ? operators : operators.filter(o => 
+    o.trainedBy === currentEmployee?.id || o.trainedBy === currentEmployee?.name || o.trainedBy === currentEmployee?.firstName
+  );
+
   // Dynamic state-linked card badges
   const getCardCount = (category: ERPCategory) => {
     switch (category) {
@@ -342,19 +406,19 @@ export default function App() {
       case ERPCategory.EMPLOYEE_DETAILS:
         return employees.length;
       case ERPCategory.TRAINING_JOB_ORDER_CARD:
-        return trainingJobs.length;
+        return filteredTrainingJobs.length;
       case ERPCategory.INSPECTION_JOB_ORDER_CARD:
-        return inspectionJobs.length;
+        return filteredInspectionJobs.length;
       case ERPCategory.INSPECTION_REPORT:
-        return inspectionReports.length;
+        return filteredInspectionReports.length;
       case ERPCategory.MACHINE_CERTIFICATES:
-        return machineCertificates.length;
+        return filteredMachineCertificates.length;
       case ERPCategory.LIFTING_TOOL_CERTIFICATE:
-        return liftingToolCerts.length;
+        return filteredLiftingToolCerts.length;
       case ERPCategory.MACHINE_DETAILS:
         return machineDetails.length;
       case ERPCategory.OPERATOR_CARD:
-        return operators.length;
+        return filteredOperators.length;
       default:
         return 0;
     }
@@ -371,6 +435,11 @@ export default function App() {
       section: ERPSection.SETTING,
       title: "SETTING",
       cards: [
+        ...(isAdmin ? [{
+          category: ERPCategory.USER_MANAGEMENT,
+          title: "User Management",
+          iconName: "UserCog",
+        }] : []),
         {
           category: ERPCategory.CUSTOMER_DETAILS,
           title: "Customer Details",
@@ -444,33 +513,77 @@ export default function App() {
     },
   ];
 
+  
   // Global Notification Center array (Linked directly to initial alert quantities)
-  const notifications = [
-    {
-      id: 1,
-      title: "High Urgency Inspection Alert",
-      text: "Tadano Mobile Crane (S/N 2938) ultrasonic test Scheduled for today at Dammam site",
-      type: "high",
-    },
-    {
-      id: 2,
-      title: "Machine Cert Expiring Soon",
-      text: "CAT D10 Bulldozer Certificate (S/N SGS-ME-99120) expires in 11 days.",
-      type: "warning",
-    },
-    {
-      id: 3,
-      title: "Compliance Action Required",
-      text: "Liaison: Sabic Argon Gas Storage Tank (S/N 78) Weld Dye inspection failed (82% compliance).",
-      type: "warning",
-    },
-    {
-      id: 4,
-      title: "System Ready",
-      text: "All 14 active lifting shackles at Jebel Ali depot cleared after magnetic particle (MPI) testing.",
-      type: "success",
-    },
-  ];
+  const notifications = useMemo(() => {
+    const notifs: any[] = [];
+    const today = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(today.getDate() + 30);
+
+    const checkExpiry = (dateStr: string | undefined, type: string, id: string, name: string) => {
+      if (!dateStr) return;
+      
+      let expiry: Date;
+      // Handle DD-MM-YYYY or DD/MM/YYYY
+      if (dateStr.includes('-')) {
+        const parts = dateStr.split('-');
+        if (parts.length === 3 && parts[2].length === 4) {
+          expiry = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        } else {
+          expiry = new Date(dateStr);
+        }
+      } else if (dateStr.includes('/')) {
+         const parts = dateStr.split('/');
+         if (parts.length === 3 && parts[2].length === 4) {
+           expiry = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+         } else {
+           expiry = new Date(dateStr);
+         }
+      } else {
+        expiry = new Date(dateStr);
+      }
+      
+      if (isNaN(expiry.getTime())) return;
+      
+      const notifId = `${type}-${id}`;
+      if (dismissedNotifications.includes(notifId)) return;
+
+      const diffTime = expiry.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 3600 * 24));
+
+      if (diffDays < 0) {
+        notifs.push({
+          id: notifId,
+          title: `${type} Expired`,
+          text: `${name} expired on ${dateStr}.`,
+          type: "high",
+        });
+      } else if (diffDays <= 30) {
+        notifs.push({
+          id: notifId,
+          title: `${type} Expiring Soon`,
+          text: `${name} expires in ${diffDays} days (${dateStr}).`,
+          type: "warning",
+        });
+      }
+    };
+
+    machineCertificates.forEach(cert => {
+      checkExpiry(cert.expirationDate || cert.expiryDate, "Machine Certificate", cert.id, `${cert.equipmentName || 'Equipment'} (${cert.id})`);
+    });
+
+    liftingToolCerts.forEach(cert => {
+      checkExpiry(cert.expiryDate, "Lifting Tool Certificate", cert.id, `${cert.toolName || 'Tool'} (${cert.id})`);
+    });
+
+    operators.forEach(op => {
+      checkExpiry(op.licenseExpiry || op.expiryDate, "Operator Card", op.id, `${op.firstName || ''} ${op.lastName || ''} (${op.id})`);
+    });
+
+    return notifs;
+  }, [machineCertificates, liftingToolCerts, operators, dismissedNotifications]);
+
 
   // Handles sidebar action items triggering modal focus
   const handleNavCategoryClick = (category: ERPCategory) => {
@@ -507,6 +620,47 @@ export default function App() {
     handleSignOutGoogle();
   };
 
+  // Extract verifyId from URL to support public QR code scans
+  const getVerifyIdFromUrl = (): string | null => {
+    if (typeof window === "undefined") return null;
+    const searchParams = new URLSearchParams(window.location.search);
+    const verifySearch = searchParams.get("verify") || searchParams.get("id");
+    if (verifySearch) return verifySearch;
+    
+    const pathParts = window.location.pathname.split("/");
+    const verifyIndex = pathParts.findIndex(part => part === "verify");
+    if (verifyIndex !== -1 && pathParts[verifyIndex + 1]) {
+      return pathParts[verifyIndex + 1];
+    }
+    return null;
+  };
+
+  const verifyId = getVerifyIdFromUrl();
+
+  if (verifyId) {
+    return (
+      <PublicVerificationView
+        verifyId={verifyId}
+        onBackToLogin={() => {
+          if (typeof window !== "undefined") {
+            window.history.pushState({}, "", window.location.origin);
+            window.location.reload();
+          }
+        }}
+      />
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <LoginPage
+        onSuccess={(user) => setCurrentUser(user)}
+        triggerCloudToast={triggerCloudToast}
+        employees={employees}
+      />
+    );
+  }
+
   return (
     <div
       className="flex h-screen w-screen overflow-hidden bg-[#FAF9FC] font-sans antialiased text-slate-700"
@@ -535,35 +689,23 @@ export default function App() {
                   />
                 </div>
               ) : (
-                <>
+                sidebarCollapsed ? (
                   <div className="flex items-center justify-center shrink-0 w-12 h-12">
-                    <div className="p-2 bg-[#0E1B2D] rounded-lg shadow-sm">
-                      <svg
-                        className="w-6 h-6 text-[#FFFFFF]"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                      >
-                        <path
-                          d="M4 20V8l8 6 8-6v12"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </div>
+                    <img 
+                      src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FFavicon.png?alt=media&token=c8b110bc-316b-439b-84d0-b1f25816b7a1" 
+                      alt="MEV Favicon" 
+                      className="w-8 h-8 object-contain"
+                    />
                   </div>
-                  {!sidebarCollapsed && (
-                    <div className="leading-tight shrink-0">
-                      <h1 className="font-display font-bold text-[#0E1B2D] tracking-tight text-sm">
-                        MEV
-                      </h1>
-                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wide">
-                        Middle East VIM
-                      </p>
-                    </div>
-                  )}
-                </>
+                ) : (
+                  <div className="flex items-center justify-start shrink-0 h-12 w-[160px]">
+                    <img 
+                      src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FHorizonal%20MEV%20logo.png?alt=media&token=6fd9c05f-5c66-4c31-94b5-06ff4cb6c980" 
+                      alt="MEV Logo" 
+                      className="w-full h-full object-contain object-left"
+                    />
+                  </div>
+                )
               )}
             </div>
 
@@ -826,31 +968,13 @@ export default function App() {
                       />
                     </div>
                   ) : (
-                    <>
-                      <div className="w-10 h-10 flex items-center justify-center p-2 bg-[#0E1B2D] rounded-lg text-white">
-                        <svg
-                          className="w-5 h-5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="3"
-                        >
-                          <path
-                            d="M4 20V8l8 6 8-6v12"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </div>
-                      <div>
-                        <h1 className="font-display font-extrabold text-slate-800 text-sm">
-                          MEV
-                        </h1>
-                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wide">
-                          Middle East VIM
-                        </p>
-                      </div>
-                    </>
+                    <div className="flex items-center justify-start shrink-0 h-10 w-[140px]">
+                      <img 
+                        src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FMEV%20Logo.png?alt=media&token=4556a2dc-9296-419c-9694-2b5519e1e7b8" 
+                        alt="MEV Logo" 
+                        className="w-full h-full object-contain object-left"
+                      />
+                    </div>
                   )}
                 </div>
                 <button
@@ -1035,22 +1159,6 @@ export default function App() {
         className="flex-1 flex flex-col h-full bg-[#FAF9FC] relative overflow-hidden"
         id="main-panel-content"
       >
-        {/* Giant architectural "M" Watermark matching the photo exactly */}
-        <div
-          className="absolute top-10 right-6 z-0 select-none pointer-events-none opacity-[0.035] text-slate-800 tracking-tighter"
-          id="m-watermark-logo"
-        >
-          <svg
-            className="w-[420px] h-[420px] lg:w-[600px] lg:h-[600px]"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-          >
-            <path d="M4 20V8l8 6 8-6v12" />
-          </svg>
-        </div>
-
         {/* Global Toolbar Header */}
         <header className="z-10 flex items-center justify-between bg-white/70 backdrop-blur border-b border-[#ECECF3] px-6 py-4 md:px-8">
           <div className="flex items-center space-x-4">
@@ -1099,7 +1207,7 @@ export default function App() {
                   <>
                     {/* Popover backdrop closer */}
                     <div
-                      className="fixed inset-0 z-50"
+                      className="fixed inset-0 z-[55]"
                       onClick={() => setShowNotifications(false)}
                       id="notif-popover-underlay"
                     />
@@ -1117,7 +1225,7 @@ export default function App() {
                           <span>Gulf Operations Notifications</span>
                         </h4>
                         <span className="text-[10px] font-semibold bg-[#F0EBFF] text-[#683EFF] px-2 py-0.5 rounded-full">
-                          4 Alarms Alert
+                          {notifications.length} Alarms Alert
                         </span>
                       </div>
 
@@ -1125,21 +1233,33 @@ export default function App() {
                         {notifications.map((notif) => (
                           <div
                             key={notif.id}
-                            className="p-3 rounded-xl border border-slate-50 bg-slate-55/40 hover:bg-slate-50 transition-colors"
+                            className="p-3 rounded-xl border border-slate-50 bg-slate-50/40 hover:bg-slate-100 transition-colors relative group"
                           >
                             <div className="flex items-start justify-between">
-                              <h5 className="text-xs font-bold text-slate-800">
+                              <h5 className="text-xs font-bold text-slate-800 pr-4">
                                 {notif.title}
                               </h5>
-                              <span
-                                className={`w-2 h-2 rounded-full mt-1 ${
-                                  notif.type === "high"
-                                    ? "bg-red-500 animate-ping"
-                                    : notif.type === "warning"
-                                      ? "bg-amber-400"
-                                      : "bg-emerald-500"
-                                }`}
-                              />
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`w-2 h-2 rounded-full mt-1 ${
+                                    notif.type === "high"
+                                      ? "bg-red-500 animate-ping"
+                                      : notif.type === "warning"
+                                        ? "bg-amber-400"
+                                        : "bg-emerald-500"
+                                  }`}
+                                />
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDismissedNotifications(prev => [...prev, notif.id]);
+                                  }}
+                                  className="text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                  title="Dismiss notification"
+                                >
+                                  <Icons.X className="w-3 h-3" />
+                                </button>
+                              </div>
                             </div>
                             <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
                               {notif.text}
@@ -1178,6 +1298,21 @@ export default function App() {
               </motion.div>
             )}
 
+            {currentTab === "USER_MANAGEMENT" && (
+              <motion.div
+                key="userManagement"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.18 }}
+              >
+                <UserManagementView
+                  employees={employees}
+                  onEmployeesChange={setEmployees}
+                />
+              </motion.div>
+            )}
+
             {/* TRAINING JOBS PORTFOLIO ROUTE */}
             {currentTab === "TRAINING" && (
               <motion.div
@@ -1189,6 +1324,8 @@ export default function App() {
               >
                 <TrainingJobsPortfolioView
                   jobs={trainingJobs}
+                  customers={customers}
+                  employees={employees}
                   onJobsChange={setTrainingJobs}
                 />
               </motion.div>
@@ -1208,6 +1345,8 @@ export default function App() {
                   onJobsChange={setInspectionJobs}
                   reports={inspectionReports}
                   onReportsChange={setInspectionReports}
+                  customers={customers}
+                  employees={employees}
                 />
               </motion.div>
             )}
@@ -1223,8 +1362,9 @@ export default function App() {
               >
                 <InspectionReportsPortfolioView
                   reports={inspectionReports}
+                  customers={customers}
                   onReportsChange={setInspectionReports}
-                  inspectionJobs={inspectionJobs}
+                  inspectionJobs={filteredInspectionJobs}
                 />
               </motion.div>
             )}
@@ -1239,9 +1379,10 @@ export default function App() {
                 transition={{ duration: 0.18 }}
               >
                 <LiftingToolCertificatesPortfolioView
-                  certificates={liftingToolCerts}
+                  certificates={filteredLiftingToolCerts}
                   onCertificatesChange={setLiftingToolCerts}
-                  inspectionReports={inspectionReports}
+                  inspectionReports={filteredInspectionReports}
+                  employees={employees}
                 />
               </motion.div>
             )}
@@ -1256,10 +1397,12 @@ export default function App() {
                 transition={{ duration: 0.18 }}
               >
                 <MachineCertificatesPortfolioView
-                  certificates={machineCertificates}
+                  certificates={filteredMachineCertificates}
                   onCertificatesChange={setMachineCertificates}
-                  inspectionReports={inspectionReports}
+                  inspectionReports={filteredInspectionReports}
+                  machineDetails={machineDetails}
                   onUploadImage={handleUploadImage}
+                  employees={employees}
                 />
               </motion.div>
             )}
@@ -1291,6 +1434,7 @@ export default function App() {
               >
                 {viewOperatorId ? (
                   <OperatorDetailView
+                    employees={employees}
                     operator={operators.find((o) => o.id === viewOperatorId)!}
                     onBack={() => setViewOperatorId(null)}
                     onUpdate={(updated) =>
@@ -1307,7 +1451,8 @@ export default function App() {
                   />
                 ) : (
                   <OperatorDirectoryView
-                    operators={operators}
+                    employees={employees}
+                    operators={filteredOperators}
                     onOperatorsChange={setOperators}
                     onViewOperator={(id) => setViewOperatorId(id)}
                     onUploadImage={handleUploadImage}
@@ -1364,6 +1509,10 @@ export default function App() {
                               id={`card-trigger-${card.category.toLowerCase().replace(/\s+/g, "-")}`}
                               onClick={() => {
                                 if (
+                                  card.category === ERPCategory.USER_MANAGEMENT
+                                ) {
+                                  setCurrentTab("USER_MANAGEMENT");
+                                } else if (
                                   card.category ===
                                   ERPCategory.CUSTOMER_DETAILS
                                 ) {

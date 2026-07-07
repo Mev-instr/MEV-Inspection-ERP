@@ -5,17 +5,18 @@
 
 import React, { useState, useEffect } from "react";
 import * as Icons from "lucide-react";
-import { InspectionReport, InspectionJob } from "../types";
-import { initialCustomers } from "../data";
+import { InspectionReport, InspectionJob, CustomerDetail } from "../types";
 import { formatDate } from "../utils";
+import { fetchCollection, saveDocument } from "../lib/firestoreSync";
 
 interface InspectionReportsPortfolioProps {
   reports: InspectionReport[];
+  customers: CustomerDetail[];
   onReportsChange: React.Dispatch<React.SetStateAction<InspectionReport[]>>;
   inspectionJobs: InspectionJob[];
 }
 
-export function InspectionReportsPortfolioView({ reports, onReportsChange, inspectionJobs }: InspectionReportsPortfolioProps) {
+export function InspectionReportsPortfolioView({ reports, customers, onReportsChange, inspectionJobs }: InspectionReportsPortfolioProps) {
   // View states
   const [viewMode, setViewMode] = useState<"list" | "grid" | "compact">("list");
   const [showViewDropdown, setShowViewDropdown] = useState(false);
@@ -39,7 +40,27 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
 
   // Autocomplete client dropdown states
   const [showClientAutocomplete, setShowClientAutocomplete] = useState(false);
+  const [showDetailClientAutocomplete, setShowDetailClientAutocomplete] = useState(false);
   const [showJobAutocomplete, setShowJobAutocomplete] = useState(false);
+  const [showDetailJobAutocomplete, setShowDetailJobAutocomplete] = useState(false);
+  const [showTypeAutocomplete, setShowTypeAutocomplete] = useState(false);
+  const [showDetailTypeAutocomplete, setShowDetailTypeAutocomplete] = useState(false);
+  const [customInspectionTypes, setCustomInspectionTypes] = useState<string[]>([]);
+
+  useEffect(() => {
+    async function loadCustomTypes() {
+      try {
+        const types = await fetchCollection("inspectionTypes");
+        if (types && types.length > 0) {
+          const names = types.map(t => t.name).filter(Boolean);
+          setCustomInspectionTypes(names);
+        }
+      } catch (e) {
+        console.error("Failed to load custom inspection types:", e);
+      }
+    }
+    loadCustomTypes();
+  }, []);
 
   // New Inspection Report Form State
   const initialFormState = {
@@ -397,7 +418,13 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
   const matchingJobs = inspectionJobs.filter((job) => {
     if (!formValues.jobNumber.trim()) return true;
     return job.id.toLowerCase().includes(formValues.jobNumber.toLowerCase());
-  });
+  }).slice(0, formValues.jobNumber.trim() ? undefined : 5);
+
+  const matchingDetailJobs = inspectionJobs.filter((job) => {
+    const searchVal = editFormValues?.jobNumber || "";
+    if (!searchVal.trim()) return true;
+    return job.id.toLowerCase().includes(searchVal.toLowerCase());
+  }).slice(0, (editFormValues?.jobNumber || "").trim() ? undefined : 5);
 
   const handleSelectJob = (job: InspectionJob) => {
     setFormValues((prev) => ({
@@ -413,23 +440,145 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
     setShowJobAutocomplete(false);
     showToast(`✓ Job ${job.id} details loaded.`);
   };
-  const matchingCustomers = initialCustomers.filter((cust) => {
+
+  const handleSelectDetailJob = (job: InspectionJob) => {
+    if (editFormValues) {
+      setEditFormValues({
+        ...editFormValues,
+        jobNumber: job.id,
+        equipmentName: job.machineName || "",
+        inspectionDate: job.inspectionStartDate || "",
+        expirationData: job.inspectionEndDate || "",
+        clientName: job.clientName || "",
+        address: job.location || "",
+        equipmentLocation: job.location || "",
+      });
+    }
+    setShowDetailJobAutocomplete(false);
+    showToast(`✓ Job ${job.id} details loaded.`);
+  };
+  const matchingCustomers = customers.filter((cust) => {
     if (!formValues.clientName.trim()) return true;
-    return cust.companyName.toLowerCase().includes(formValues.clientName.toLowerCase());
-  });
+    return cust.companyName?.toLowerCase().includes(formValues.clientName.toLowerCase());
+  }).slice(0, formValues.clientName.trim() ? undefined : 5);
 
   // Auto-fill form values on selecting customer
-  const handleSelectCustomer = (cust: typeof initialCustomers[0]) => {
+  const handleSelectCustomer = (cust: CustomerDetail) => {
     setFormValues((prev) => ({
       ...prev,
-      clientName: cust.companyName,
-      address: cust.inspectionSiteAddress || cust.addressLine1 || "Dhahran, KSA",
-      equipmentLocation: cust.cityAddress || "Eastern Province",
-      location: cust.inspectionSiteAddress || cust.addressLine1 || "Dhahran, KSA",
-      attentionLocation: cust.cityAddress || "Eastern Province",
-      attentionPhone: cust.inspectionContactPhone || cust.phone || "+966 13 874 1122"
+      clientName: cust.companyName || "",
+      address: cust.inspectionSiteAddress || "",
+      equipmentLocation: cust.inspectionContactPerson || "",
+      location: cust.inspectionSiteAddress || "",
+      attentionLocation: cust.inspectionContactPerson || "",
+      attentionPhone: cust.inspectionContactPhone || ""
     }));
     setShowClientAutocomplete(false);
+    showToast(`✓ Client details loaded from "${cust.companyName}". autofilled address & locations.`);
+  };
+
+  // Inspection type autocomplete suggestions
+  const predefinedTypes = ["Periodic and Visual Inspection", "Load Testing Inspection"];
+  const uniqueInspectionTypes = Array.from(new Set([
+    ...predefinedTypes,
+    ...reports.map(r => r.typeOfInspection).filter(Boolean) as string[],
+    ...customInspectionTypes
+  ]));
+
+  const matchingTypes = uniqueInspectionTypes.filter(t => {
+    if (!formValues.typeOfInspection.trim()) return true;
+    return t.toLowerCase().includes(formValues.typeOfInspection.toLowerCase());
+  }).slice(0, formValues.typeOfInspection.trim() ? undefined : 5);
+
+  const showAddCustomOption = formValues.typeOfInspection.trim() && 
+    !uniqueInspectionTypes.some(t => t.toLowerCase() === formValues.typeOfInspection.trim().toLowerCase());
+
+  const matchingDetailTypes = uniqueInspectionTypes.filter(t => {
+    const searchVal = editFormValues?.typeOfInspection || "";
+    if (!searchVal.trim()) return true;
+    return t.toLowerCase().includes(searchVal.toLowerCase());
+  }).slice(0, (editFormValues?.typeOfInspection || "").trim() ? undefined : 5);
+
+  const showAddCustomDetailOption = (editFormValues?.typeOfInspection || "").trim() && 
+    !uniqueInspectionTypes.some(t => t.toLowerCase() === (editFormValues?.typeOfInspection || "").trim().toLowerCase());
+
+  const handleSaveCustomType = async (newType: string) => {
+    if (!newType) return;
+    const cleanType = newType.trim();
+    if (!cleanType) return;
+    
+    if (!customInspectionTypes.some(t => t.toLowerCase() === cleanType.toLowerCase())) {
+      const updatedTypes = [...customInspectionTypes, cleanType];
+      setCustomInspectionTypes(updatedTypes);
+      
+      try {
+        const typeId = cleanType.toLowerCase().replace(/[^a-z0-9]/g, "-");
+        await saveDocument("inspectionTypes", typeId, { name: cleanType });
+        showToast(`✓ Custom inspection type "${cleanType}" saved for future use.`);
+      } catch (err) {
+        console.error("Failed to save custom type to Firestore:", err);
+      }
+    }
+    
+    setFormValues(prev => ({ ...prev, typeOfInspection: cleanType }));
+    setShowTypeAutocomplete(false);
+  };
+
+  const handleSaveCustomDetailType = async (newType: string) => {
+    if (!newType) return;
+    const cleanType = newType.trim();
+    if (!cleanType) return;
+    
+    if (!customInspectionTypes.some(t => t.toLowerCase() === cleanType.toLowerCase())) {
+      const updatedTypes = [...customInspectionTypes, cleanType];
+      setCustomInspectionTypes(updatedTypes);
+      
+      try {
+        const typeId = cleanType.toLowerCase().replace(/[^a-z0-9]/g, "-");
+        await saveDocument("inspectionTypes", typeId, { name: cleanType });
+        showToast(`✓ Custom inspection type "${cleanType}" saved for future use.`);
+      } catch (err) {
+        console.error("Failed to save custom type to Firestore:", err);
+      }
+    }
+    
+    if (editFormValues) {
+      setEditFormValues({ ...editFormValues, typeOfInspection: cleanType });
+    }
+    setShowDetailTypeAutocomplete(false);
+  };
+
+  const handleSelectType = (type: string) => {
+    setFormValues({ ...formValues, typeOfInspection: type });
+    setShowTypeAutocomplete(false);
+  };
+
+  const handleSelectDetailType = (type: string) => {
+    if (editFormValues) {
+      setEditFormValues({ ...editFormValues, typeOfInspection: type });
+    }
+    setShowDetailTypeAutocomplete(false);
+  };
+
+  const matchingDetailCustomers = customers.filter((cust) => {
+    const searchVal = editFormValues?.clientName || "";
+    if (!searchVal.trim()) return true;
+    return cust.companyName?.toLowerCase().includes(searchVal.toLowerCase());
+  }).slice(0, (editFormValues?.clientName || "").trim() ? undefined : 5);
+
+  const handleSelectDetailCustomer = (cust: CustomerDetail) => {
+    if (editFormValues) {
+      setEditFormValues({
+        ...editFormValues,
+        clientName: cust.companyName || "",
+        address: cust.inspectionSiteAddress || "",
+        equipmentLocation: cust.inspectionContactPerson || "",
+        location: cust.inspectionSiteAddress || "",
+        attentionLocation: cust.inspectionContactPerson || "",
+        attentionPhone: cust.inspectionContactPhone || ""
+      });
+    }
+    setShowDetailClientAutocomplete(false);
     showToast(`✓ Client details loaded from "${cust.companyName}". autofilled address & locations.`);
   };
 
@@ -516,6 +665,13 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
     };
 
     onReportsChange((prev) => [newReport, ...prev]);
+
+    // Auto-save typed custom inspection type to Firestore so it's persisted for the future
+    const typedType = formValues.typeOfInspection.trim();
+    if (typedType && !uniqueInspectionTypes.some(t => t.toLowerCase() === typedType.toLowerCase())) {
+      handleSaveCustomType(typedType);
+    }
+
     setShowAddModal(false);
     setFormValues(initialFormState);
     setFormErrors({});
@@ -531,6 +687,13 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
     onReportsChange((prev) =>
       prev.map((j) => (j.id === finalReport.id ? finalReport : j))
     );
+
+    // Auto-save typed custom inspection type to Firestore so it's persisted for the future
+    const typedTypeDetail = (editFormValues.typeOfInspection || "").trim();
+    if (typedTypeDetail && !uniqueInspectionTypes.some(t => t.toLowerCase() === typedTypeDetail.toLowerCase())) {
+      handleSaveCustomDetailType(typedTypeDetail);
+    }
+
     setSelectedReportDetail(finalReport);
     setIsEditingInDetail(false);
     showToast("✓ Inspection details updated successfully.");
@@ -653,13 +816,22 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
 
         {/* 1. Header with Breadcrumbs, actions and navigation */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#ECECF3] pb-4 select-none">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5 text-xs text-slate-400 font-medium font-sans">
-              <button onClick={() => setSelectedReportDetail(null)} className="hover:text-[#683EFF] font-semibold transition-colors">
-                Inspection Reports
-              </button>
-              <Icons.ChevronRight className="w-3 h-3 text-slate-350" />
-              <span className="font-bold text-slate-700 truncate max-w-[200px]">{report.id}</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSelectedReportDetail(null)}
+              className="p-2 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-[#683EFF] hover:border-[#683EFF] transition-all shadow-sm group animate-in fade-in"
+              title="Go Back"
+            >
+              <Icons.ArrowLeft className="w-4.5 h-4.5 group-active:-translate-x-1 transition-transform" />
+            </button>
+            <div>
+              <div className="flex items-center gap-2 mb-1.5 text-xs text-slate-400 font-medium font-sans">
+                <button onClick={() => setSelectedReportDetail(null)} className="hover:text-[#683EFF] font-semibold transition-colors">
+                  Inspection Reports
+                </button>
+                <Icons.ChevronRight className="w-3 h-3 text-slate-350" />
+                <span className="font-bold text-slate-700 truncate max-w-[200px]">{report.id}</span>
+              </div>
             </div>
           </div>
 
@@ -944,15 +1116,49 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
                         Job Number
                       </label>
-                      <input
-                        type="text"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.jobNumber || "" : report.jobNumber || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, jobNumber: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          disabled={!isEditingInDetail}
+                          value={isEditingInDetail && editFormValues ? editFormValues.jobNumber || "" : report.jobNumber || ""}
+                          onChange={(e) => {
+                            if (editFormValues) {
+                              setEditFormValues({ ...editFormValues, jobNumber: e.target.value });
+                              setShowDetailJobAutocomplete(true);
+                            }
+                          }}
+                          onFocus={() => { if (isEditingInDetail) setShowDetailJobAutocomplete(true); }}
+                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
+                        />
+                        {isEditingInDetail && (
+                          <Icons.ChevronDown className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        )}
+                        
+                        {/* Autocomplete Overlay menu */}
+                        {showDetailJobAutocomplete && isEditingInDetail && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setShowDetailJobAutocomplete(false)} />
+                            <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-xl py-1 z-50 overflow-hidden text-left max-h-48 overflow-y-auto">
+                              {matchingDetailJobs.length === 0 ? (
+                                <div className="px-4 py-3 text-xs italic text-slate-400">
+                                  No matching jobs found
+                                </div>
+                              ) : (
+                                matchingDetailJobs.map((job) => (
+                                  <button
+                                    key={job.id}
+                                    type="button"
+                                    onClick={() => handleSelectDetailJob(job)}
+                                    className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-[#F0EBFF] hover:text-[#683EFF] flex justify-between items-center transition-colors"
+                                  >
+                                    <span>{job.id}</span>
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
 
                     <div>
@@ -962,7 +1168,7 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
                       <input
                         type="text"
                         disabled={!isEditingInDetail}
-                        readOnly={isEditingInDetail && !!editFormValues?.jobNumber}
+                        readOnly={false}
                         value={isEditingInDetail && editFormValues ? editFormValues.equipmentName || "" : report.equipmentName || ""}
                         onChange={(e) => {
                           if (editFormValues) setEditFormValues({ ...editFormValues, equipmentName: e.target.value });
@@ -978,7 +1184,7 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
                       <input
                         type="date"
                         disabled={!isEditingInDetail}
-                        readOnly={isEditingInDetail && !!editFormValues?.jobNumber}
+                        readOnly={false}
                         value={isEditingInDetail && editFormValues ? editFormValues.inspectionDate || "" : report.inspectionDate || ""}
                         onChange={(e) => {
                           if (editFormValues) setEditFormValues({ ...editFormValues, inspectionDate: e.target.value });
@@ -994,7 +1200,7 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
                       <input
                         type="date"
                         disabled={!isEditingInDetail}
-                        readOnly={isEditingInDetail && !!editFormValues?.jobNumber}
+                        readOnly={false}
                         value={isEditingInDetail && editFormValues ? editFormValues.expirationData || "" : report.expirationData || ""}
                         onChange={(e) => {
                           if (editFormValues) setEditFormValues({ ...editFormValues, expirationData: e.target.value });
@@ -1048,38 +1254,128 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
                       />
                     </div>
 
-                    <div>
+                    <div className="relative">
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
                         Type of inspection
                       </label>
-                      <select
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.typeOfInspection || "" : report.typeOfInspection || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, typeOfInspection: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
-                      >
-                        <option value="">Select Type</option>
-                        <option value="Periodic and Visual Inspection">Periodic and Visual Inspection</option>
-                        <option value="Load Testing Inspection">Load Testing Inspection</option>
-                      </select>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          disabled={!isEditingInDetail}
+                          value={isEditingInDetail && editFormValues ? editFormValues.typeOfInspection || "" : report.typeOfInspection || ""}
+                          onFocus={() => { if (isEditingInDetail) setShowDetailTypeAutocomplete(true); }}
+                          onChange={(e) => {
+                            if (editFormValues) {
+                              setEditFormValues({ ...editFormValues, typeOfInspection: e.target.value });
+                              setShowDetailTypeAutocomplete(true);
+                            }
+                          }}
+                          onKeyDown={async (e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              const val = (editFormValues?.typeOfInspection || "").trim();
+                              if (val) {
+                                await handleSaveCustomDetailType(val);
+                              } else {
+                                setShowDetailTypeAutocomplete(false);
+                              }
+                            }
+                          }}
+                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
+                          placeholder="e.g. Periodic and Visual Inspection"
+                        />
+                        {isEditingInDetail && (
+                          <Icons.ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        )}
+                      </div>
+                      
+                      {/* Autocomplete Overlay menu */}
+                      {showDetailTypeAutocomplete && isEditingInDetail && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowDetailTypeAutocomplete(false)} />
+                          <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-xl py-1 z-50 overflow-hidden text-left max-h-48 overflow-y-auto">
+                            {showAddCustomDetailOption && (
+                              <button
+                                type="button"
+                                onClick={() => handleSaveCustomDetailType((editFormValues?.typeOfInspection || "").trim())}
+                                className="w-full px-4 py-2 text-xs font-bold text-[#683EFF] hover:bg-[#F0EBFF] text-left transition-colors flex items-center gap-1.5 border-b border-slate-100"
+                              >
+                                <Icons.Plus className="w-3.5 h-3.5" />
+                                Add Custom Type: "{(editFormValues?.typeOfInspection || "").trim()}"
+                              </button>
+                            )}
+                            {matchingDetailTypes.length === 0 ? (
+                              !showAddCustomDetailOption && (
+                                <div className="px-4 py-3 text-xs text-slate-500 font-medium">
+                                  Press Enter or save to add "{editFormValues?.typeOfInspection}"
+                                </div>
+                              )
+                            ) : (
+                              matchingDetailTypes.map((type, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => handleSelectDetailType(type)}
+                                  className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-[#F0EBFF] hover:text-[#683EFF] text-left transition-colors"
+                                >
+                                  {type}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
 
-                    <div>
+                    <div className="relative">
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
                         Client Name
                       </label>
-                      <input
-                        type="text"
-                        disabled={!isEditingInDetail}
-                        readOnly={isEditingInDetail && !!editFormValues?.jobNumber}
-                        value={isEditingInDetail && editFormValues ? editFormValues.clientName || "" : report.clientName || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, clientName: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          disabled={!isEditingInDetail}
+                          onFocus={() => { if (isEditingInDetail) setShowDetailClientAutocomplete(true); }}
+                          value={isEditingInDetail && editFormValues ? editFormValues.clientName || "" : report.clientName || ""}
+                          onChange={(e) => {
+                            if (editFormValues) {
+                              setEditFormValues({ ...editFormValues, clientName: e.target.value });
+                              setShowDetailClientAutocomplete(true);
+                            }
+                          }}
+                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
+                          placeholder="Click or type client name (e.g. Aramco, NEOM)..."
+                        />
+                        {isEditingInDetail && (
+                          <Icons.ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        )}
+                      </div>
+
+                      {/* Autocomplete Overlay menu */}
+                      {showDetailClientAutocomplete && isEditingInDetail && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowDetailClientAutocomplete(false)} />
+                          <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-xl py-1 z-50 overflow-hidden text-left max-h-48 overflow-y-auto">
+                            {matchingDetailCustomers.length === 0 ? (
+                              <div className="px-4 py-3 text-xs italic text-slate-400">
+                                No matching clients found in active directory
+                              </div>
+                            ) : (
+                              matchingDetailCustomers.map((cust) => (
+                                <button
+                                  key={cust.id}
+                                  type="button"
+                                  onClick={() => handleSelectDetailCustomer(cust)}
+                                  className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-[#F0EBFF] hover:text-[#683EFF] flex justify-between items-center transition-colors text-left"
+                                >
+                                  <span>{cust.companyName}</span>
+                                  <span className="text-[10px] text-slate-400 font-mono font-bold uppercase">{cust.country}</span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     <div>
@@ -1089,7 +1385,7 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
                       <input
                         type="text"
                         disabled={!isEditingInDetail}
-                        readOnly={isEditingInDetail && !!editFormValues?.jobNumber}
+                        readOnly={false}
                         value={isEditingInDetail && editFormValues ? editFormValues.address || "" : report.address || ""}
                         onChange={(e) => {
                           if (editFormValues) setEditFormValues({ ...editFormValues, address: e.target.value });
@@ -1105,7 +1401,7 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
                       <input
                         type="text"
                         disabled={!isEditingInDetail}
-                        readOnly={isEditingInDetail && !!editFormValues?.jobNumber}
+                        readOnly={false}
                         value={isEditingInDetail && editFormValues ? editFormValues.equipmentLocation || "" : report.equipmentLocation || ""}
                         onChange={(e) => {
                           if (editFormValues) setEditFormValues({ ...editFormValues, equipmentLocation: e.target.value });
@@ -1992,19 +2288,72 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
                     />
                   </div>
 
-                  <div>
+                  <div className="relative">
                     <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
                       Type of inspection
                     </label>
-                    <select
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
-                      value={formValues.typeOfInspection}
-                      onChange={(e) => setFormValues({ ...formValues, typeOfInspection: e.target.value })}
-                    >
-                      <option value="">Select Type</option>
-                      <option value="Periodic and Visual Inspection">Periodic and Visual Inspection</option>
-                      <option value="Load Testing Inspection">Load Testing Inspection</option>
-                    </select>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                        onFocus={() => setShowTypeAutocomplete(true)}
+                        value={formValues.typeOfInspection}
+                        onChange={(e) => {
+                          setFormValues({ ...formValues, typeOfInspection: e.target.value });
+                          setShowTypeAutocomplete(true);
+                        }}
+                        onKeyDown={async (e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const val = formValues.typeOfInspection.trim();
+                            if (val) {
+                              await handleSaveCustomType(val);
+                            } else {
+                              setShowTypeAutocomplete(false);
+                            }
+                          }
+                        }}
+                        placeholder="e.g. Periodic and Visual Inspection"
+                      />
+                      <Icons.ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+
+                    {/* Autocomplete Overlay menu */}
+                    {showTypeAutocomplete && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setShowTypeAutocomplete(false)} />
+                        <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-xl py-1 z-50 overflow-hidden text-left max-h-48 overflow-y-auto">
+                          {showAddCustomOption && (
+                            <button
+                              type="button"
+                              onClick={() => handleSaveCustomType(formValues.typeOfInspection.trim())}
+                              className="w-full px-4 py-2 text-xs font-bold text-[#683EFF] hover:bg-[#F0EBFF] text-left transition-colors flex items-center gap-1.5 border-b border-slate-100"
+                            >
+                              <Icons.Plus className="w-3.5 h-3.5" />
+                              Add Custom Type: "{formValues.typeOfInspection.trim()}"
+                            </button>
+                          )}
+                          {matchingTypes.length === 0 ? (
+                            !showAddCustomOption && (
+                              <div className="px-4 py-3 text-xs text-slate-500 font-medium">
+                                Press Enter or save to add "{formValues.typeOfInspection}"
+                              </div>
+                            )
+                          ) : (
+                            matchingTypes.map((type, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => handleSelectType(type)}
+                                className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-[#F0EBFF] hover:text-[#683EFF] text-left transition-colors"
+                              >
+                                {type}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2028,7 +2377,6 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
                       }`}
                       value={formValues.equipmentName}
                       onChange={(e) => setFormValues({ ...formValues, equipmentName: e.target.value })}
-                      readOnly={!!formValues.jobNumber}
                       placeholder="e.g. Hydraulic Crawler Crane 50T"
                     />
                     {formErrors.equipmentName && <p className="text-[10px] text-rose-500 font-semibold mt-1">{formErrors.equipmentName}</p>}
@@ -2043,7 +2391,6 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
                       className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                       value={formValues.equipmentLocation}
                       onChange={(e) => setFormValues({ ...formValues, equipmentLocation: e.target.value })}
-                      readOnly={!!formValues.jobNumber}
                       placeholder="e.g. Yard B, Berth 4"
                     />
                   </div>
@@ -2064,7 +2411,6 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
                           setFormValues({ ...formValues, clientName: e.target.value });
                           setShowClientAutocomplete(true);
                         }}
-                        readOnly={!!formValues.jobNumber}
                         placeholder="Click or type client name (e.g. Aramco, NEOM)..."
                       />
                       <Icons.ChevronDown className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -2107,7 +2453,6 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
                       className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                       value={formValues.address}
                       onChange={(e) => setFormValues({ ...formValues, address: e.target.value })}
-                      readOnly={!!formValues.jobNumber}
                       placeholder="e.g. Dhahran North Camp, Gate 3"
                     />
                   </div>
@@ -2131,7 +2476,6 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
                       className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                       value={formValues.inspectionDate}
                       onChange={(e) => setFormValues({ ...formValues, inspectionDate: e.target.value })}
-                      readOnly={!!formValues.jobNumber}
                     />
                   </div>
 
@@ -2144,7 +2488,6 @@ export function InspectionReportsPortfolioView({ reports, onReportsChange, inspe
                       className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                       value={formValues.expirationData}
                       onChange={(e) => setFormValues({ ...formValues, expirationData: e.target.value })}
-                      readOnly={!!formValues.jobNumber}
                     />
                   </div>
 

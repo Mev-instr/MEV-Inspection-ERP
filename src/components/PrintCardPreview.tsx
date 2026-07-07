@@ -302,7 +302,7 @@ export function PrintCardPreview({ operator, onClose }: PrintCardPreviewProps) {
                       {operator.operatorName}
                     </h2>
                     <h3 className="text-xl font-medium text-[#683EFF] mb-1.5 leading-[1.2em]">
-                      {operator.levelType || "Operator"}
+                      {operator.machineOperator || "Operator"}
                     </h3>
 
                     <div className="w-full border-b border-[#683EFF]/40 mb-2.5"></div>
@@ -357,7 +357,7 @@ export function PrintCardPreview({ operator, onClose }: PrintCardPreviewProps) {
                     style={{ zIndex: 10 }}
                   >
                     <QRCodeSVG
-                      value={`https://mev-ins.com/verify/${operator.id}`}
+                      value={`${window.location.origin}/verify/${operator.id}`}
                       size={120}
                     />
                   </div>
@@ -497,8 +497,16 @@ export function PrintCardPreview({ operator, onClose }: PrintCardPreviewProps) {
                     {/* Signatures */}
                     <div className="flex-1 flex px-10 pb-8 items-start justify-between pt-2.5 relative -top-[5px]">
                       <div className="flex flex-col items-center w-48 relative">
-                        <div className="text-base font-bold text-[#683EFF] mb-2 uppercase text-center w-full">
-                          Authorized By:
+                        <div className="text-base font-bold text-[#683EFF] mb-2 uppercase text-center whitespace-nowrap leading-tight w-full">
+                          {operator.authorizedBy && operator.authorizedBy.length > 12 ? (
+                            <>
+                              Authorized By:
+                              <br />
+                              {operator.authorizedBy}
+                            </>
+                          ) : (
+                            `Authorized By: ${operator.authorizedBy || ""}`
+                          )}
                         </div>
                         <div className="h-32 w-32 flex items-center justify-center relative">
                           {operator.authorizedBySignature && (

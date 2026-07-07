@@ -576,17 +576,26 @@ export function MachineDetailsPortfolioView({ machines, onMachinesChange }: Mach
 
         {/* 1. Header with Breadcrumbs, actions and navigation */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#ECECF3] pb-4 select-none">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5 text-xs text-slate-400 font-medium font-sans">
-              <button onClick={() => setSelectedMachineDetail(null)} className="hover:text-[#683EFF] font-semibold transition-colors">
-                Machine models list page
-              </button>
-              <Icons.ChevronRight className="w-3 h-3 text-slate-350" />
-              <span className="font-bold text-slate-700 truncate max-w-[200px]">{machine.id}</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSelectedMachineDetail(null)}
+              className="p-2 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-[#683EFF] hover:border-[#683EFF] transition-all shadow-sm group animate-in fade-in"
+              title="Go Back"
+            >
+              <Icons.ArrowLeft className="w-4.5 h-4.5 group-active:-translate-x-1 transition-transform" />
+            </button>
+            <div>
+              <div className="flex items-center gap-2 mb-1.5 text-xs text-slate-400 font-medium font-sans">
+                <button onClick={() => setSelectedMachineDetail(null)} className="hover:text-[#683EFF] font-semibold transition-colors">
+                  Machine models list page
+                </button>
+                <Icons.ChevronRight className="w-3 h-3 text-slate-350" />
+                <span className="font-bold text-slate-700 truncate max-w-[200px]">{machine.id}</span>
+              </div>
+              <h2 className="font-display text-2xl font-bold text-slate-800 tracking-tight">
+                Machine models detail page
+              </h2>
             </div>
-            <h2 className="font-display text-2xl font-bold text-slate-800 tracking-tight">
-              Machine models detail page
-            </h2>
           </div>
 
           {/* Action Row Sidebar side buttons */}

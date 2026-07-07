@@ -6,20 +6,21 @@ import { AccessoriesDataEditor } from "./AccessoriesDataEditor";
 
 import React, { useState, useEffect } from "react";
 import * as Icons from "lucide-react";
-import { LiftingToolCert, InspectionReport } from "../types";
+import { LiftingToolCert, InspectionReport, EmployeeDetail } from "../types";
 import { initialCustomers } from "../data";
 import { formatDate } from "../utils";
 import { PrintLiftingToolCertPreview } from "./PrintLiftingToolCertPreview";
 import { ImageUploadPicker } from "./ImageUploadPicker";
 
 interface LiftingToolCertificatesPortfolioProps {
+  employees: EmployeeDetail[];
   certificates: LiftingToolCert[];
   onCertificatesChange: React.Dispatch<React.SetStateAction<LiftingToolCert[]>>;
   inspectionReports?: InspectionReport[];
   onUploadImage?: (file: File, clientName: string, subfolder: string, entityId?: string) => Promise<string>;
 }
 
-export function LiftingToolCertificatesPortfolioView({ certificates, onCertificatesChange, inspectionReports = [], onUploadImage }: LiftingToolCertificatesPortfolioProps) {
+export function LiftingToolCertificatesPortfolioView({ employees,  certificates, onCertificatesChange, inspectionReports = [], onUploadImage }: LiftingToolCertificatesPortfolioProps) {
   // View states
   const [viewMode, setViewMode] = useState<"list" | "grid" | "compact">("list");
   const [showViewDropdown, setShowViewDropdown] = useState(false);
@@ -108,20 +109,6 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [pickerTarget, setPickerTarget] = useState<{ field: "inspectedBySignature" | "authorizedBySignature", mode: "edit" | "create" } | null>(null);
-  
-  const [operatorRows, setOperatorRows] = useState<{ id: number; card: string; name: string }[]>([]);
-
-  const addOperatorRow = () => {
-    setOperatorRows([...operatorRows, { id: Date.now(), card: "", name: "" }]);
-  };
-
-  const removeOperatorRow = (id: number) => {
-    setOperatorRows(operatorRows.filter(row => row.id !== id));
-  };
-
-  const updateOperatorRow = (id: number, field: 'card' | 'name', value: string) => {
-    setOperatorRows(operatorRows.map(row => row.id === id ? { ...row, [field]: value } : row));
-  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -405,19 +392,23 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
   });
 
   // Auto-fill form values on selecting customer
-  const handleSelectCustomer = (cust: typeof initialCustomers[0]) => {
-    setFormValues((prev) => ({
-      ...prev,
+  const handleSelectCustomer = (cust: typeof initialCustomers[0], isEditMode: boolean = false) => {
+    const updates = {
       clientName: cust.companyName,
-      location: cust.trainingSiteAddress || cust.addressLine1 || "Dhahran, KSA",
-      equipmentLocation: cust.cityAddress || "Eastern Province",
-      timeSheetNumber: cust.trainingContactPhone || cust.phone || "+966 13 874 1122"
-    }));
+      location: cust.inspectionSiteAddress || "",
+      equipmentLocation: cust.inspectionContactPerson || "",
+      timeSheetNumber: cust.inspectionContactPhone || ""
+    };
+    if (isEditMode && editFormValues) {
+      setEditFormValues(prev => prev ? ({ ...prev, ...updates }) : prev);
+    } else {
+      setFormValues((prev) => ({ ...prev, ...updates }));
+    }
     setShowClientAutocomplete(false);
     showToast(`✓ Client details loaded from "${cust.companyName}". autofilled locations & contacts.`);
   };
 
-  const handleSelectReport = (report: InspectionReport) => {
+  const handleSelectReport = (report: InspectionReport, isEditMode: boolean = false) => {
     let nextDate = "";
     if (report.expirationDate) {
       const expDate = new Date(report.expirationDate);
@@ -427,8 +418,7 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
       }
     }
 
-    setFormValues((prev) => ({
-      ...prev,
+    const updates = {
       inspectionReportNo: report.id,
       jobNumber: report.jobNumber || "",
       toolName: report.equipmentName || report.assetTested || "",
@@ -444,7 +434,12 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
       equipmentLocation: report.equipmentLocation || "",
       typeOfInspection: report.typeOfInspection || "",
       nextInspectionDate: nextDate
-    }));
+    };
+    if (isEditMode && editFormValues) {
+      setEditFormValues(prev => prev ? ({ ...prev, ...updates }) : prev);
+    } else {
+      setFormValues((prev) => ({ ...prev, ...updates }));
+    }
     setShowReportAutocomplete(false);
     showToast(`✓ Fetched data from inspection report "${report.id}".`);
   };
@@ -535,12 +530,11 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
   const handleSaveDetailChanges = () => {
     if (!editFormValues) return;
     
-    const finalCertificate = { ...editFormValues, operators: [...operatorRows] };
     // Propagate changes to outer state hook
     onCertificatesChange((prev) =>
-      prev.map((j) => (j.id === finalCertificate.id ? finalCertificate : j))
+      prev.map((j) => (j.id === editFormValues.id ? editFormValues : j))
     );
-    setSelectedCertificateDetail(finalCertificate);
+    setSelectedCertificateDetail(editFormValues);
     setIsEditingInDetail(false);
     showToast("✓ Training details updated successfully.");
   };
@@ -617,9 +611,6 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
   useEffect(() => {
     if (selectedCertificateDetail) {
       setEditFormValues({ ...selectedCertificateDetail });
-      setOperatorRows(selectedCertificateDetail.operators || []);
-    } else {
-      setOperatorRows([]);
     }
   }, [selectedCertificateDetail]);
 
@@ -664,13 +655,22 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
 
         {/* 1. Header with Breadcrumbs, actions and navigation */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#ECECF3] pb-4 select-none">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5 text-xs text-slate-400 font-medium font-sans">
-              <button onClick={() => setSelectedCertificateDetail(null)} className="hover:text-[#683EFF] font-semibold transition-colors">
-                Lifting Tool Certificates
-              </button>
-              <Icons.ChevronRight className="w-3 h-3 text-slate-350" />
-              <span className="font-bold text-slate-700 truncate max-w-[200px]">{certificate.id}</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSelectedCertificateDetail(null)}
+              className="p-2 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-[#683EFF] hover:border-[#683EFF] transition-all shadow-sm group animate-in fade-in"
+              title="Go Back"
+            >
+              <Icons.ArrowLeft className="w-4.5 h-4.5 group-active:-translate-x-1 transition-transform" />
+            </button>
+            <div>
+              <div className="flex items-center gap-2 mb-1.5 text-xs text-slate-400 font-medium font-sans">
+                <button onClick={() => setSelectedCertificateDetail(null)} className="hover:text-[#683EFF] font-semibold transition-colors">
+                  Lifting Tool Certificates
+                </button>
+                <Icons.ChevronRight className="w-3 h-3 text-slate-350" />
+                <span className="font-bold text-slate-700 truncate max-w-[200px]">{certificate.id}</span>
+              </div>
             </div>
           </div>
 
@@ -849,17 +849,17 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
             {activeDetailTab === "DETAILS" && (
               <div className="space-y-6">
                 
-                {/* 2.1 General & Inspection Report card */}
+                {/* 1. General & Inspection Report Card */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
                   <h4 className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 select-none text-slate-700">
                     <Icons.FileText className="w-4 h-4 text-[#683EFF]" />
-                    <span>General & Inspection Report</span>
+                    <span>1. General & Inspection Report</span>
                   </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Naming Series ID
+                        Naming Series
                       </label>
                       <input
                         type="text"
@@ -872,33 +872,61 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                       />
                     </div>
 
-                                        <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Color Code
-                      </label>
-                      <input
-                        type="text"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.colorCode || "" : certificate.colorCode || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, colorCode: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
-                      />
-                    </div>
-                    <div>
+                    <div className="relative">
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
                         Inspection Report No
                       </label>
-                      <input
-                        type="text"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.inspectionReportNo || "" : certificate.inspectionReportNo || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, inspectionReportNo: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          disabled={!isEditingInDetail}
+                          value={isEditingInDetail && editFormValues ? editFormValues.inspectionReportNo || "" : certificate.inspectionReportNo || ""}
+                          onChange={(e) => {
+                            if (editFormValues) {
+                              setEditFormValues({ ...editFormValues, inspectionReportNo: e.target.value });
+                              setShowReportAutocomplete(true);
+                            }
+                          }}
+                          onFocus={() => {
+                            if (isEditingInDetail) setShowReportAutocomplete(true);
+                          }}
+                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
+                        />
+                        {isEditingInDetail && (
+                          <Icons.ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        )}
+                      </div>
+
+                      {/* Autocomplete Overlay menu */}
+                      {isEditingInDetail && showReportAutocomplete && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowReportAutocomplete(false)} />
+                          <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-xl py-1 z-50 overflow-hidden text-left max-h-48 overflow-y-auto">
+                            {inspectionReports.length === 0 ? (
+                              <div className="px-4 py-3 text-xs text-slate-500 italic text-center">
+                                No reports found.
+                              </div>
+                            ) : (
+                              inspectionReports
+                                .filter((report) => report.id.toLowerCase().includes((editFormValues?.inspectionReportNo || "").toLowerCase()))
+                                .map((report) => (
+                                  <button
+                                    key={report.id}
+                                    type="button"
+                                    onClick={() => {
+                                      handleSelectReport(report, true);
+                                      setShowReportAutocomplete(false);
+                                    }}
+                                    className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-[#F0EBFF] hover:text-[#683EFF] flex justify-between items-center transition-colors"
+                                  >
+                                    <span>{report.id}</span>
+                                    <span className="text-[10px] text-slate-400 font-mono font-bold uppercase">{report.jobNumber || "N/A"}</span>
+                                  </button>
+                                ))
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     <div>
@@ -918,14 +946,14 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
 
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Client Name
+                        Equipment Name
                       </label>
                       <input
                         type="text"
                         disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.clientName || "" : certificate.clientName || ""}
+                        value={isEditingInDetail && editFormValues ? editFormValues.toolName || "" : certificate.toolName || ""}
                         onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, clientName: e.target.value });
+                          if (editFormValues) setEditFormValues({ ...editFormValues, toolName: e.target.value });
                         }}
                         className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
                       />
@@ -933,14 +961,14 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
 
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Location
+                        Sticker Number
                       </label>
                       <input
                         type="text"
                         disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.location || "" : certificate.location || ""}
+                        value={isEditingInDetail && editFormValues ? editFormValues.stickerNumber || "" : certificate.stickerNumber || ""}
                         onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, location: e.target.value });
+                          if (editFormValues) setEditFormValues({ ...editFormValues, stickerNumber: e.target.value });
                         }}
                         className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
                       />
@@ -948,43 +976,14 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
 
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Inspection Location
+                        Time Sheet Number
                       </label>
                       <input
                         type="text"
                         disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.equipmentLocation || "" : certificate.equipmentLocation || ""}
+                        value={isEditingInDetail && editFormValues ? editFormValues.timeSheetNumber || "" : certificate.timeSheetNumber || ""}
                         onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, equipmentLocation: e.target.value });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2.2 Equipment Details card */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
-                  <h4 className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 select-none text-slate-700">
-                    <Icons.Cpu className="w-4 h-4 text-[#683EFF]" />
-                    <span>Equipment Details</span>
-                  </h4>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-
-
-
-
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Type of Inspection
-                      </label>
-                      <input
-                        type="text"
-                        disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.typeOfInspection || "" : certificate.typeOfInspection || ""}
-                        onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, typeOfInspection: e.target.value });
+                          if (editFormValues) setEditFormValues({ ...editFormValues, timeSheetNumber: e.target.value });
                         }}
                         className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
                       />
@@ -1022,14 +1021,33 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
 
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Time Sheet Number
+                        Initial Status
+                      </label>
+                      <select
+                        disabled={!isEditingInDetail}
+                        value={isEditingInDetail && editFormValues ? editFormValues.status || "" : certificate.status || ""}
+                        onChange={(e) => {
+                          if (editFormValues) setEditFormValues({ ...editFormValues, status: e.target.value as any });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
+                      >
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Color Code
                       </label>
                       <input
                         type="text"
                         disabled={!isEditingInDetail}
-                        value={isEditingInDetail && editFormValues ? editFormValues.timeSheetNumber || "" : certificate.timeSheetNumber || ""}
+                        value={isEditingInDetail && editFormValues ? editFormValues.colorCode || "" : certificate.colorCode || ""}
                         onChange={(e) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, timeSheetNumber: e.target.value });
+                          if (editFormValues) setEditFormValues({ ...editFormValues, colorCode: e.target.value });
                         }}
                         className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
                       />
@@ -1037,16 +1055,109 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                   </div>
                 </div>
 
-                {/* 2.3 Inspection Results card */}
+                {/* 2. Client & Location Details Card */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
                   <h4 className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 select-none text-slate-700">
-                    <Icons.ClipboardCheck className="w-4 h-4 text-[#683EFF]" />
-                    <span>Inspection Results</span>
+                    <Icons.Building className="w-4 h-4 text-[#683EFF]" />
+                    <span>2. Client & Location Details</span>
+                  </h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="relative">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Client Name
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          disabled={!isEditingInDetail}
+                          value={isEditingInDetail && editFormValues ? editFormValues.clientName || "" : certificate.clientName || ""}
+                          onChange={(e) => {
+                            if (editFormValues) {
+                              setEditFormValues({ ...editFormValues, clientName: e.target.value });
+                              setShowClientAutocomplete(true);
+                            }
+                          }}
+                          onFocus={() => {
+                            if (isEditingInDetail) setShowClientAutocomplete(true);
+                          }}
+                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
+                        />
+                        {isEditingInDetail && (
+                          <Icons.ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        )}
+                      </div>
+
+                      {/* Autocomplete Overlay menu */}
+                      {isEditingInDetail && showClientAutocomplete && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowClientAutocomplete(false)} />
+                          <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-xl py-1 z-50 overflow-hidden text-left max-h-48 overflow-y-auto">
+                            {matchingCustomers.length === 0 ? (
+                              <div className="px-4 py-3 text-xs italic text-slate-400 text-center">
+                                No matching clients found.
+                              </div>
+                            ) : (
+                              matchingCustomers.map((cust) => (
+                                <button
+                                  key={cust.id}
+                                  type="button"
+                                  onClick={() => {
+                                    handleSelectCustomer(cust, true);
+                                    setShowClientAutocomplete(false);
+                                  }}
+                                  className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-[#F0EBFF] hover:text-[#683EFF] flex justify-between items-center transition-colors text-left"
+                                >
+                                  <span>{cust.companyName}</span>
+                                  <span className="text-[10px] text-slate-400 font-mono font-bold uppercase">{cust.country}</span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Location
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!isEditingInDetail}
+                        value={isEditingInDetail && editFormValues ? editFormValues.location || "" : certificate.location || ""}
+                        onChange={(e) => {
+                          if (editFormValues) setEditFormValues({ ...editFormValues, location: e.target.value });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Inspection Location
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!isEditingInDetail}
+                        value={isEditingInDetail && editFormValues ? editFormValues.equipmentLocation || "" : certificate.equipmentLocation || ""}
+                        onChange={(e) => {
+                          if (editFormValues) setEditFormValues({ ...editFormValues, equipmentLocation: e.target.value });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Issue Dates & Specifications Card */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
+                  <h4 className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 select-none text-slate-700">
+                    <Icons.Calendar className="w-4 h-4 text-[#683EFF]" />
+                    <span>3. Issue Dates & Specifications</span>
                   </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-
-
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
                         Issue Date
@@ -1079,6 +1190,21 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
 
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Type of Inspection
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!isEditingInDetail}
+                        value={isEditingInDetail && editFormValues ? editFormValues.typeOfInspection || "" : certificate.typeOfInspection || ""}
+                        onChange={(e) => {
+                          if (editFormValues) setEditFormValues({ ...editFormValues, typeOfInspection: e.target.value });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
                         Next Issue Date
                       </label>
                       <input
@@ -1088,21 +1214,11 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                         onChange={(e) => {
                           if (editFormValues) setEditFormValues({ ...editFormValues, nextInspectionDate: e.target.value });
                         }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-mono text-slate-700"
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-mono text-slate-700 disabled:opacity-85"
                       />
                     </div>
-                  </div>
-                </div>
 
-                {/* 2.4 Certification & Standards card */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
-                  <h4 className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 select-none text-slate-700">
-                    <Icons.Award className="w-4 h-4 text-[#683EFF]" />
-                    <span>Certification & Standards</span>
-                  </h4>
-
-                  <div className="space-y-6">
-                    <div className="w-full">
+                    <div className="md:col-span-2">
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
                         Reference Standard
                       </label>
@@ -1113,30 +1229,53 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                         onChange={(e) => {
                           if (editFormValues) setEditFormValues({ ...editFormValues, referenceStandard: e.target.value });
                         }}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
-                        placeholder="e.g. ANSI/ASME B30.5"
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Authorized By Section */}
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Inspection Result</label>
+                      <input
+                        type="text"
+                        disabled={!isEditingInDetail}
+                        value={isEditingInDetail && editFormValues ? editFormValues.result || "" : certificate.result || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, result: e.target.value }); }}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Recommendation</label>
+                      <textarea
+                        disabled={!isEditingInDetail}
+                        value={isEditingInDetail && editFormValues ? editFormValues.recommendation || "" : certificate.recommendation || ""}
+                        onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, recommendation: e.target.value }); }}
+                        rows={2}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700 disabled:opacity-85 resize-none"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <AccessoriesDataEditor
+                        data={isEditingInDetail && editFormValues ? (editFormValues.accessoriesData || []) : (certificate.accessoriesData || [])}
+                        onChange={(data) => {
+                          if (editFormValues) setEditFormValues({ ...editFormValues, accessoriesData: data });
+                        }}
+                        disabled={!isEditingInDetail}
+                      />
+                    </div>
+                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-4">
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                            Authorized by
-                          </label>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Authorized By</label>
                           <input
                             type="text"
                             disabled={!isEditingInDetail}
                             value={isEditingInDetail && editFormValues ? editFormValues.authorizedBy || "" : certificate.authorizedBy || ""}
-                            onChange={(e) => {
-                              if (editFormValues) setEditFormValues({ ...editFormValues, authorizedBy: e.target.value });
-                            }}
+                            onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, authorizedBy: e.target.value }); }}
                             className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
                           />
                         </div>
-
-                        {/* Authorized Signature Box */}
                         <div className="bg-white border rounded-xl p-6 flex flex-col items-center justify-center min-h-[120px] relative w-full group overflow-hidden border-slate-200">
                           {isEditingInDetail ? (
                             <>
@@ -1150,7 +1289,6 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       if (editFormValues) setEditFormValues({ ...editFormValues, authorizedBySignature: "" });
-                                      showToast("✓ Authorized signature removed.");
                                     }}
                                     className="absolute -top-1 -right-1 p-1.5 bg-rose-500 text-white rounded-full shadow-lg z-30 hover:bg-rose-600 transition-colors"
                                   >
@@ -1175,24 +1313,17 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                         </div>
                       </div>
 
-                      {/* Inspected By Section */}
                       <div className="space-y-4">
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                            Inspected by
-                          </label>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Inspected By</label>
                           <input
                             type="text"
                             disabled={!isEditingInDetail}
                             value={isEditingInDetail && editFormValues ? editFormValues.inspectedBy || "" : certificate.inspectedBy || ""}
-                            onChange={(e) => {
-                              if (editFormValues) setEditFormValues({ ...editFormValues, inspectedBy: e.target.value });
-                            }}
+                            onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, inspectedBy: e.target.value }); }}
                             className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
                           />
                         </div>
-
-                        {/* Inspected Signature Box */}
                         <div className="bg-white border rounded-xl p-6 flex flex-col items-center justify-center min-h-[120px] relative w-full group overflow-hidden border-slate-200">
                           {isEditingInDetail ? (
                             <>
@@ -1206,7 +1337,6 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       if (editFormValues) setEditFormValues({ ...editFormValues, inspectedBySignature: "" });
-                                      showToast("✓ Inspected signature removed.");
                                     }}
                                     className="absolute -top-1 -right-1 p-1.5 bg-rose-500 text-white rounded-full shadow-lg z-30 hover:bg-rose-600 transition-colors"
                                   >
@@ -1232,19 +1362,11 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                       </div>
                     </div>
 
-
-                    <div className="md:col-span-2">
-                      <AccessoriesDataEditor
-                        data={isEditingInDetail && editFormValues ? (editFormValues.accessoriesData || []) : (certificate.accessoriesData || [])}
-                        onChange={(data) => {
-                          if (editFormValues) setEditFormValues({ ...editFormValues, accessoriesData: data });
-                        }}
-                        disabled={!isEditingInDetail}
-                      />
-                    </div>
-
                   </div>
                 </div>
+
+              </div>
+            )}
 
                 {/* 2. Timeline and comments double column layout */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
@@ -1338,15 +1460,11 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                       ))}
                     </div>
                   </div>
-                </div>
-
               </div>
-            )}
+            </div>
           </div>
 
-        </div>
-
-        {confirmDeleteId && (
+          {confirmDeleteId && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setConfirmDeleteId(null)} />
             <div className="relative bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full animate-in zoom-in-95 duration-200 border border-slate-100">
@@ -2089,15 +2207,35 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                     </label>
                     <input
                       type="text"
-                      readOnly
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed"
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                       value={formValues.jobNumber}
                       onChange={(e) => setFormValues({ ...formValues, jobNumber: e.target.value })}
                     />
                   </div>
 
+                  <div>
+                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                      Equipment Name
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                      value={formValues.toolName}
+                      onChange={(e) => setFormValues({ ...formValues, toolName: e.target.value })}
+                    />
+                  </div>
 
-
+                  <div>
+                    <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
+                      Sticker Number
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
+                      value={formValues.stickerNumber}
+                      onChange={(e) => setFormValues({ ...formValues, stickerNumber: e.target.value })}
+                    />
+                  </div>
 
                   <div>
                     <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
@@ -2105,14 +2243,11 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                     </label>
                     <input
                       type="text"
-                      readOnly
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed"
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                       value={formValues.timeSheetNumber}
                       onChange={(e) => setFormValues({ ...formValues, timeSheetNumber: e.target.value })}
                     />
                   </div>
-
-
 
                   <div>
                     <label className="block text-[10px] font-medium text-slate-600 uppercase tracking-wider mb-2 font-sans">
@@ -2120,8 +2255,7 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                     </label>
                     <input
                       type="text"
-                      readOnly
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed"
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                       value={formValues.validity}
                       onChange={(e) => setFormValues({ ...formValues, validity: e.target.value })}
                     />
@@ -2133,8 +2267,7 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                     </label>
                     <input
                       type="text"
-                      readOnly
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed"
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                       value={formValues.checkList}
                       onChange={(e) => setFormValues({ ...formValues, checkList: e.target.value })}
                     />
@@ -2184,8 +2317,7 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                     <div className="relative">
                       <input
                         type="text"
-                        readOnly
-                        className={`w-full text-xs px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed ${
+                        className={`w-full text-xs px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans ${
                           formErrors.clientName ? "border-rose-300 focus:ring-rose-500" : "border-slate-200"
                         }`}
                         onFocus={() => setShowClientAutocomplete(true)}
@@ -2233,8 +2365,7 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                     </label>
                     <input
                       type="text"
-                      readOnly
-                      className={`w-full text-xs px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed ${
+                      className={`w-full text-xs px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans ${
                         formErrors.location ? "border-rose-300 focus:ring-rose-500" : "border-slate-200"
                       }`}
                       value={formValues.location}
@@ -2249,8 +2380,7 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                     </label>
                     <input
                       type="text"
-                      readOnly
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed"
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                       value={formValues.equipmentLocation}
                       onChange={(e) => setFormValues({ ...formValues, equipmentLocation: e.target.value })}
                     />
@@ -2272,8 +2402,7 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                     </label>
                     <input
                       type="date"
-                      readOnly
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed"
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                       value={formValues.issueDate}
                       onChange={(e) => setFormValues({ ...formValues, issueDate: e.target.value })}
                     />
@@ -2285,8 +2414,7 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                     </label>
                     <input
                       type="date"
-                      readOnly
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed"
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                       value={formValues.expiryDate}
                       onChange={(e) => setFormValues({ ...formValues, expiryDate: e.target.value })}
                     />
@@ -2298,8 +2426,7 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                     </label>
                     <input
                       type="text"
-                      readOnly
-                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-100 font-normal font-sans cursor-not-allowed"
+                      className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                       value={formValues.typeOfInspection}
                       onChange={(e) => setFormValues({ ...formValues, typeOfInspection: e.target.value })}
                     />
@@ -2331,6 +2458,12 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                       />
                     </div>
 
+                  <div className="md:col-span-2">
+                    <AccessoriesDataEditor
+                      data={formValues.accessoriesData || []}
+                      onChange={(data) => setFormValues({ ...formValues, accessoriesData: data })}
+                    />
+                  </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                       {/* Authorized By Section */}
                       <div className="space-y-4">
@@ -2414,12 +2547,6 @@ export function LiftingToolCertificatesPortfolioView({ certificates, onCertifica
                     </div>
                   </div>
                   
-                  <div className="md:col-span-2">
-                    <AccessoriesDataEditor
-                      data={formValues.accessoriesData || []}
-                      onChange={(data) => setFormValues({ ...formValues, accessoriesData: data })}
-                    />
-                  </div>
 
                 </div>
 

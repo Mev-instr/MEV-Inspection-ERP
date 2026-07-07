@@ -14,6 +14,7 @@ export enum ERPSection {
 export enum ERPCategory {
   CUSTOMER_DETAILS = "Customer Details",
   EMPLOYEE_DETAILS = "Employee Details",
+  USER_MANAGEMENT = "User Management",
   TRAINING_JOB_ORDER_CARD = "Training Job Order/Card",
   INSPECTION_JOB_ORDER_CARD = "Inspection Job Order/Card",
   INSPECTION_REPORT = "Inspection Report",
@@ -332,5 +333,6 @@ export interface OperatorCard {
   levelType?: string;
   company?: string;
   trainedBy?: string;
+  authorizedBy?: string;
   safetyIndex?: number;
 }

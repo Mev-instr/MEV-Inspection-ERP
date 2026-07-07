@@ -1,4 +1,4 @@
-import { db } from "./firebase";
+import { app, db, auth, storage, googleProvider } from "./firebase";
 import { 
   collection, 
   getDocs, 
@@ -6,8 +6,49 @@ import {
   setDoc, 
   deleteDoc, 
   writeBatch,
-  query
+  query,
+  getDoc
 } from "firebase/firestore";
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  // Don't throw for list operations to allow offline mode / fallback to initial data
+  if (operationType !== OperationType.LIST) {
+    throw new Error(JSON.stringify(errInfo));
+  }
+}
 
 // Generic helper to fetch collection
 export async function fetchCollection(collectionName: string): Promise<any[]> {
@@ -20,7 +61,7 @@ export async function fetchCollection(collectionName: string): Promise<any[]> {
     });
     return items;
   } catch (error) {
-    console.error(`Error fetching collection ${collectionName}:`, error);
+    handleFirestoreError(error, OperationType.LIST, collectionName);
     return [];
   }
 }
@@ -29,20 +70,11 @@ export async function fetchCollection(collectionName: string): Promise<any[]> {
 export async function saveDocument(collectionName: string, docId: string, data: any): Promise<void> {
   try {
     const docRef = doc(db, collectionName, docId);
-    // Remove the id from the actual data payload to avoid duplicates
     const { id, ...cleanData } = data;
-    
-    // Check for large fields (Data URLs)
-    const stringified = JSON.stringify(cleanData);
-    if (stringified.length > 800000) { // Close to 1MB limit
-      console.warn(`Document ${docId} is very large (${Math.round(stringified.length / 1024)} KB). This might fail if it exceeds 1MB.`);
-    }
-
     await setDoc(docRef, cleanData, { merge: true });
     console.log(`Document ${docId} successfully saved in ${collectionName}`);
   } catch (error) {
-    console.error(`Error saving document ${docId} in ${collectionName}:`, error);
-    throw error;
+    handleFirestoreError(error, OperationType.WRITE, `${collectionName}/${docId}`);
   }
 }
 
@@ -53,8 +85,7 @@ export async function deleteDocument(collectionName: string, docId: string): Pro
     await deleteDoc(docRef);
     console.log(`Document ${docId} successfully deleted from ${collectionName}`);
   } catch (error) {
-    console.error(`Error deleting document ${docId} from ${collectionName}:`, error);
-    throw error;
+    handleFirestoreError(error, OperationType.DELETE, `${collectionName}/${docId}`);
   }
 }
 
@@ -74,6 +105,6 @@ export async function seedFirestore(collectionName: string, initialData: any[]):
     await batch.commit();
     console.log(`Successfully seeded ${collectionName}`);
   } catch (error) {
-    console.error(`Error seeding collection ${collectionName}:`, error);
+    handleFirestoreError(error, OperationType.WRITE, `batch-seed/${collectionName}`);
   }
 }

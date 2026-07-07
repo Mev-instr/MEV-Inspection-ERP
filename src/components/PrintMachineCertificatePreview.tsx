@@ -132,7 +132,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                        <h1 className="text-[44px] font-bebas font-medium text-[#683EFF] uppercase tracking-wide leading-none">Quality Inspection Certificate</h1>
                        <div className="flex items-center gap-4 w-full">
                          <div className="h-[2px] bg-slate-800 flex-1"></div>
-                         <h2 className="text-[17px] font-semibold tracking-widest uppercase text-slate-800">Certified Equipment Inspection Report</h2>
+                         <h2 className="text-[17px] font-semibold tracking-widest uppercase text-slate-800">{certificate.id}</h2>
                          <div className="h-[2px] bg-slate-800 flex-1"></div>
                        </div>
                     </div>
@@ -328,7 +328,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                      <div className="absolute left-1/2 -translate-x-1/2 bottom-[15px] flex flex-col items-center w-64 text-center">
                         <div className="p-0 bg-white rounded-xl shadow-sm border border-slate-200">
                            <QRCodeSVG 
-                             value={`https://mev-ins.com/verify/${certificate.id}`}
+                             value={`${window.location.origin}/verify/${certificate.id}`}
                              size={85}
                              level="H"
                              fgColor="#111827"
@@ -428,7 +428,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                        <h1 className="text-[44px] font-bebas font-medium text-[#683EFF] uppercase tracking-wide leading-none">Quality Inspection Certificate</h1>
                        <div className="flex items-center gap-4 w-full">
                          <div className="h-[2px] bg-slate-800 flex-1"></div>
-                         <h2 className="text-[17px] font-semibold tracking-widest uppercase text-slate-800">Certified Equipment Inspection Report</h2>
+                         <h2 className="text-[17px] font-semibold tracking-widest uppercase text-slate-800">{certificate.id}</h2>
                          <div className="h-[2px] bg-slate-800 flex-1"></div>
                        </div>
                     </div>
@@ -624,7 +624,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
                      <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center w-64 text-center">
                         <div className="p-0 bg-white rounded-xl shadow-sm border border-slate-200">
                            <QRCodeSVG 
-                             value={`https://mev-ins.com/verify/${certificate.id}`}
+                             value={`${window.location.origin}/verify/${certificate.id}`}
                              size={85}
                              level="H"
                              fgColor="#111827"

@@ -131,7 +131,7 @@ export function PrintLiftingToolCertPreview({ certificate, onClose }: PrintLifti
                        <h1 className="text-[50px] font-bebas font-medium text-[#683EFF] uppercase tracking-wide leading-none">Lifting Tool Certificate</h1>
                        <div className="flex items-center gap-4 w-full">
                          <div className="h-[2px] bg-slate-800 flex-1"></div>
-                         <h2 className="text-[17px] font-semibold tracking-widest uppercase text-slate-800">{certificate.namingSeries || "N/A"}</h2>
+                         <h2 className="text-[17px] font-semibold tracking-widest uppercase text-slate-800">{certificate.id}</h2>
                          <div className="h-[2px] bg-slate-800 flex-1"></div>
                        </div>
                     </div>
@@ -214,7 +214,7 @@ export function PrintLiftingToolCertPreview({ certificate, onClose }: PrintLifti
                               <Icons.MapPin className="w-4 h-4" />
                            </div>
                            <span className="text-[10px] font-bold text-slate-500 uppercase mb-0.5">Inspection Location</span>
-                           <span className="text-[11px] font-bold text-slate-800 uppercase line-clamp-1 truncate max-w-full px-1">{certificate.location || "N/A"}</span>
+                           <span className="text-[11px] font-bold text-slate-800 uppercase line-clamp-1 truncate max-w-full px-1">{certificate.equipmentLocation || "N/A"}</span>
                         </div>
                         <div className="flex-1 flex flex-col items-center justify-center py-2 px-1 text-center">
                            <div className="w-5 h-5 flex items-center justify-center mb-1 text-[#683EFF]">
@@ -286,7 +286,7 @@ export function PrintLiftingToolCertPreview({ certificate, onClose }: PrintLifti
                      <div className="absolute left-1/2 -translate-x-1/2 bottom-[15px] flex flex-col items-center w-64 text-center">
                         <div className="p-0 bg-white rounded-xl shadow-sm border border-slate-200">
                            <QRCodeSVG 
-                             value={`https://mev-ins.com/verify/${certificate.id}`}
+                             value={`${window.location.origin}/verify/${certificate.id}`}
                              size={85}
                              level="H"
                              fgColor="#111827"
