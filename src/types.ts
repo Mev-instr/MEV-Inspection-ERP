@@ -74,6 +74,7 @@ export interface CustomerDetail {
   zipPostalCode?: string;
   inspectionSiteAddress?: string;
   lastUpdated?: string;
+  hasAccount?: boolean;
 }
 
 export interface EmployeeDetail {
@@ -89,6 +90,7 @@ export interface EmployeeDetail {
   joiningDate?: string;
   name?: string;
   role?: string;
+  hasAccount?: boolean;
 }
 
 export interface TrainingOperator {

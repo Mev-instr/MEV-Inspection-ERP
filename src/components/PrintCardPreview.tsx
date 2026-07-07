@@ -6,9 +6,10 @@ import { QRCodeSVG } from "qrcode.react";
 interface PrintCardPreviewProps {
   operator: OperatorCard;
   onClose: () => void;
+  autoPrint?: boolean;
 }
 
-export function PrintCardPreview({ operator, onClose }: PrintCardPreviewProps) {
+export function PrintCardPreview({ operator, onClose, autoPrint = false }: PrintCardPreviewProps) {
   const [template, setTemplate] = useState("template1");
   const [isExporting, setIsExporting] = useState(false);
   const [imagesReady, setImagesReady] = useState(false);
@@ -145,12 +146,22 @@ export function PrintCardPreview({ operator, onClose }: PrintCardPreviewProps) {
     }, 1000);
   }, [imagesReady, operator]);
 
+  useEffect(() => {
+    if (autoPrint && imagesReady) {
+      const timer = setTimeout(() => {
+        handleDownloadPDF();
+        onClose();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [autoPrint, imagesReady]);
+
   const templates = [
     { id: "template1", name: "Template (No Approval)" },
   ];
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-140px)] bg-slate-900 rounded-3xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-300">
+    <div className={`flex flex-col min-h-[calc(100vh-140px)] bg-slate-900 rounded-3xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-300 ${autoPrint ? "opacity-0 pointer-events-none fixed -left-[9999px]" : ""}`}>
       {/* Top Header */}
       <div className="flex items-center justify-between p-4 px-6 bg-slate-900 border-b border-white/10 shrink-0">
         <div className="flex items-center gap-4">

@@ -21,6 +21,7 @@ import {
 import { DetailModal, LucideIcon } from "./components/DetailModal";
 import { CustomerPortfolioView } from "./components/CustomerPortfolioView";
 import { UserManagementView } from "./components/UserManagementView";
+import { ClientPortalDashboard } from "./components/ClientPortalDashboard";
 import { TrainingJobsPortfolioView } from "./components/TrainingJobsPortfolioView";
 import { LiftingToolCertificatesPortfolioView } from "./components/LiftingToolCertificatesPortfolioView";
 import { MachineCertificatesPortfolioView } from "./components/MachineCertificatesPortfolioView";
@@ -60,6 +61,14 @@ export default function App() {
   const [customers, setCustomers] = useState(initialCustomers);
   const [employees, setEmployees] = useState(initialEmployees);
   const currentEmployee = employees.find(e => e.email === currentUser?.email);
+  const isClient = !isAdmin && customers.some(c => {
+    const cEmail = (c.email || c.primaryEmail || "").toLowerCase();
+    return cEmail && cEmail === currentUser?.email?.toLowerCase() && c.hasAccount;
+  });
+  const currentClient = isClient ? customers.find(c => {
+    const cEmail = (c.email || c.primaryEmail || "").toLowerCase();
+    return cEmail && cEmail === currentUser?.email?.toLowerCase() && c.hasAccount;
+  }) : null;
   const [trainingJobs, setTrainingJobs] = useState(initialTrainingJobs);
   const [inspectionJobs, setInspectionJobs] = useState(initialInspectionJobs);
   const [inspectionReports, setInspectionReports] = useState(
@@ -247,6 +256,13 @@ export default function App() {
             await seedFirestore("customers", initialCustomers);
           }
 
+          const syncedEmployees = await fetchCollection("employees");
+          if (syncedEmployees && syncedEmployees.length > 0) {
+            setEmployees(syncedEmployees);
+          } else {
+            await seedFirestore("employees", initialEmployees);
+          }
+
           const syncedOperators = await fetchCollection("operators");
           if (syncedOperators && syncedOperators.length > 0) {
             setOperators(syncedOperators);
@@ -319,6 +335,12 @@ export default function App() {
       customers.forEach((cust) => saveDocument("customers", cust.id, cust));
     }
   }, [customers, currentUser]);
+
+  useEffect(() => {
+    if (currentUser && employees !== initialEmployees) {
+      employees.forEach((emp) => saveDocument("employees", emp.id, emp));
+    }
+  }, [employees, currentUser]);
 
   useEffect(() => {
     if (currentUser && operators !== initialOperators) {
@@ -657,6 +679,22 @@ export default function App() {
         onSuccess={(user) => setCurrentUser(user)}
         triggerCloudToast={triggerCloudToast}
         employees={employees}
+        customers={customers}
+      />
+    );
+  }
+
+  if (isClient && currentClient) {
+    return (
+      <ClientPortalDashboard
+        currentClient={currentClient}
+        machineCertificates={machineCertificates}
+        liftingToolCertificates={liftingToolCerts}
+        operatorCards={operators}
+        onLogout={() => {
+          triggerCloudToast("Signed out from Client Portal");
+          setCurrentUser(null);
+        }}
       />
     );
   }
@@ -883,6 +921,35 @@ export default function App() {
                 </button>
               </div>
             </div>
+
+            {/* ADMINISTRATION SECTION */}
+            {isAdmin && (
+              <div className="space-y-1.5 mt-4">
+                {!sidebarCollapsed && (
+                  <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest select-none">
+                    ADMINISTRATION
+                  </p>
+                )}
+                <div className="space-y-0.5">
+                  <button
+                    id="nav-to-user-management"
+                    onClick={() => {
+                      setCurrentTab("USER_MANAGEMENT");
+                      setActiveCategory(null);
+                      setMobileSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                      currentTab === "USER_MANAGEMENT"
+                        ? "bg-[#F0EBFF] text-[#683EFF] font-semibold"
+                        : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                    }`}
+                  >
+                    <Icons.UserCog className="w-5 h-5" />
+                    {!sidebarCollapsed && <span>User Management</span>}
+                  </button>
+                </div>
+              </div>
+            )}
           </nav>
         </div>
 
@@ -1109,6 +1176,29 @@ export default function App() {
                     <span>Operator Directory</span>
                   </button>
                 </div>
+
+                {isAdmin && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-slate-400 tracking-wider">
+                      ADMINISTRATION
+                    </p>
+                    <button
+                      onClick={() => {
+                        setCurrentTab("USER_MANAGEMENT");
+                        setActiveCategory(null);
+                        setMobileSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium ${
+                        currentTab === "USER_MANAGEMENT"
+                          ? "bg-[#F0EBFF] text-[#683EFF] font-semibold"
+                          : "text-slate-500"
+                      }`}
+                    >
+                      <Icons.UserCog className="w-5 h-5" />
+                      <span>User Management</span>
+                    </button>
+                  </div>
+                )}
               </nav>
 
               <div className="pt-6 border-t border-slate-100 mt-6 space-y-4">
@@ -1309,6 +1399,8 @@ export default function App() {
                 <UserManagementView
                   employees={employees}
                   onEmployeesChange={setEmployees}
+                  customers={customers}
+                  onCustomersChange={setCustomers}
                 />
               </motion.div>
             )}

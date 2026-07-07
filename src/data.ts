@@ -109,10 +109,10 @@ export const initialCustomers: CustomerDetail[] = [
 ];
 
 export const initialEmployees: EmployeeDetail[] = [
-  { id: "EMP-001", name: "Amine Al-Hussaini", role: "Managing Director", department: "Executive Office", status: "Active", email: "amine@me-vim.com", phone: "+971 4 412 8001", joiningDate: "2018-03-15" },
-  { id: "EMP-002", name: "Nour Al-Faisal", role: "Inspection Lead Auditor", department: "Quality Assurance", status: "Active", email: "nour.f@me-vim.com", phone: "+971 4 412 8004", joiningDate: "2020-07-01" },
-  { id: "EMP-003", name: "Zaid Mansoor", role: "Senior QHSE Consultant", department: "Operations & HSE", status: "Active", email: "zaid.m@me-vim.com", phone: "+971 4 412 8009", joiningDate: "2021-01-10" },
-  { id: "EMP-004", name: "Fatima Al-Sayed", role: "Operations Coordinator", department: "Logistics", status: "Active", email: "fatima.s@me-vim.com", phone: "+971 4 412 8012", joiningDate: "2022-09-20" },
+  { id: "EMP-001", name: "Amine Al-Hussaini", role: "Managing Director", department: "Executive Office", status: "Active", email: "amine@me-vim.com", phone: "+971 4 412 8001", joiningDate: "2018-03-15", hasAccount: true },
+  { id: "EMP-002", name: "Nour Al-Faisal", role: "Inspection Lead Auditor", department: "Quality Assurance", status: "Active", email: "nour.f@me-vim.com", phone: "+971 4 412 8004", joiningDate: "2020-07-01", hasAccount: true },
+  { id: "EMP-003", name: "Zaid Mansoor", role: "Senior QHSE Consultant", department: "Operations & HSE", status: "Active", email: "zaid.m@me-vim.com", phone: "+971 4 412 8009", joiningDate: "2021-01-10", hasAccount: true },
+  { id: "EMP-004", name: "Fatima Al-Sayed", role: "Operations Coordinator", department: "Logistics", status: "Active", email: "fatima.s@me-vim.com", phone: "+971 4 412 8012", joiningDate: "2022-09-20", hasAccount: true },
 ];
 
 export const initialTrainingJobs: TrainingJob[] = [

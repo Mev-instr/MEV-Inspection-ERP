@@ -12,10 +12,11 @@ import halfWhiteLogoAsset from "./Half_White_Logo.png";
 interface PrintMachineCertificatePreviewProps {
   certificate: MachineCertificate;
   onClose: () => void;
+  autoPrint?: boolean;
 }
 
-export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMachineCertificatePreviewProps) {
-  const [template, setTemplate] = useState("template1");
+export function PrintMachineCertificatePreview({ certificate, onClose, autoPrint = false }: PrintMachineCertificatePreviewProps) {
+  const [template, setTemplate] = useState("template_approved"); // Use approved template as default for direct printing
   const [isExporting, setIsExporting] = useState(false);
 
   const certRef = useRef<HTMLDivElement>(null);
@@ -30,8 +31,20 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
     documentTitle: `${certificate.namingSeries || certificate.id}_Certificate`.replace(/[/\\?%*:|"<>]/g, '-'),
     pageStyle: `@media print { @page { size: A4; margin: 0; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }`,
     onPrintError: (error) => console.error("Print error:", error),
-    onAfterPrint: () => console.log("Print success"),
+    onAfterPrint: () => {
+      console.log("Print success");
+      if (autoPrint) onClose();
+    },
   });
+
+  useEffect(() => {
+    if (autoPrint) {
+      const timer = setTimeout(() => {
+        handleDownloadPDF();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [autoPrint]);
 
   const d = new Date();
   const certDateStr = d.toISOString().split('T')[0];
@@ -61,7 +74,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose }: PrintMa
   const footerLogoUrl = "https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FHorizontal%20White%20Logo.png?alt=media&token=41850433-efdc-4527-bcc3-a071cb41cc35";
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-140px)] bg-slate-900 rounded-3xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-300">
+    <div className={`flex flex-col min-h-[calc(100vh-140px)] bg-slate-900 rounded-3xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-300 ${autoPrint ? "opacity-0 pointer-events-none fixed -left-[9999px]" : ""}`}>
       {/* Top Header */}
       <div className="flex flex-col p-4 px-6 bg-slate-900 border-b border-white/10 shrink-0 gap-4">
         <div className="flex items-center w-full">

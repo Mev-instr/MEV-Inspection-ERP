@@ -1318,11 +1318,16 @@ export function LiftingToolCertificatesPortfolioView({ employees,  certificates,
                           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Inspected By</label>
                           <input
                             type="text"
+                            list="employees-list-lifting"
                             disabled={!isEditingInDetail}
                             value={isEditingInDetail && editFormValues ? editFormValues.inspectedBy || "" : certificate.inspectedBy || ""}
                             onChange={(e) => { if (editFormValues) setEditFormValues({ ...editFormValues, inspectedBy: e.target.value }); }}
                             className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
+                            placeholder="Search employee..."
                           />
+                          <datalist id="employees-list-lifting">
+                            {employees?.map(e => <option key={e.id} value={e.name || e.firstName || e.id}>{e.id} - {e.role || e.designation}</option>)}
+                          </datalist>
                         </div>
                         <div className="bg-white border rounded-xl p-6 flex flex-col items-center justify-center min-h-[120px] relative w-full group overflow-hidden border-slate-200">
                           {isEditingInDetail ? (
@@ -2513,10 +2518,15 @@ export function LiftingToolCertificatesPortfolioView({ employees,  certificates,
                           </label>
                           <input
                             type="text"
+                            list="employees-list-lifting"
                             className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans"
                             value={formValues.inspectedBy}
                             onChange={(e) => setFormValues({ ...formValues, inspectedBy: e.target.value })}
+                            placeholder="Search employee..."
                           />
+                          <datalist id="employees-list-lifting">
+                            {employees?.map(e => <option key={e.id} value={e.name || e.firstName || e.id}>{e.id} - {e.role || e.designation}</option>)}
+                          </datalist>
                         </div>
 
                         {/* Inspected Signature Box */}

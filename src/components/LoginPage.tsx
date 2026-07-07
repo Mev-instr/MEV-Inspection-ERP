@@ -3,15 +3,16 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfi
 import { auth, signInWithGoogle } from "../lib/firebase";
 import * as Icons from "lucide-react";
 
-import { EmployeeDetail } from "../types";
+import { EmployeeDetail, CustomerDetail } from "../types";
 
 interface LoginPageProps {
   onSuccess: (user: any) => void;
   triggerCloudToast: (msg: string) => void;
   employees: EmployeeDetail[];
+  customers: CustomerDetail[];
 }
 
-export function LoginPage({ onSuccess, triggerCloudToast, employees }: LoginPageProps) {
+export function LoginPage({ onSuccess, triggerCloudToast, employees, customers }: LoginPageProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,8 +22,12 @@ export function LoginPage({ onSuccess, triggerCloudToast, employees }: LoginPage
 
   const checkAuthorization = (user: any) => {
     if (user.email === "shahzaibkamran44@gmail.com") return true;
-    const isEmployee = employees.some(e => e.email && e.email.toLowerCase() === user.email.toLowerCase());
-    return isEmployee;
+    const isEmployee = employees.some(e => e.email && e.email.toLowerCase() === user.email.toLowerCase() && e.hasAccount);
+    const isCustomer = customers.some(c => {
+      const cEmail = (c.email || c.primaryEmail || "").toLowerCase();
+      return cEmail && cEmail === user.email.toLowerCase() && c.hasAccount;
+    });
+    return isEmployee || isCustomer;
   };
 
 

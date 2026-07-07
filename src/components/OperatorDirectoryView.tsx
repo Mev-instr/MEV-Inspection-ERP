@@ -1157,11 +1157,15 @@ export function OperatorDirectoryView({ employees,  operators, onOperatorsChange
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Trained By</label>
                     <input
                       type="text"
+                      list="employees-list-operators"
                       value={formValues.trainedBy}
                       onChange={(e) => setFormValues({ ...formValues, trainedBy: e.target.value })}
                       className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF]"
-                      placeholder="e.g. Khalid Amir Hussain"
+                      placeholder="Search employee..."
                     />
+                    <datalist id="employees-list-operators">
+                      {employees?.map(e => <option key={e.id} value={e.name || e.firstName || e.id}>{e.id} - {e.role || e.designation}</option>)}
+                    </datalist>
                   </div>
 
                   <div>

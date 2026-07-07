@@ -303,12 +303,19 @@ export function OperatorDetailView({ employees,  operator, onBack, onUpdate, onD
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Trained By</label>
                 {isEditing ? (
-                  <input
-                    type="text"
-                    value={editedFields.trainedBy || ""}
-                    onChange={(e) => setEditedFields({ ...editedFields, trainedBy: e.target.value })}
-                    className="w-full text-sm font-bold text-slate-700 bg-slate-50 border-b border-slate-200 focus:border-[#683EFF] focus:outline-none p-1"
-                  />
+                  <>
+                    <input
+                      type="text"
+                      list="employees-list-trained-by"
+                      value={editedFields.trainedBy || ""}
+                      onChange={(e) => setEditedFields({ ...editedFields, trainedBy: e.target.value })}
+                      className="w-full text-sm font-bold text-slate-700 bg-slate-50 border-b border-slate-200 focus:border-[#683EFF] focus:outline-none p-1"
+                      placeholder="Search employee..."
+                    />
+                    <datalist id="employees-list-trained-by">
+                      {employees?.map(e => <option key={e.id} value={e.name || e.firstName || e.id}>{e.id} - {e.role || e.designation}</option>)}
+                    </datalist>
+                  </>
                 ) : (
                   <p className="text-sm font-bold text-slate-700">{operator.trainedBy || "N/A"}</p>
                 )}
