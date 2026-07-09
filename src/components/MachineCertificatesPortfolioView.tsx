@@ -6,14 +6,15 @@ import { LoadChartDataEditor } from "./LoadChartDataEditor";
 
 import React, { useState, useEffect } from "react";
 import * as Icons from "lucide-react";
-import { MachineCertificate, InspectionReport, MachineDetail, EmployeeDetail } from "../types";
-import { initialCustomers } from "../data";
+import { MachineCertificate, InspectionReport, MachineDetail, EmployeeDetail, CustomerDetail } from "../types";
+import { initialCustomers as staticCustomers } from "../data";
 import { formatDate } from "../utils";
 import { PrintMachineCertificatePreview } from "./PrintMachineCertificatePreview";
 import { ImageUploadPicker } from "./ImageUploadPicker";
 
 interface MachineCertificatesPortfolioProps {
   employees: EmployeeDetail[];
+  customers?: CustomerDetail[];
   certificates: MachineCertificate[];
   onCertificatesChange: React.Dispatch<React.SetStateAction<MachineCertificate[]>>;
   inspectionReports?: InspectionReport[];
@@ -21,7 +22,7 @@ interface MachineCertificatesPortfolioProps {
   onUploadImage?: (file: File, clientName: string, subfolder: string, entityId?: string) => Promise<string>;
 }
 
-export function MachineCertificatesPortfolioView({ employees,  certificates, onCertificatesChange, inspectionReports = [], machineDetails = [], onUploadImage }: MachineCertificatesPortfolioProps) {
+export function MachineCertificatesPortfolioView({ employees, customers = staticCustomers, certificates, onCertificatesChange, inspectionReports = [], machineDetails = [], onUploadImage }: MachineCertificatesPortfolioProps) {
   // View states
   const [viewMode, setViewMode] = useState<"list" | "grid" | "compact">("list");
   const [showViewDropdown, setShowViewDropdown] = useState(false);
@@ -419,13 +420,13 @@ export function MachineCertificatesPortfolioView({ employees,  certificates, onC
   };
 
   // Autocomplete search suggestions
-  const matchingCustomers = initialCustomers.filter((cust) => {
+  const matchingCustomers = customers.filter((cust) => {
     if (!formValues.clientName.trim()) return true;
     return cust.companyName.toLowerCase().includes(formValues.clientName.toLowerCase());
   });
 
   // Auto-fill form values on selecting customer
-  const handleSelectCustomer = (cust: typeof initialCustomers[0], isEditMode: boolean = false) => {
+  const handleSelectCustomer = (cust: typeof customers[0], isEditMode: boolean = false) => {
     const updates = {
       clientName: cust.companyName,
       location: cust.inspectionSiteAddress || "",

@@ -3,13 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import * as Icons from "lucide-react";
-import { OperatorCard, EmployeeDetail } from "../types";
+import { OperatorCard, EmployeeDetail, CustomerDetail } from "../types";
+import { initialCustomers as staticCustomers } from "../data";
 import { formatDate } from "../utils";
 
 interface OperatorDirectoryProps {
   employees: EmployeeDetail[];
+  customers?: CustomerDetail[];
   operators: OperatorCard[];
   onOperatorsChange: React.Dispatch<React.SetStateAction<OperatorCard[]>>;
   onViewOperator: (id: string) => void;
@@ -17,7 +19,7 @@ interface OperatorDirectoryProps {
   onDeleteImage?: (url: string) => Promise<void>;
 }
 
-export function OperatorDirectoryView({ employees,  operators, onOperatorsChange, onViewOperator, onUploadImage, onDeleteImage }: OperatorDirectoryProps) {
+export function OperatorDirectoryView({ employees, customers = staticCustomers, operators, onOperatorsChange, onViewOperator, onUploadImage, onDeleteImage }: OperatorDirectoryProps) {
   // View states
   const [viewMode, setViewMode] = useState<"list" | "grid" | "compact">("list");
   const [showViewDropdown, setShowViewDropdown] = useState(false);
@@ -55,6 +57,19 @@ export function OperatorDirectoryView({ employees,  operators, onOperatorsChange
     status: "Fully Certified" as OperatorCard["status"],
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // Dropdown visibility states
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
+
+  const matchingCustomers = customers.filter((cust) => {
+    if (!formValues.company.trim()) return true;
+    return cust.companyName.toLowerCase().includes(formValues.company.toLowerCase());
+  }).slice(0, formValues.company.trim() ? undefined : 5);
+
+  const handleSelectCustomer = (cust: CustomerDetail) => {
+    setFormValues({ ...formValues, company: cust.companyName });
+    setShowCompanyDropdown(false);
+  };
 
   // Helper to generate next ID
   const getNextId = (prefix: string) => {
@@ -1128,18 +1143,46 @@ export function OperatorDirectoryView({ employees,  operators, onOperatorsChange
                     </div>
                   </div>
 
-                  <div>
+                  <div className="relative">
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Company</label>
                     <div className="relative">
                       <Icons.Building className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input
                         type="text"
                         value={formValues.company}
-                        onChange={(e) => setFormValues({ ...formValues, company: e.target.value })}
+                        onFocus={() => setShowCompanyDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowCompanyDropdown(false), 200)}
+                        onChange={(e) => {
+                          setFormValues({ ...formValues, company: e.target.value });
+                          setShowCompanyDropdown(true);
+                        }}
                         className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF]"
                         placeholder="e.g. MEV Logistics Hub"
                       />
                     </div>
+                    {/* Autocomplete Dropdown */}
+                    {showCompanyDropdown && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
+                        {matchingCustomers.length > 0 ? (
+                          matchingCustomers.map((cust) => (
+                            <div
+                              key={cust.id}
+                              className="px-4 py-2 hover:bg-slate-50 cursor-pointer text-sm"
+                              onClick={() => handleSelectCustomer(cust)}
+                            >
+                              <div className="font-semibold text-slate-700">{cust.companyName}</div>
+                              {cust.contactPerson && (
+                                <div className="text-xs text-slate-500">{cust.contactPerson}</div>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="px-4 py-3 text-sm text-slate-500 text-center bg-slate-50 italic">
+                            No matching clients found in active directory
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="relative">

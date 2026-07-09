@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import * as Icons from "lucide-react";
-import { OperatorCard, EmployeeDetail } from "../types";
+import { OperatorCard, EmployeeDetail, CustomerDetail } from "../types";
+import { initialCustomers as staticCustomers } from "../data";
 import { motion, AnimatePresence } from "motion/react";
 import { PrintCardPreview } from "./PrintCardPreview";
 import { ImageUploadPicker } from "./ImageUploadPicker";
@@ -8,6 +9,7 @@ import { ImageUploadPicker } from "./ImageUploadPicker";
 interface OperatorDetailViewProps {
   operator: OperatorCard;
   employees: EmployeeDetail[];
+  customers?: CustomerDetail[];
   onBack: () => void;
   onUpdate: (updated: OperatorCard) => void;
   onDelete: (id: string) => void;
@@ -15,12 +17,25 @@ interface OperatorDetailViewProps {
   onDeleteImage?: (url: string) => Promise<void>;
 }
 
-export function OperatorDetailView({ employees,  operator, onBack, onUpdate, onDelete, onUploadImage, onDeleteImage }: OperatorDetailViewProps) {
+export function OperatorDetailView({ employees, customers = staticCustomers,  operator, onBack, onUpdate, onDelete, onUploadImage, onDeleteImage }: OperatorDetailViewProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedFields, setEditedFields] = useState<OperatorCard>({ ...operator });
   const [showToast, setShowToast] = useState<string | null>(null);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<"photoAttachment" | "authorizedBySignature" | "trainedBySignature" | null>(null);
+
+  // Dropdown visibility states
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
+
+  const matchingCustomers = customers.filter((cust) => {
+    if (!editedFields.company?.trim()) return true;
+    return cust.companyName.toLowerCase().includes(editedFields.company.toLowerCase());
+  }).slice(0, editedFields.company?.trim() ? undefined : 5);
+
+  const handleSelectCustomer = (cust: CustomerDetail) => {
+    setEditedFields({ ...editedFields, company: cust.companyName });
+    setShowCompanyDropdown(false);
+  };
 
   const triggerToast = (msg: string) => {
     setShowToast(msg);
@@ -272,15 +287,44 @@ export function OperatorDetailView({ employees,  operator, onBack, onUpdate, onD
                 )}
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 relative">
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Company</label>
                 {isEditing ? (
-                  <input
-                    type="text"
-                    value={editedFields.company || ""}
-                    onChange={(e) => setEditedFields({ ...editedFields, company: e.target.value })}
-                    className="w-full text-sm font-bold text-slate-700 bg-slate-50 border-b border-slate-200 focus:border-[#683EFF] focus:outline-none p-1"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={editedFields.company || ""}
+                      onFocus={() => setShowCompanyDropdown(true)}
+                      onBlur={() => setTimeout(() => setShowCompanyDropdown(false), 200)}
+                      onChange={(e) => {
+                        setEditedFields({ ...editedFields, company: e.target.value });
+                        setShowCompanyDropdown(true);
+                      }}
+                      className="w-full text-sm font-bold text-slate-700 bg-slate-50 border-b border-slate-200 focus:border-[#683EFF] focus:outline-none p-1"
+                    />
+                    {showCompanyDropdown && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
+                        {matchingCustomers.length > 0 ? (
+                          matchingCustomers.map((cust) => (
+                            <div
+                              key={cust.id}
+                              className="px-4 py-2 hover:bg-slate-50 cursor-pointer text-sm"
+                              onClick={() => handleSelectCustomer(cust)}
+                            >
+                              <div className="font-semibold text-slate-700">{cust.companyName}</div>
+                              {cust.contactPerson && (
+                                <div className="text-xs text-slate-500">{cust.contactPerson}</div>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="px-4 py-3 text-sm text-slate-500 text-center bg-slate-50 italic">
+                            No matching clients found in active directory
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <p className="text-sm font-bold text-slate-700">{operator.company || "N/A"}</p>
                 )}

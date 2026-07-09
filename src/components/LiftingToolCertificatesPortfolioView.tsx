@@ -6,21 +6,22 @@ import { AccessoriesDataEditor } from "./AccessoriesDataEditor";
 
 import React, { useState, useEffect } from "react";
 import * as Icons from "lucide-react";
-import { LiftingToolCert, InspectionReport, EmployeeDetail } from "../types";
-import { initialCustomers } from "../data";
+import { LiftingToolCert, InspectionReport, EmployeeDetail, CustomerDetail } from "../types";
+import { initialCustomers as staticCustomers } from "../data";
 import { formatDate } from "../utils";
 import { PrintLiftingToolCertPreview } from "./PrintLiftingToolCertPreview";
 import { ImageUploadPicker } from "./ImageUploadPicker";
 
 interface LiftingToolCertificatesPortfolioProps {
   employees: EmployeeDetail[];
+  customers?: CustomerDetail[];
   certificates: LiftingToolCert[];
   onCertificatesChange: React.Dispatch<React.SetStateAction<LiftingToolCert[]>>;
   inspectionReports?: InspectionReport[];
   onUploadImage?: (file: File, clientName: string, subfolder: string, entityId?: string) => Promise<string>;
 }
 
-export function LiftingToolCertificatesPortfolioView({ employees,  certificates, onCertificatesChange, inspectionReports = [], onUploadImage }: LiftingToolCertificatesPortfolioProps) {
+export function LiftingToolCertificatesPortfolioView({ employees, customers = staticCustomers, certificates, onCertificatesChange, inspectionReports = [], onUploadImage }: LiftingToolCertificatesPortfolioProps) {
   // View states
   const [viewMode, setViewMode] = useState<"list" | "grid" | "compact">("list");
   const [showViewDropdown, setShowViewDropdown] = useState(false);
@@ -386,13 +387,13 @@ export function LiftingToolCertificatesPortfolioView({ employees,  certificates,
   };
 
   // Autocomplete search suggestions
-  const matchingCustomers = initialCustomers.filter((cust) => {
+  const matchingCustomers = customers.filter((cust) => {
     if (!formValues.clientName.trim()) return true;
     return cust.companyName.toLowerCase().includes(formValues.clientName.toLowerCase());
   });
 
   // Auto-fill form values on selecting customer
-  const handleSelectCustomer = (cust: typeof initialCustomers[0], isEditMode: boolean = false) => {
+  const handleSelectCustomer = (cust: typeof customers[0], isEditMode: boolean = false) => {
     const updates = {
       clientName: cust.companyName,
       location: cust.inspectionSiteAddress || "",

@@ -249,8 +249,10 @@ export default function App() {
       const storageRef = ref(storage, url);
       await deleteObject(storageRef);
       console.log("File deleted from storage successfully");
-    } catch (err) {
-      console.error("Error deleting file from storage:", err);
+    } catch (err: any) {
+      if (err?.code !== "storage/object-not-found") {
+        console.error("Error deleting file from storage:", err);
+      }
     }
   };
 
@@ -1531,6 +1533,7 @@ export default function App() {
                   onCertificatesChange={setLiftingToolCerts}
                   inspectionReports={filteredInspectionReports}
                   employees={employees}
+                  customers={customers}
                 />
               </motion.div>
             )}
@@ -1551,6 +1554,7 @@ export default function App() {
                   machineDetails={machineDetails}
                   onUploadImage={handleUploadImage}
                   employees={employees}
+                  customers={customers}
                 />
               </motion.div>
             )}
@@ -1583,6 +1587,7 @@ export default function App() {
                 {viewOperatorId ? (
                   <OperatorDetailView
                     employees={employees}
+                    customers={customers}
                     operator={operators.find((o) => o.id === viewOperatorId)!}
                     onBack={() => setViewOperatorId(null)}
                     onUpdate={(updated) =>
@@ -1600,6 +1605,7 @@ export default function App() {
                 ) : (
                   <OperatorDirectoryView
                     employees={employees}
+                    customers={customers}
                     operators={filteredOperators}
                     onOperatorsChange={setOperators}
                     onViewOperator={(id) => setViewOperatorId(id)}
