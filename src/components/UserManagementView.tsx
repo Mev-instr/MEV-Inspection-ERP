@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import * as Icons from "lucide-react";
 import { EmployeeDetail, CustomerDetail } from "../types";
+import { initializeApp, deleteApp } from "firebase/app";
+import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import firebaseAppletConfig from "../../firebase-applet-config.json";
 
 interface Props {
   employees: EmployeeDetail[];
@@ -23,6 +26,8 @@ export function UserManagementView({
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [useGoogle, setUseGoogle] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Filter lists based on hasAccount status
   const employeeUsers = employees.filter((emp) => emp.hasAccount === true);
@@ -31,39 +36,91 @@ export function UserManagementView({
   const customerUsers = customers.filter((cust) => cust.hasAccount === true);
   const unassignedCustomers = customers.filter((cust) => cust.hasAccount !== true);
 
-  const handleAddUser = () => {
+  const handleAddUser = async () => {
     if (!selectedId) return;
+    setLoading(true);
+    setErrorMessage(null);
 
-    if (activeTab === "employees") {
-      const updatedEmployees = employees.map((emp) => {
-        if (emp.id === selectedId) {
-          return {
-            ...emp,
-            email: newEmail || emp.email,
-            hasAccount: true,
-          };
+    try {
+      if (!useGoogle) {
+        if (!newEmail || !newPassword) {
+          setErrorMessage("Please enter both email and password.");
+          setLoading(false);
+          return;
         }
-        return emp;
-      });
-      onEmployeesChange(updatedEmployees);
-    } else {
-      const updatedCustomers = customers.map((cust) => {
-        if (cust.id === selectedId) {
-          return {
-            ...cust,
-            email: newEmail || cust.email || cust.primaryEmail,
-            hasAccount: true,
-          };
+
+        // Initialize temporary app instance to create user without kicking out current admin
+        const tempAppName = `temp-auth-app-${Date.now()}`;
+        const tempApp = initializeApp({
+          projectId: firebaseAppletConfig.projectId,
+          appId: firebaseAppletConfig.appId,
+          apiKey: firebaseAppletConfig.apiKey,
+          authDomain: firebaseAppletConfig.authDomain,
+          messagingSenderId: firebaseAppletConfig.messagingSenderId,
+          storageBucket: firebaseAppletConfig.storageBucket || `${firebaseAppletConfig.projectId}.appspot.com`,
+        }, tempAppName);
+        const tempAuth = getAuth(tempApp);
+
+        try {
+          await createUserWithEmailAndPassword(tempAuth, newEmail.trim(), newPassword);
+          await signOut(tempAuth);
+        } catch (authError: any) {
+          console.error("Firebase auth creation error:", authError);
+          // If already in use, we can link/associate it anyway
+          if (authError.code === "auth/email-already-in-use") {
+            console.log("Email already in use in Firebase Auth. Associating local account.");
+          } else {
+            let friendlyMsg = authError.message;
+            if (authError.code === "auth/weak-password") {
+              friendlyMsg = "Password must be at least 6 characters long.";
+            } else if (authError.code === "auth/invalid-email") {
+              friendlyMsg = "The email address is invalid.";
+            }
+            setErrorMessage(`Firebase Auth error: ${friendlyMsg}`);
+            setLoading(false);
+            await deleteApp(tempApp);
+            return;
+          }
         }
-        return cust;
-      });
-      onCustomersChange(updatedCustomers);
+        await deleteApp(tempApp);
+      }
+
+      if (activeTab === "employees") {
+        const updatedEmployees = employees.map((emp) => {
+          if (emp.id === selectedId) {
+            return {
+              ...emp,
+              email: newEmail.trim() || emp.email,
+              hasAccount: true,
+            };
+          }
+          return emp;
+        });
+        onEmployeesChange(updatedEmployees);
+      } else {
+        const updatedCustomers = customers.map((cust) => {
+          if (cust.id === selectedId) {
+            return {
+              ...cust,
+              email: newEmail.trim() || cust.email || cust.primaryEmail,
+              hasAccount: true,
+            };
+          }
+          return cust;
+        });
+        onCustomersChange(updatedCustomers);
+      }
+
+      setShowAddModal(false);
+      setSelectedId("");
+      setNewEmail("");
+      setNewPassword("");
+    } catch (err: any) {
+      console.error("Error creating user account:", err);
+      setErrorMessage(err.message || "Failed to create user account. Please try again.");
+    } finally {
+      setLoading(false);
     }
-
-    setShowAddModal(false);
-    setSelectedId("");
-    setNewEmail("");
-    setNewPassword("");
   };
 
   const handleDeleteUser = (id: string, type: UserTypeTab) => {
@@ -246,14 +303,25 @@ export function UserManagementView({
       {showAddModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-slate-800">
                 Add {activeTab === "employees" ? "Employee" : "Client"} Account
               </h3>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button 
+                onClick={() => !loading && setShowAddModal(false)} 
+                disabled={loading}
+                className="text-slate-400 hover:text-slate-600 disabled:opacity-50"
+              >
                 <Icons.X className="w-5 h-5" />
               </button>
             </div>
+
+            {errorMessage && (
+              <div className="mb-4 flex items-start gap-2 bg-rose-50 border border-rose-100 text-rose-700 p-3 rounded-lg text-xs font-semibold leading-normal">
+                <Icons.AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
 
             {activeTab === "employees" ? (
               unassignedEmployees.length === 0 ? (
@@ -279,6 +347,7 @@ export function UserManagementView({
                     </label>
                     <select
                       value={selectedId}
+                      disabled={loading}
                       onChange={(e) => {
                         const empId = e.target.value;
                         setSelectedId(empId);
@@ -287,7 +356,7 @@ export function UserManagementView({
                           setNewEmail(emp.email || "");
                         }
                       }}
-                      className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-white font-medium text-slate-700"
+                      className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-white font-medium text-slate-700 disabled:bg-slate-50 disabled:text-slate-400"
                     >
                       {unassignedEmployees.map((emp) => (
                         <option key={emp.id} value={emp.id}>
@@ -302,8 +371,9 @@ export function UserManagementView({
                       <input
                         type="radio"
                         checked={!useGoogle}
+                        disabled={loading}
                         onChange={() => setUseGoogle(false)}
-                        className="text-[#683EFF] focus:ring-[#683EFF]"
+                        className="text-[#683EFF] focus:ring-[#683EFF] disabled:opacity-50"
                       />
                       <span className="text-sm font-medium text-slate-700">Email/Password</span>
                     </label>
@@ -311,8 +381,9 @@ export function UserManagementView({
                       <input
                         type="radio"
                         checked={useGoogle}
+                        disabled={loading}
                         onChange={() => setUseGoogle(true)}
-                        className="text-[#683EFF] focus:ring-[#683EFF]"
+                        className="text-[#683EFF] focus:ring-[#683EFF] disabled:opacity-50"
                       />
                       <span className="text-sm font-medium text-slate-700">Google Account</span>
                     </label>
@@ -325,8 +396,9 @@ export function UserManagementView({
                     <input
                       type="email"
                       value={newEmail}
+                      disabled={loading}
                       onChange={(e) => setNewEmail(e.target.value)}
-                      className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF]"
+                      className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] disabled:bg-slate-50"
                       placeholder="employee@example.com"
                     />
                   </div>
@@ -339,8 +411,9 @@ export function UserManagementView({
                       <input
                         type="password"
                         value={newPassword}
+                        disabled={loading}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF]"
+                        className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] disabled:bg-slate-50"
                         placeholder="••••••••"
                       />
                       <p className="text-xs text-slate-500 mt-1">They will use this to sign in.</p>
@@ -362,16 +435,21 @@ export function UserManagementView({
                   <div className="pt-4 flex justify-end gap-3">
                     <button
                       onClick={() => setShowAddModal(false)}
-                      className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                      disabled={loading}
+                      className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleAddUser}
-                      disabled={!selectedId || !newEmail || (!useGoogle && !newPassword)}
-                      className="px-4 py-2 text-sm font-semibold bg-[#683EFF] text-white rounded-lg hover:bg-[#5b36e5] transition-colors disabled:opacity-50"
+                      disabled={loading || !selectedId || !newEmail || (!useGoogle && !newPassword)}
+                      className="px-4 py-2 text-sm font-semibold bg-[#683EFF] text-white rounded-lg hover:bg-[#5b36e5] transition-colors disabled:opacity-50 flex items-center justify-center min-w-[100px]"
                     >
-                      Create User
+                      {loading ? (
+                        <div className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                      ) : (
+                        "Create User"
+                      )}
                     </button>
                   </div>
                 </div>
@@ -399,6 +477,7 @@ export function UserManagementView({
                   </label>
                   <select
                     value={selectedId}
+                    disabled={loading}
                     onChange={(e) => {
                       const custId = e.target.value;
                       setSelectedId(custId);
@@ -407,7 +486,7 @@ export function UserManagementView({
                         setNewEmail(cust.email || cust.primaryEmail || "");
                       }
                     }}
-                    className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-white font-medium text-slate-700"
+                    className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-white font-medium text-slate-700 disabled:bg-slate-50 disabled:text-slate-400"
                   >
                     {unassignedCustomers.map((cust) => (
                       <option key={cust.id} value={cust.id}>
@@ -422,8 +501,9 @@ export function UserManagementView({
                     <input
                       type="radio"
                       checked={!useGoogle}
+                      disabled={loading}
                       onChange={() => setUseGoogle(false)}
-                      className="text-[#683EFF] focus:ring-[#683EFF]"
+                      className="text-[#683EFF] focus:ring-[#683EFF] disabled:opacity-50"
                     />
                     <span className="text-sm font-medium text-slate-700">Email/Password</span>
                   </label>
@@ -431,8 +511,9 @@ export function UserManagementView({
                     <input
                       type="radio"
                       checked={useGoogle}
+                      disabled={loading}
                       onChange={() => setUseGoogle(true)}
-                      className="text-[#683EFF] focus:ring-[#683EFF]"
+                      className="text-[#683EFF] focus:ring-[#683EFF] disabled:opacity-50"
                     />
                     <span className="text-sm font-medium text-slate-700">Google Account</span>
                   </label>
@@ -445,8 +526,9 @@ export function UserManagementView({
                   <input
                     type="email"
                     value={newEmail}
+                    disabled={loading}
                     onChange={(e) => setNewEmail(e.target.value)}
-                    className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF]"
+                    className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] disabled:bg-slate-50"
                     placeholder="client@company.com"
                   />
                 </div>
@@ -459,8 +541,9 @@ export function UserManagementView({
                     <input
                       type="password"
                       value={newPassword}
+                      disabled={loading}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF]"
+                      className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] disabled:bg-slate-50"
                       placeholder="••••••••"
                     />
                     <p className="text-xs text-slate-500 mt-1">They will use this to sign in.</p>
@@ -482,16 +565,21 @@ export function UserManagementView({
                 <div className="pt-4 flex justify-end gap-3">
                   <button
                     onClick={() => setShowAddModal(false)}
-                    className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                    disabled={loading}
+                    className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleAddUser}
-                    disabled={!selectedId || !newEmail || (!useGoogle && !newPassword)}
-                    className="px-4 py-2 text-sm font-semibold bg-[#683EFF] text-white rounded-lg hover:bg-[#5b36e5] transition-colors disabled:opacity-50"
+                    disabled={loading || !selectedId || !newEmail || (!useGoogle && !newPassword)}
+                    className="px-4 py-2 text-sm font-semibold bg-[#683EFF] text-white rounded-lg hover:bg-[#5b36e5] transition-colors disabled:opacity-50 flex items-center justify-center min-w-[100px]"
                   >
-                    Create User
+                    {loading ? (
+                      <div className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                    ) : (
+                      "Create User"
+                    )}
                   </button>
                 </div>
               </div>

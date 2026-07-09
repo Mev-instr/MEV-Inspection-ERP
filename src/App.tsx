@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import * as Icons from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { ERPSection, ERPCategory, DashboardCard } from "./types";
@@ -49,6 +49,17 @@ import {
 } from "./lib/firestoreSync";
 
 export default function App() {
+  // Refs to track loaded states from Firestore to avoid redundant auto-saving / loops
+  const customersLoadedRef = useRef<any[] | null>(null);
+  const employeesLoadedRef = useRef<any[] | null>(null);
+  const operatorsLoadedRef = useRef<any[] | null>(null);
+  const machineCertificatesLoadedRef = useRef<any[] | null>(null);
+  const trainingJobsLoadedRef = useRef<any[] | null>(null);
+  const inspectionJobsLoadedRef = useRef<any[] | null>(null);
+  const inspectionReportsLoadedRef = useRef<any[] | null>(null);
+  const liftingToolCertsLoadedRef = useRef<any[] | null>(null);
+  const machineDetailsLoadedRef = useRef<any[] | null>(null);
+
   // Authentication & Google Cloud Drive Connection States
   const [dashboardLogoUrl, setDashboardLogoUrl] = useState<string | null>(null);
   const [loginLogoUrl, setLoginLogoUrl] = useState<string | null>(null);
@@ -251,29 +262,37 @@ export default function App() {
         try {
           const syncedCustomers = await fetchCollection("customers");
           if (syncedCustomers && syncedCustomers.length > 0) {
+            customersLoadedRef.current = syncedCustomers;
             setCustomers(syncedCustomers);
           } else {
+            customersLoadedRef.current = initialCustomers;
             await seedFirestore("customers", initialCustomers);
           }
 
           const syncedEmployees = await fetchCollection("employees");
           if (syncedEmployees && syncedEmployees.length > 0) {
+            employeesLoadedRef.current = syncedEmployees;
             setEmployees(syncedEmployees);
           } else {
+            employeesLoadedRef.current = initialEmployees;
             await seedFirestore("employees", initialEmployees);
           }
 
           const syncedOperators = await fetchCollection("operators");
           if (syncedOperators && syncedOperators.length > 0) {
+            operatorsLoadedRef.current = syncedOperators;
             setOperators(syncedOperators);
           } else {
+            operatorsLoadedRef.current = initialOperators;
             await seedFirestore("operators", initialOperators);
           }
 
           const syncedCerts = await fetchCollection("machineCertificates");
           if (syncedCerts && syncedCerts.length > 0) {
+            machineCertificatesLoadedRef.current = syncedCerts;
             setMachineCertificates(syncedCerts);
           } else {
+            machineCertificatesLoadedRef.current = initialMachineCertificates;
             await seedFirestore(
               "machineCertificates",
               initialMachineCertificates,
@@ -282,36 +301,46 @@ export default function App() {
 
           const syncedTraining = await fetchCollection("trainingJobs");
           if (syncedTraining && syncedTraining.length > 0) {
+            trainingJobsLoadedRef.current = syncedTraining;
             setTrainingJobs(syncedTraining);
           } else {
+            trainingJobsLoadedRef.current = initialTrainingJobs;
             await seedFirestore("trainingJobs", initialTrainingJobs);
           }
 
           const syncedInspection = await fetchCollection("inspectionJobs");
           if (syncedInspection && syncedInspection.length > 0) {
+            inspectionJobsLoadedRef.current = syncedInspection;
             setInspectionJobs(syncedInspection);
           } else {
+            inspectionJobsLoadedRef.current = initialInspectionJobs;
             await seedFirestore("inspectionJobs", initialInspectionJobs);
           }
 
           const syncedReports = await fetchCollection("inspectionReports");
           if (syncedReports && syncedReports.length > 0) {
+            inspectionReportsLoadedRef.current = syncedReports;
             setInspectionReports(syncedReports);
           } else {
+            inspectionReportsLoadedRef.current = initialInspectionReports;
             await seedFirestore("inspectionReports", initialInspectionReports);
           }
 
           const syncedLifting = await fetchCollection("liftingToolCerts");
           if (syncedLifting && syncedLifting.length > 0) {
+            liftingToolCertsLoadedRef.current = syncedLifting;
             setLiftingToolCerts(syncedLifting);
           } else {
+            liftingToolCertsLoadedRef.current = initialLiftingToolCerts;
             await seedFirestore("liftingToolCerts", initialLiftingToolCerts);
           }
 
           const syncedDetails = await fetchCollection("machineDetails");
           if (syncedDetails && syncedDetails.length > 0) {
+            machineDetailsLoadedRef.current = syncedDetails;
             setMachineDetails(syncedDetails);
           } else {
+            machineDetailsLoadedRef.current = initialMachineDetails;
             await seedFirestore("machineDetails", initialMachineDetails);
           }
 
@@ -331,66 +360,93 @@ export default function App() {
 
   // 6. Automatically save changes to Firestore when states are updated
   useEffect(() => {
-    if (currentUser && customers !== initialCustomers) {
-      customers.forEach((cust) => saveDocument("customers", cust.id, cust));
+    if (currentUser && customersLoadedRef.current !== null) {
+      if (JSON.stringify(customers) !== JSON.stringify(customersLoadedRef.current)) {
+        customers.forEach((cust) => saveDocument("customers", cust.id, cust));
+        customersLoadedRef.current = customers;
+      }
     }
   }, [customers, currentUser]);
 
   useEffect(() => {
-    if (currentUser && employees !== initialEmployees) {
-      employees.forEach((emp) => saveDocument("employees", emp.id, emp));
+    if (currentUser && employeesLoadedRef.current !== null) {
+      if (JSON.stringify(employees) !== JSON.stringify(employeesLoadedRef.current)) {
+        employees.forEach((emp) => saveDocument("employees", emp.id, emp));
+        employeesLoadedRef.current = employees;
+      }
     }
   }, [employees, currentUser]);
 
   useEffect(() => {
-    if (currentUser && operators !== initialOperators) {
-      operators.forEach((op) => saveDocument("operators", op.id, op));
+    if (currentUser && operatorsLoadedRef.current !== null) {
+      if (JSON.stringify(operators) !== JSON.stringify(operatorsLoadedRef.current)) {
+        operators.forEach((op) => saveDocument("operators", op.id, op));
+        operatorsLoadedRef.current = operators;
+      }
     }
   }, [operators, currentUser]);
 
   useEffect(() => {
-    if (currentUser && machineCertificates !== initialMachineCertificates) {
-      machineCertificates.forEach((cert) =>
-        saveDocument("machineCertificates", cert.id, cert),
-      );
+    if (currentUser && machineCertificatesLoadedRef.current !== null) {
+      if (JSON.stringify(machineCertificates) !== JSON.stringify(machineCertificatesLoadedRef.current)) {
+        machineCertificates.forEach((cert) =>
+          saveDocument("machineCertificates", cert.id, cert),
+        );
+        machineCertificatesLoadedRef.current = machineCertificates;
+      }
     }
   }, [machineCertificates, currentUser]);
 
   useEffect(() => {
-    if (currentUser && trainingJobs !== initialTrainingJobs) {
-      trainingJobs.forEach((job) => saveDocument("trainingJobs", job.id, job));
+    if (currentUser && trainingJobsLoadedRef.current !== null) {
+      if (JSON.stringify(trainingJobs) !== JSON.stringify(trainingJobsLoadedRef.current)) {
+        trainingJobs.forEach((job) => saveDocument("trainingJobs", job.id, job));
+        trainingJobsLoadedRef.current = trainingJobs;
+      }
     }
   }, [trainingJobs, currentUser]);
 
   useEffect(() => {
-    if (currentUser && inspectionJobs !== initialInspectionJobs) {
-      inspectionJobs.forEach((job) =>
-        saveDocument("inspectionJobs", job.id, job),
-      );
+    if (currentUser && inspectionJobsLoadedRef.current !== null) {
+      if (JSON.stringify(inspectionJobs) !== JSON.stringify(inspectionJobsLoadedRef.current)) {
+        inspectionJobs.forEach((job) =>
+          saveDocument("inspectionJobs", job.id, job),
+        );
+        inspectionJobsLoadedRef.current = inspectionJobs;
+      }
     }
   }, [inspectionJobs, currentUser]);
 
   useEffect(() => {
-    if (currentUser && inspectionReports !== initialInspectionReports) {
-      inspectionReports.forEach((rep) =>
-        saveDocument("inspectionReports", rep.id, rep),
-      );
+    if (currentUser && inspectionReportsLoadedRef.current !== null) {
+      if (JSON.stringify(inspectionReports) !== JSON.stringify(inspectionReportsLoadedRef.current)) {
+        inspectionReports.forEach((rep) =>
+          saveDocument("inspectionReports", rep.id, rep),
+        );
+        inspectionReportsLoadedRef.current = inspectionReports;
+      }
     }
   }, [inspectionReports, currentUser]);
 
   useEffect(() => {
-    if (currentUser && liftingToolCerts !== initialLiftingToolCerts) {
-      liftingToolCerts.forEach((cert) =>
-        saveDocument("liftingToolCerts", cert.id, cert),
-      );
+    if (currentUser && liftingToolCertsLoadedRef.current !== null) {
+      if (JSON.stringify(liftingToolCerts) !== JSON.stringify(liftingToolCertsLoadedRef.current)) {
+        liftingToolCerts.forEach((cert) =>
+          saveDocument("liftingToolCerts", cert.id, cert),
+        );
+        liftingToolCertsLoadedRef.current = liftingToolCerts;
+      }
     }
   }, [liftingToolCerts, currentUser]);
 
   useEffect(() => {
-    if (currentUser && machineDetails !== initialMachineDetails) {
-      machineDetails.forEach((detail) =>
-        saveDocument("machineDetails", detail.id, detail),
-      );
+    if (currentUser && machineDetailsLoadedRef.current !== null) {
+      if (JSON.stringify(machineDetails) !== JSON.stringify(machineDetailsLoadedRef.current)) {
+        machineDetails.forEach((detail) =>
+          saveDocument("machineDetails", detail.id, detail),
+        );
+        machineDetailsLoadedRef.current = machineDetails;
+      }
     }
   }, [machineDetails, currentUser]);
 
