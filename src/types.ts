@@ -184,6 +184,7 @@ export interface InspectionReport {
   address?: string;
   equipmentLocation?: string;
   recommendation?: string;
+  loadChartData?: any[];
 }
 
 export interface MachineCertificate {
@@ -229,6 +230,7 @@ export interface MachineCertificate {
   personAllowed?: string;
   previousInspection?: string;
   loadChartData?: { boom: string, radius: string, swl: string, testLoad: string }[];
+  operators?: any[];
 }
 
 export interface LiftingToolCert {

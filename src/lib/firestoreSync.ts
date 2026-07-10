@@ -66,12 +66,41 @@ export async function fetchCollection(collectionName: string): Promise<any[]> {
   }
 }
 
+function removeUndefined(obj: any): any {
+  if (obj === undefined) {
+    return null;
+  }
+  if (obj === null) {
+    return null;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(item => removeUndefined(item));
+  }
+  if (typeof obj === 'object') {
+    if (obj instanceof Date) {
+      return obj;
+    }
+    const clean: any = {};
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        const val = obj[key];
+        if (val !== undefined) {
+          clean[key] = removeUndefined(val);
+        }
+      }
+    }
+    return clean;
+  }
+  return obj;
+}
+
 // Generic helper to save or update document
 export async function saveDocument(collectionName: string, docId: string, data: any): Promise<void> {
   try {
     const docRef = doc(db, collectionName, docId);
     const { id, ...cleanData } = data;
-    await setDoc(docRef, cleanData, { merge: true });
+    const sanitizedData = removeUndefined(cleanData);
+    await setDoc(docRef, sanitizedData, { merge: true });
     console.log(`Document ${docId} successfully saved in ${collectionName}`);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `${collectionName}/${docId}`);
@@ -99,7 +128,8 @@ export async function seedFirestore(collectionName: string, initialData: any[]):
       const docId = item.id || String(Math.random().toString(36).substring(2, 9));
       const docRef = doc(db, collectionName, docId);
       const { id, ...cleanData } = item;
-      batch.set(docRef, cleanData, { merge: true });
+      const sanitizedData = removeUndefined(cleanData);
+      batch.set(docRef, sanitizedData, { merge: true });
     });
 
     await batch.commit();
