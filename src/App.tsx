@@ -85,6 +85,24 @@ export default function App() {
   }, []);
 
   const [domainMode, setDomainMode] = useState<"ERP" | "CLIENT">(initialDomainMode);
+
+  useEffect(() => {
+    if (domainMode === "CLIENT") {
+      document.title = "MEV Inspections Client portal";
+    } else {
+      document.title = "MEV Inspections ERP";
+    }
+
+    const faviconUrl = "https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0459155438.firebasestorage.app/o/Branding%2FFavicon%20Full%20Opacity.png?alt=media&token=921c204c-2cb6-4665-a5e5-d010fd662af4";
+    let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      document.head.appendChild(link);
+    }
+    link.href = faviconUrl;
+  }, [domainMode]);
+
   const [adminPreviewClientId, setAdminPreviewClientId] = useState<string>("");
 
   const isDevEnvironment = useMemo(() => {
@@ -207,14 +225,14 @@ export default function App() {
 
           if (currentMode === "CLIENT") {
             if (!isCustomer) {
-              setAuthError("Access Denied: This login gateway is exclusively for MEV Clients. Employees should sign in at erp.mev-ins.com.");
+              setAuthError("Access Denied: This login gateway is exclusively for MEV Clients.");
               await signOutUser();
               setCurrentUser(null);
               return;
             }
           } else {
             if (!isEmployee) {
-              setAuthError("Access Denied: This login gateway is for MEV ERP staff only. Clients should sign in at client.mev-ins.com.");
+              setAuthError("Access Denied: This login gateway is for MEV ERP staff only.");
               await signOutUser();
               setCurrentUser(null);
               return;
@@ -865,7 +883,7 @@ export default function App() {
       // Trigger signout and clear user session
       signOutUser().then(() => {
         setCurrentUser(null);
-        setAuthError("Access Denied: This login gateway is exclusively for MEV Clients. Employees should sign in at erp.mev-ins.com.");
+        setAuthError("Access Denied: This login gateway is exclusively for MEV Clients.");
       }).catch(console.error);
 
       return (
@@ -873,7 +891,7 @@ export default function App() {
           <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 text-center border border-slate-100/10">
             <h1 className="text-2xl font-bold text-rose-600 mb-2">Access Denied</h1>
             <p className="text-slate-600 text-sm mb-6">
-              This login gateway is exclusively for MEV Clients. Employees should sign in at erp.mev-ins.com.
+              This login gateway is exclusively for MEV Clients.
             </p>
             <button
               onClick={async () => {
@@ -914,7 +932,7 @@ export default function App() {
     // Trigger signout and clear user session
     signOutUser().then(() => {
       setCurrentUser(null);
-      setAuthError("Access Denied: This login gateway is for MEV ERP staff only. Clients should sign in at client.mev-ins.com.");
+      setAuthError("Access Denied: This login gateway is for MEV ERP staff only.");
     }).catch(console.error);
 
     return (
@@ -922,7 +940,7 @@ export default function App() {
         <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 text-center border border-slate-100/10">
           <h1 className="text-2xl font-bold text-rose-600 mb-2">Access Denied</h1>
           <p className="text-slate-600 text-sm mb-6">
-            This login gateway is for MEV ERP staff only. Clients should sign in at client.mev-ins.com.
+            This login gateway is for MEV ERP staff only.
           </p>
           <button
             onClick={async () => {

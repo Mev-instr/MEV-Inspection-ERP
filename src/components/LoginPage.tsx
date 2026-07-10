@@ -42,31 +42,6 @@ export function LoginPage({
     }
   };
 
-  const checkAuthorization = (user: any) => {
-    if (user.email === "shahzaibkamran44@gmail.com") return true;
-    
-    const isEmployee = employees.some(e => e.email && e.email.toLowerCase() === user.email.toLowerCase() && e.hasAccount);
-    const isCustomer = customers.some(c => {
-      const cEmail = (c.email || c.primaryEmail || "").toLowerCase();
-      return cEmail && cEmail === user.email.toLowerCase() && c.hasAccount;
-    });
-
-    if (domainMode === "CLIENT") {
-      if (!isCustomer) {
-        setErrorMessage("Access Denied: This login gateway is exclusively for MEV Clients. Employees should sign in at erp.mev-ins.com.");
-        return false;
-      }
-      return true;
-    } else {
-      if (!isEmployee) {
-        setErrorMessage("Access Denied: This login gateway is for MEV ERP staff only. Clients should sign in at client.mev-ins.com.");
-        return false;
-      }
-      return true;
-    }
-  };
-
-
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -74,9 +49,6 @@ export function LoginPage({
 
     try {
       const userCred = await signInWithEmailAndPassword(auth, email, password);
-      if (!checkAuthorization(userCred.user)) {
-        return;
-      }
       triggerCloudToast(`✓ Signed in successfully as ${userCred.user.displayName || userCred.user.email}`);
       onSuccess(userCred.user);
     } catch (err: any) {
@@ -98,9 +70,6 @@ export function LoginPage({
     clearAllErrors();
     try {
       const res = await signInWithGoogle();
-      if (!checkAuthorization(res.user)) {
-        return;
-      }
       triggerCloudToast(`✓ Signed in successfully via Google!`);
       onSuccess(res.user);
     } catch (err: any) {
