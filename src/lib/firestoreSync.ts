@@ -57,7 +57,7 @@ export async function fetchCollection(collectionName: string): Promise<any[]> {
     const snapshot = await getDocs(colRef);
     const items: any[] = [];
     snapshot.forEach((docSnap) => {
-      items.push({ id: docSnap.id, ...docSnap.data() });
+      items.push({ ...docSnap.data(), id: docSnap.id });
     });
     return items;
   } catch (error) {

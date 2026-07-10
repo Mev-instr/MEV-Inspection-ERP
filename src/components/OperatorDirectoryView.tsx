@@ -61,6 +61,15 @@ export function OperatorDirectoryView({ employees, customers = staticCustomers, 
   // Dropdown visibility states
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
 
+  // CSV Import Mapping states
+  const [showImportMappingModal, setShowImportMappingModal] = useState(false);
+  const [csvMappingData, setCsvMappingData] = useState<{
+    headers: string[];
+    sampleRow: string[];
+    allRows: string[][];
+    mappings: Record<string, string>;
+  } | null>(null);
+
   const matchingCustomers = customers.filter((cust) => {
     if (!formValues.company.trim()) return true;
     return cust.companyName.toLowerCase().includes(formValues.company.toLowerCase());
@@ -292,6 +301,21 @@ export function OperatorDirectoryView({ employees, customers = staticCustomers, 
         .map(parseCSVLine);
     };
 
+    const smartMap = (header: string): string => {
+      const h = header.trim().toLowerCase();
+      if (h === "id" || h === "operator id" || h === "operator_id") return "id";
+      if (h === "naming series id" || h === "naming series" || h === "prefix") return "namingSeries";
+      if (h === "full operator name" || h === "operator name" || h === "name") return "operatorName";
+      if (h === "id number" || h === "badge number" || h === "badge_number") return "idNumber";
+      if (h === "machine operator" || h === "role" || h === "occupation") return "machineOperator";
+      if (h === "company" || h === "customer" || h === "employer") return "company";
+      if (h === "level / type" || h === "level" || h === "type") return "levelType";
+      if (h === "trained by" || h === "trainer") return "trainedBy";
+      if (h === "issue date (official)" || h === "issue date" || h === "issue_date") return "issueDate";
+      if (h === "expiry date (certification)" || h === "expiry date" || h === "license_expiry") return "licenseExpiry";
+      return "";
+    };
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
@@ -304,81 +328,23 @@ export function OperatorDirectoryView({ employees, customers = staticCustomers, 
           return;
         }
 
-        const csvHeaders = rows[0].map(h => h.trim().toLowerCase());
-        const importedOperators: any[] = [];
+        const csvHeaders = rows[0].map(h => h.trim());
+        const csvSampleRow = rows[1] || [];
+        const csvAllRows = rows.slice(1);
 
-        // Helper to generate next ID inside loop safely
-        const localGetNextId = (prefix: string, offset: number) => {
-          const relevant = operators.filter(o => o.id.startsWith(prefix));
-          let startBase = 1100;
-          if (relevant.length > 0) {
-            const ids = relevant.map(o => {
-              const parts = o.id.split("-");
-              const last = parts[parts.length - 1];
-              return parseInt(last, 10);
-            }).filter(n => !isNaN(n));
-            if (ids.length > 0) {
-              startBase = Math.max(...ids) + 1;
-            }
-          }
-          return `${prefix}${startBase + offset}`;
-        };
+        // Compute initial intelligent mapping
+        const initialMappings: Record<string, string> = {};
+        csvHeaders.forEach((header) => {
+          initialMappings[header] = smartMap(header);
+        });
 
-        for (let i = 1; i < rows.length; i++) {
-          const row = rows[i];
-          if (row.length === 0 || !row[0]) continue;
-
-          const getVal = (headerName: string) => {
-            const idx = csvHeaders.indexOf(headerName.toLowerCase());
-            return idx !== -1 && idx < row.length ? row[idx] : "";
-          };
-
-          const namingSeries = getVal("Naming Series ID") || "MEV-OC-26-";
-          const idNumber = getVal("ID Number");
-          const operatorName = getVal("Full Operator Name");
-          if (!operatorName || !idNumber) continue;
-
-          let finalId = namingSeries;
-          const prefix = "MEV-OC-26-";
-          if (!finalId || finalId === prefix) {
-            finalId = localGetNextId(prefix, importedOperators.length);
-          }
-
-          const machineOperator = getVal("Machine Operator");
-          const company = getVal("Company");
-          const levelType = getVal("Level / Type");
-          const trainedBy = getVal("Trained By");
-          const issueDate = getVal("Issue Date (Official)") || new Date().toISOString().split("T")[0];
-          const licenseExpiry = getVal("Expiry Date (Certification)") || new Date().toISOString().split("T")[0];
-
-          const operator = {
-            id: finalId,
-            operatorName: operatorName,
-            badgeNumber: idNumber,
-            authorizedEquipment: [levelType].filter(Boolean),
-            safetyIndex: 100,
-            licenseExpiry: licenseExpiry,
-            status: "Fully Certified",
-            photoAttachment: undefined,
-            machineOperator: machineOperator,
-            idNumber: idNumber,
-            company: company,
-            issueDate: issueDate,
-            levelType: levelType,
-            trainedBy: trainedBy,
-            authorizedBySignature: undefined,
-            trainedBySignature: undefined
-          };
-
-          importedOperators.push(operator);
-        }
-
-        if (importedOperators.length > 0) {
-          onOperatorsChange((prev) => [...importedOperators, ...prev]);
-          showToast(`✓ Successfully imported ${importedOperators.length} operators.`);
-        } else {
-          showToast("⚠ No valid operator entries found in the CSV.");
-        }
+        setCsvMappingData({
+          headers: csvHeaders,
+          sampleRow: csvSampleRow,
+          allRows: csvAllRows,
+          mappings: initialMappings
+        });
+        setShowImportMappingModal(true);
       } catch (err) {
         console.error(err);
         showToast("⚠ Error parsing CSV file.");
@@ -387,6 +353,94 @@ export function OperatorDirectoryView({ employees, customers = staticCustomers, 
     };
 
     reader.readAsText(file);
+  };
+
+  const handleExecuteImport = () => {
+    if (!csvMappingData) return;
+
+    const { headers, allRows, mappings } = csvMappingData;
+    const importedOperators: OperatorCard[] = [];
+
+    const getValMapped = (row: string[], colHeaders: string[], activeMappings: Record<string, string>, targetField: string) => {
+      const csvHeader = colHeaders.find(h => activeMappings[h] === targetField);
+      if (!csvHeader) return "";
+      const idx = colHeaders.indexOf(csvHeader);
+      return idx !== -1 && idx < row.length ? row[idx].trim() : "";
+    };
+
+    // Helper to generate next ID inside loop safely
+    const localGetNextId = (prefix: string, offset: number) => {
+      const relevant = operators.filter(o => o.id.startsWith(prefix));
+      let startBase = 1100;
+      if (relevant.length > 0) {
+        const ids = relevant.map(o => {
+          const parts = o.id.split("-");
+          const last = parts[parts.length - 1];
+          return parseInt(last, 10);
+        }).filter(n => !isNaN(n));
+        if (ids.length > 0) {
+          startBase = Math.max(...ids) + 1;
+        }
+      }
+      return `${prefix}${startBase + offset}`;
+    };
+
+    allRows.forEach((row, offset) => {
+      if (row.length === 0) return;
+
+      const getVal = (targetField: string) => {
+        return getValMapped(row, headers, mappings, targetField);
+      };
+
+      const operatorName = getVal("operatorName");
+      const idNumber = getVal("idNumber");
+      if (!operatorName || !idNumber) return;
+
+      const namingSeries = getVal("namingSeries") || "MEV-OC-26-";
+      let finalId = namingSeries;
+      const prefix = "MEV-OC-26-";
+      if (!finalId || finalId === prefix) {
+        finalId = localGetNextId(prefix, offset);
+      }
+
+      const machineOperator = getVal("machineOperator");
+      const company = getVal("company");
+      const levelType = getVal("levelType");
+      const trainedBy = getVal("trainedBy");
+      const issueDate = getVal("issueDate") || new Date().toISOString().split("T")[0];
+      const licenseExpiry = getVal("licenseExpiry") || new Date().toISOString().split("T")[0];
+
+      const operator: OperatorCard = {
+        id: finalId,
+        operatorName: operatorName,
+        badgeNumber: idNumber,
+        authorizedEquipment: [levelType].filter(Boolean),
+        safetyIndex: 100,
+        licenseExpiry: licenseExpiry,
+        status: "Fully Certified",
+        photoAttachment: undefined,
+        machineOperator: machineOperator,
+        idNumber: idNumber,
+        company: company,
+        issueDate: issueDate,
+        levelType: levelType,
+        trainedBy: trainedBy,
+        authorizedBySignature: undefined,
+        trainedBySignature: undefined
+      };
+
+      importedOperators.push(operator);
+    });
+
+    if (importedOperators.length > 0) {
+      onOperatorsChange((prev) => [...importedOperators, ...prev]);
+      showToast(`✓ Successfully imported ${importedOperators.length} operators.`);
+    } else {
+      showToast("⚠ No valid operator entries found in the CSV based on current mapping.");
+    }
+
+    setShowImportMappingModal(false);
+    setCsvMappingData(null);
   };
 
   const handleBulkDeleteItems = () => {
@@ -1385,6 +1439,123 @@ export function OperatorDirectoryView({ employees, customers = staticCustomers, 
                   Delete
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showImportMappingModal && csvMappingData && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => { setShowImportMappingModal(false); setCsvMappingData(null); }} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl border border-slate-100 flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-250">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-slate-100">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800 font-sans flex items-center gap-2">
+                    <Icons.FileSpreadsheet className="w-5.5 h-5.5 text-[#683EFF]" />
+                    Map CSV fields to operator cards
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Select fields from your CSV file to map against operator card fields, or to ignore during import.
+                  </p>
+                </div>
+                <button
+                  onClick={() => { setShowImportMappingModal(false); setCsvMappingData(null); }}
+                  className="text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-50 rounded-lg transition-all"
+                >
+                  <Icons.X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Mappings Table */}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="px-5 py-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-550 w-1/2">
+                        Column name
+                      </th>
+                      <th className="px-5 py-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-550 w-1/2">
+                        Map to field
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-150">
+                    {csvMappingData.headers.map((header, idx) => {
+                      const sampleVal = csvMappingData.sampleRow[idx] || "N/A";
+                      const currentSelected = csvMappingData.mappings[header] || "";
+
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-5 py-4">
+                            <div className="text-xs font-bold text-slate-800">{header}</div>
+                            <div className="text-[11px] text-slate-400 font-mono mt-0.5 truncate max-w-sm">
+                              Sample: <span className="text-slate-550 italic font-sans">{sampleVal}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <select
+                              value={currentSelected}
+                              onChange={(e) => {
+                                const newMappings = { ...csvMappingData.mappings, [header]: e.target.value };
+                                setCsvMappingData({ ...csvMappingData, mappings: newMappings });
+                              }}
+                              className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] focus:border-[#683EFF] font-semibold text-slate-700 hover:border-slate-300 transition-all cursor-pointer"
+                            >
+                              <option value="" className="text-slate-400">Do not import (Ignore)</option>
+                              <option value="id">Operator ID / Reference</option>
+                              <option value="namingSeries">Naming Series Prefix</option>
+                              <option value="operatorName">Full Operator Name</option>
+                              <option value="idNumber">ID / Badge Number</option>
+                              <option value="machineOperator">Machine Operator (Occupation)</option>
+                              <option value="company">Company</option>
+                              <option value="levelType">Level / Type</option>
+                              <option value="trainedBy">Trained By</option>
+                              <option value="issueDate">Issue Date (Official)</option>
+                              <option value="licenseExpiry">Expiry Date (Certification)</option>
+                            </select>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Informative Stats */}
+              <div className="mt-4 p-4 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Icons.Info className="w-4 h-4 text-[#683EFF]" />
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    Found <strong className="text-slate-700">{csvMappingData.allRows.length}</strong> total data rows in the CSV file.
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  Smart mapped: {Object.values(csvMappingData.mappings).filter(Boolean).length} / {csvMappingData.headers.length} fields
+                </span>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => { setShowImportMappingModal(false); setCsvMappingData(null); }}
+                className="px-4 py-2 border border-slate-300 text-xs font-semibold text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer font-sans"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteImport}
+                className="bg-[#683EFF] hover:bg-[#5229E0] text-white text-xs font-bold py-2.5 px-5 rounded-lg shadow-sm hover:shadow transition-all cursor-pointer font-sans flex items-center gap-1.5"
+              >
+                <Icons.Check className="w-4 h-4" />
+                Confirm & Import
+              </button>
             </div>
           </div>
         </div>

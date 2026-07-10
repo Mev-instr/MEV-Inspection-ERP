@@ -90,6 +90,17 @@ export function MachineDetailsPortfolioView({ machines, onMachinesChange }: Mach
   const [editFormValues, setEditFormValues] = useState<MachineDetail | null>(null);
   const [showBulkActionDropdown, setShowBulkActionDropdown] = useState(false);
 
+  // CSV Import Mapping states
+  const [showImportMappingModal, setShowImportMappingModal] = useState(false);
+  const [importStep, setImportStep] = useState<"map" | "confirm" | "done">("map");
+  const [importedPreviewList, setImportedPreviewList] = useState<MachineDetail[]>([]);
+  const [csvMappingData, setCsvMappingData] = useState<{
+    headers: string[];
+    sampleRow: string[];
+    allRows: string[][];
+    mappings: Record<string, string>;
+  } | null>(null);
+
   // Toast notifications
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -183,6 +194,33 @@ export function MachineDetailsPortfolioView({ machines, onMachinesChange }: Mach
         .map(parseCSVLine);
     };
 
+    const smartMap = (header: string): string => {
+      const h = header.trim().toLowerCase();
+      if (h === "id" || h === "machine id" || h === "mach_id" || h === "machineid") return "id";
+      if (h === "machine name" || h === "name" || h === "title") return "machineName";
+      if (h === "model" || h === "machine model") return "model";
+      if (h === "manufacturer" || h === "brand" || h === "make") return "manufacturer";
+      if (h === "year" || h === "year of manufacture" || h === "manufacture year" || h === "yearofmanufacture") return "yearOfManufacture";
+      if (h === "serial number" || h === "serial" || h === "sn" || h === "serial_number" || h === "serialnumber") return "serialNumber";
+      if (h === "location" || h === "current location" || h === "current_location" || h === "currentlocation") return "currentLocation";
+      if (h === "status" || h === "state") return "status";
+      if (h === "working hours" || h === "hours" || h === "working_hours" || h === "workinghours") return "workingHours";
+      if (h === "department" || h === "dept") return "department";
+      if (h === "last service date" || h === "service_date" || h === "last_service" || h === "lastservicedate") return "lastServiceDate";
+      if (h === "s.w.l" || h === "swl" || h === "safe working load") return "swl";
+      if (h === "maximum horizontal outreach" || h === "max outreach" || h === "outreach" || h === "maximum_horizontal_outreach" || h === "maxoutreach") return "maxOutreach";
+      if (h === "max bucket capacity" || h === "bucket capacity" || h === "bucket_capacity" || h === "bucketcapacity") return "bucketCapacity";
+      if (h === "engine power" || h === "power" || h === "engine_power" || h === "enginepower") return "enginePower";
+      if (h === "boom length" || h === "boom_length" || h === "boomlength") return "boomLength";
+      if (h === "wheel type" || h === "wheel_type" || h === "wheeltype") return "wheelType";
+      if (h === "max platform height" || h === "platform height" || h === "max_platform_height" || h === "maxplatformheight") return "maxPlatformHeight";
+      if (h === "hoe bucket capacity" || h === "hoe_bucket_capacity" || h === "heobucketcapacity") return "heoBucketCapacity";
+      if (h === "engine speed" || h === "engine_speed" || h === "enginespeed") return "engineSpeed";
+      if (h === "angle of span" || h === "angle_of_span" || h === "angleofspan") return "angleOfSpan";
+      if (h === "person allowed" || h === "persons" || h === "person_allowed" || h === "personallowed") return "personAllowed";
+      return ""; // Default: Ignore
+    };
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
@@ -195,78 +233,25 @@ export function MachineDetailsPortfolioView({ machines, onMachinesChange }: Mach
           return;
         }
 
-        const csvHeaders = rows[0].map(h => h.trim().toLowerCase());
-        const importedMachines: any[] = [];
+        const csvHeaders = rows[0].map(h => h.trim());
+        const csvSampleRow = rows[1] || [];
+        const csvAllRows = rows.slice(1);
 
-        for (let i = 1; i < rows.length; i++) {
-          const row = rows[i];
-          if (row.length === 0 || !row[0]) continue;
+        // Compute initial intelligent mapping
+        const initialMappings: Record<string, string> = {};
+        csvHeaders.forEach((header) => {
+          initialMappings[header] = smartMap(header);
+        });
 
-          const getVal = (headerName: string) => {
-            const idx = csvHeaders.indexOf(headerName.toLowerCase());
-            return idx !== -1 && idx < row.length ? row[idx] : "";
-          };
-
-          const machineName = getVal("Machine name");
-          if (!machineName) continue;
-
-          let rawId = getVal("Machine ID").trim();
-          let customPart = rawId.replace(/^ML-?/i, "");
-          let finalId = "";
-          if (customPart) {
-            finalId = `ML-${customPart}`;
-          } else {
-            let nextNum = 1 + importedMachines.length;
-            const regex = /^ML-(\d+)$/i;
-            machines.forEach((m) => {
-              const match = m.id.match(regex);
-              if (match) {
-                const num = parseInt(match[1], 10);
-                if (num >= nextNum) {
-                  nextNum = num + 1;
-                }
-              }
-            });
-            const padded = String(nextNum).padStart(3, "0");
-            finalId = `ML-${padded}`;
-          }
-
-          const generatedSn = "SN-" + Math.floor(100000 + Math.random() * 900000);
-
-          const machine = {
-            id: finalId,
-            machineName: machineName,
-            model: machineName,
-            manufacturer: getVal("Manufacturer") || "General Manufacturer",
-            yearOfManufacture: new Date().getFullYear(),
-            serialNumber: generatedSn,
-            currentLocation: "HQ Fleet",
-            status: "Operational",
-            workingHours: 0,
-            department: "Heavy Equipment Fleet",
-            lastServiceDate: new Date().toISOString().split("T")[0],
-            swl: getVal("S.W.L"),
-            maxOutreach: getVal("Maximum Horizontal Outreach"),
-            bucketCapacity: getVal("Max Bucket Capacity"),
-            enginePower: getVal("Engine Power"),
-            boomLength: getVal("Boom Length"),
-            wheelType: getVal("Wheel Type"),
-            maxPlatformHeight: getVal("Max Platform Height"),
-            heoBucketCapacity: getVal("Hoe Bucket Capacity"),
-            engineSpeed: getVal("Engine Speed"),
-            angleOfSpan: getVal("Angle of Span"),
-            personAllowed: getVal("Person Allowed")
-          };
-
-          importedMachines.push(machine);
-        }
-
-        if (importedMachines.length > 0) {
-          onMachinesChange((prev) => [...importedMachines, ...prev]);
-          showToast(`✓ Successfully imported ${importedMachines.length} machine models.`);
-        } else {
-          showToast("⚠ No valid machine entries found in the CSV.");
-        }
+        setCsvMappingData({
+          headers: csvHeaders,
+          sampleRow: csvSampleRow,
+          allRows: csvAllRows,
+          mappings: initialMappings
+        });
+        setImportStep("map");
+        setImportedPreviewList([]);
+        setShowImportMappingModal(true);
       } catch (err) {
         console.error(err);
         showToast("⚠ Error parsing CSV file.");
@@ -275,6 +260,104 @@ export function MachineDetailsPortfolioView({ machines, onMachinesChange }: Mach
     };
 
     reader.readAsText(file);
+  };
+
+  const handleGoToConfirmation = () => {
+    if (!csvMappingData) return;
+
+    const { headers, allRows, mappings } = csvMappingData;
+    const importedMachines: MachineDetail[] = [];
+
+    // Base number for ML- ID generation
+    let nextNum = 1;
+    const regex = /^ML-(\d+)$/i;
+    machines.forEach((m) => {
+      const match = m.id.match(regex);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num >= nextNum) {
+          nextNum = num + 1;
+        }
+      }
+    });
+
+    const getValMapped = (row: string[], colHeaders: string[], activeMappings: Record<string, string>, targetField: string) => {
+      // Find all CSV headers mapped to this target field
+      const csvHeader = colHeaders.find(h => activeMappings[h] === targetField);
+      if (!csvHeader) return "";
+      const idx = colHeaders.indexOf(csvHeader);
+      return idx !== -1 && idx < row.length ? row[idx].trim() : "";
+    };
+
+    allRows.forEach((row) => {
+      if (row.length === 0) return;
+
+      const getVal = (targetField: string) => {
+        return getValMapped(row, headers, mappings, targetField);
+      };
+
+      const machineName = getVal("machineName") || getVal("model") || "Unnamed Asset";
+      if (!machineName || machineName === "Unnamed Asset") {
+        // Skip completely blank rows
+        const hasAnyContent = row.some(val => val.trim().length > 0);
+        if (!hasAnyContent) return;
+      }
+
+      let rawId = getVal("id").trim();
+      let customPart = rawId.replace(/^ML-?/i, "");
+      let finalId = "";
+      if (customPart) {
+        finalId = `ML-${customPart}`;
+      } else {
+        const padded = String(nextNum).padStart(3, "0");
+        finalId = `ML-${padded}`;
+        nextNum++;
+      }
+
+      const generatedSn = getVal("serialNumber") || ("SN-" + Math.floor(100000 + Math.random() * 900000));
+
+      const machine: MachineDetail = {
+        id: finalId,
+        machineName: machineName,
+        model: getVal("model") || machineName,
+        manufacturer: getVal("manufacturer") || "General Manufacturer",
+        yearOfManufacture: parseInt(getVal("yearOfManufacture"), 10) || new Date().getFullYear(),
+        serialNumber: generatedSn,
+        currentLocation: getVal("currentLocation") || "HQ Fleet",
+        status: (getVal("status") as any) || "Operational",
+        workingHours: parseFloat(getVal("workingHours")) || 0,
+        department: getVal("department") || "Heavy Equipment Fleet",
+        lastServiceDate: getVal("lastServiceDate") || new Date().toISOString().split("T")[0],
+        swl: getVal("swl") || undefined,
+        maxOutreach: getVal("maxOutreach") || undefined,
+        bucketCapacity: getVal("bucketCapacity") || undefined,
+        enginePower: getVal("enginePower") || undefined,
+        boomLength: getVal("boomLength") || undefined,
+        wheelType: getVal("wheelType") || undefined,
+        maxPlatformHeight: getVal("maxPlatformHeight") || undefined,
+        heoBucketCapacity: getVal("heoBucketCapacity") || undefined,
+        engineSpeed: getVal("engineSpeed") || undefined,
+        angleOfSpan: getVal("angleOfSpan") || undefined,
+        personAllowed: getVal("personAllowed") || undefined
+      };
+
+      importedMachines.push(machine);
+    });
+
+    if (importedMachines.length > 0) {
+      setImportedPreviewList(importedMachines);
+      setImportStep("confirm");
+    } else {
+      showToast("⚠ No valid machine entries found to map. Please map fields first.");
+    }
+  };
+
+  const handleExecuteImport = () => {
+    if (importedPreviewList.length === 0) return;
+
+    onMachinesChange((prev) => [...importedPreviewList, ...prev]);
+    showToast(`✓ Successfully imported ${importedPreviewList.length} machine models.`);
+    setImportStep("done");
   };
 
   const handleBulkDeleteItems = () => {
@@ -1447,7 +1530,7 @@ export function MachineDetailsPortfolioView({ machines, onMachinesChange }: Mach
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {paginatedMachines.map((m) => {
+                    {paginatedMachines.map((m, index) => {
                       const isSelected = selectedMachineIds.includes(m.id);
                       
                       const dispName = m.machineName || "Industrial Heavy Asset";
@@ -1458,7 +1541,7 @@ export function MachineDetailsPortfolioView({ machines, onMachinesChange }: Mach
 
                       return (
                         <tr
-                          key={m.id}
+                          key={`${m.id}-${index}`}
                           className={`hover:bg-slate-50/80 transition-colors cursor-pointer group ${isSelected ? "bg-[#F0EBFF]/20" : ""}`}
                           onClick={() => setSelectedMachineDetail(m)}
                         >
@@ -1524,7 +1607,7 @@ export function MachineDetailsPortfolioView({ machines, onMachinesChange }: Mach
           {/* B. GRID VIEW MODE */}
           {viewMode === "grid" && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {paginatedMachines.map((m) => {
+              {paginatedMachines.map((m, index) => {
                 const isSelected = selectedMachineIds.includes(m.id);
                 const isLiked = !!favorites[m.id];
                 
@@ -1536,7 +1619,7 @@ export function MachineDetailsPortfolioView({ machines, onMachinesChange }: Mach
 
                 return (
                   <div
-                    key={m.id}
+                    key={`${m.id}-${index}`}
                     onClick={() => setSelectedMachineDetail(m)}
                     className={`bg-white rounded-xl border p-5 shadow-sm hover:shadow-md cursor-pointer transition-all relative overflow-hidden flex flex-col justify-between min-h-[220px] ${
                       isSelected ? "border-[#683EFF] ring-1 ring-[#683EFF]/35" : "border-slate-200"
@@ -1598,7 +1681,7 @@ export function MachineDetailsPortfolioView({ machines, onMachinesChange }: Mach
           {/* C. COMPACT VIEW MODE */}
           {viewMode === "compact" && (
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm divide-y divide-slate-100">
-              {paginatedMachines.map((m) => {
+              {paginatedMachines.map((m, index) => {
                 const isSelected = selectedMachineIds.includes(m.id);
                 const isLiked = !!favorites[m.id];
                 
@@ -1608,7 +1691,7 @@ export function MachineDetailsPortfolioView({ machines, onMachinesChange }: Mach
 
                 return (
                   <div
-                    key={m.id}
+                    key={`${m.id}-${index}`}
                     onClick={() => setSelectedMachineDetail(m)}
                     className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 hover:bg-slate-50/80 transition-colors cursor-pointer gap-2 ${
                       isSelected ? "bg-[#F0EBFF]/10" : ""
@@ -1943,6 +2026,291 @@ export function MachineDetailsPortfolioView({ machines, onMachinesChange }: Mach
                   Delete
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showImportMappingModal && csvMappingData && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => { setShowImportMappingModal(false); setCsvMappingData(null); }} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl border border-slate-100 flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-250">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-slate-100 shrink-0">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800 font-sans flex items-center gap-2">
+                    <Icons.FileSpreadsheet className="w-5.5 h-5.5 text-[#683EFF]" />
+                    Import machine models via CSV
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    WooCommerce-inspired multi-step CSV importer configuration. Map headers, preview, and confirm data records.
+                  </p>
+                </div>
+                <button
+                  onClick={() => { setShowImportMappingModal(false); setCsvMappingData(null); }}
+                  className="text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-50 rounded-lg transition-all"
+                >
+                  <Icons.X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Steps Progress Bar */}
+            <div className="px-6 pt-5 pb-3 bg-slate-50 border-b border-slate-100 shrink-0 select-none">
+              <div className="flex items-center justify-center gap-2 max-w-md mx-auto">
+                <div className="flex items-center gap-1.5">
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${importStep === "map" ? "bg-[#683EFF] text-white" : "bg-emerald-500 text-white"}`}>
+                    {importStep === "map" ? "1" : "✓"}
+                  </span>
+                  <span className={`text-xs font-bold ${importStep === "map" ? "text-slate-800" : "text-slate-400"}`}>Map Fields</span>
+                </div>
+                <div className="w-12 h-0.5 bg-slate-200" />
+                <div className="flex items-center gap-1.5">
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${importStep === "confirm" ? "bg-[#683EFF] text-white" : importStep === "done" ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-500"}`}>
+                    {importStep === "done" ? "✓" : "2"}
+                  </span>
+                  <span className={`text-xs font-bold ${importStep === "confirm" ? "text-slate-800" : "text-slate-400"}`}>Confirm Preview</span>
+                </div>
+                <div className="w-12 h-0.5 bg-slate-200" />
+                <div className="flex items-center gap-1.5">
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${importStep === "done" ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-500"}`}>
+                    3
+                  </span>
+                  <span className={`text-xs font-bold ${importStep === "done" ? "text-slate-800" : "text-slate-400"}`}>Import Complete</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Mappings / Confirmation Panel Content */}
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              {importStep === "map" && (
+                <div className="space-y-4">
+                  <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                          <th className="px-5 py-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-550 w-1/2">
+                            Column name
+                          </th>
+                          <th className="px-5 py-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-550 w-1/2">
+                            Map to field
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-150">
+                        {csvMappingData.headers.map((header, idx) => {
+                          const sampleVal = csvMappingData.sampleRow[idx] || "N/A";
+                          const currentSelected = csvMappingData.mappings[header] || "";
+
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="px-5 py-4">
+                                <div className="text-xs font-bold text-slate-800">{header}</div>
+                                <div className="text-[11px] text-slate-400 font-mono mt-0.5 truncate max-w-sm">
+                                  Sample: <span className="text-slate-550 italic font-sans">{sampleVal}</span>
+                                </div>
+                              </td>
+                              <td className="px-5 py-4">
+                                <select
+                                  value={currentSelected}
+                                  onChange={(e) => {
+                                    const newMappings = { ...csvMappingData.mappings, [header]: e.target.value };
+                                    setCsvMappingData({ ...csvMappingData, mappings: newMappings });
+                                  }}
+                                  className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] focus:border-[#683EFF] font-semibold text-slate-700 hover:border-slate-300 transition-all cursor-pointer"
+                                >
+                                  <option value="" className="text-slate-400">Do not import (Ignore)</option>
+                                  <option value="id">Machine ID</option>
+                                  <option value="machineName">Machine Name</option>
+                                  <option value="model">Model</option>
+                                  <option value="manufacturer">Manufacturer</option>
+                                  <option value="yearOfManufacture">Year of Manufacture</option>
+                                  <option value="serialNumber">Serial Number</option>
+                                  <option value="currentLocation">Current Location</option>
+                                  <option value="status">Status</option>
+                                  <option value="workingHours">Working Hours</option>
+                                  <option value="department">Department</option>
+                                  <option value="lastServiceDate">Last Service Date</option>
+                                  <option value="swl">S.W.L</option>
+                                  <option value="maxOutreach">Maximum Horizontal Outreach</option>
+                                  <option value="bucketCapacity">Max Bucket Capacity</option>
+                                  <option value="enginePower">Engine Power</option>
+                                  <option value="boomLength">Boom Length</option>
+                                  <option value="wheelType">Wheel Type</option>
+                                  <option value="maxPlatformHeight">Max Platform Height</option>
+                                  <option value="heoBucketCapacity">Hoe Bucket Capacity</option>
+                                  <option value="engineSpeed">Engine Speed</option>
+                                  <option value="angleOfSpan">Angle of Span</option>
+                                  <option value="personAllowed">Person Allowed</option>
+                                </select>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Informative Stats */}
+                  <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Icons.Info className="w-4 h-4 text-[#683EFF]" />
+                      <span className="text-[11px] text-slate-500 font-medium">
+                        Found <strong className="text-slate-700">{csvMappingData.allRows.length}</strong> total data rows in the CSV file.
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      Smart mapped: {Object.values(csvMappingData.mappings).filter(Boolean).length} / {csvMappingData.headers.length} fields
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {importStep === "confirm" && (
+                <div className="space-y-5">
+                  <div className="p-5 bg-[#683EFF]/5 border border-[#683EFF]/20 rounded-2xl flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-[#683EFF]/10 flex items-center justify-center shrink-0">
+                      <Icons.Database className="w-6 h-6 text-[#683EFF]" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-800">You are ready to run the import engine</h4>
+                      <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                        We mapped <strong className="text-slate-700">{Object.values(csvMappingData.mappings).filter(Boolean).length}</strong> CSV headers and processed <strong className="text-slate-700">{importedPreviewList.length}</strong> machine model rows. These will be appended safely to your MEV Asset Registry.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Preview Cards Grid */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2.5">
+                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Import Preview (First 3 Items)</span>
+                      <span className="text-[10px] font-semibold text-[#683EFF] bg-[#683EFF]/5 px-2 py-0.5 rounded-full">WooCommerce Verified</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3">
+                      {importedPreviewList.slice(0, 3).map((item, index) => (
+                        <div key={index} className="p-4 border border-slate-200 rounded-xl bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-slate-800">{item.machineName}</span>
+                              <span className="font-mono text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{item.id}</span>
+                            </div>
+                            <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-3">
+                              <span>Model: <strong className="text-slate-600 font-medium">{item.model}</strong></span>
+                              <span>Manufacturer: <strong className="text-slate-600 font-medium">{item.manufacturer}</strong></span>
+                              <span>Year: <strong className="text-slate-600 font-medium">{item.yearOfManufacture}</strong></span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 font-semibold text-[10px]">
+                              {item.status}
+                            </span>
+                            <span className="text-slate-500 font-mono text-[11px]">
+                              {item.workingHours} Hours
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                      {importedPreviewList.length > 3 && (
+                        <div className="text-center text-[11px] text-slate-400 italic py-1 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                          ... and {importedPreviewList.length - 3} more machine records
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Warning Notice */}
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex gap-3 text-xs">
+                    <Icons.AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-amber-800 font-bold block">Please Note:</strong>
+                      <span className="text-amber-700 leading-relaxed mt-0.5 block">
+                        Imported values cannot be automatically rolled back. Ensure serial numbers and technical values are populated correctly.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {importStep === "done" && (
+                <div className="py-12 flex flex-col items-center text-center max-w-md mx-auto space-y-4 animate-in fade-in zoom-in-95 duration-300">
+                  <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-100">
+                    <Icons.CheckCircle className="w-10 h-10" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800">WooCommerce product import completed!</h3>
+                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                      All systems green. Successfully registered <strong className="text-[#683EFF] font-bold">{importedPreviewList.length} new heavy machine assets</strong> into the MEV Inspections fleet workspace.
+                    </p>
+                  </div>
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl w-full text-xs text-slate-550 font-medium flex justify-around">
+                    <div className="flex flex-col items-center">
+                      <span className="text-lg font-extrabold text-slate-700">{importedPreviewList.length}</span>
+                      <span>Records Created</span>
+                    </div>
+                    <div className="w-px bg-slate-200 self-stretch" />
+                    <div className="flex flex-col items-center">
+                      <span className="text-lg font-extrabold text-slate-700">0</span>
+                      <span>Failed / Skipped</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
+              {importStep === "map" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => { setShowImportMappingModal(false); setCsvMappingData(null); }}
+                    className="px-4 py-2 border border-slate-300 text-xs font-semibold text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer font-sans"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleGoToConfirmation}
+                    className="bg-[#683EFF] hover:bg-[#5229E0] text-white text-xs font-bold py-2.5 px-5 rounded-lg shadow-sm hover:shadow transition-all cursor-pointer font-sans flex items-center gap-1.5"
+                  >
+                    <span>Continue to Confirmation</span>
+                    <Icons.ArrowRight className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+
+              {importStep === "confirm" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setImportStep("map")}
+                    className="px-4 py-2 border border-slate-300 text-xs font-semibold text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer font-sans flex items-center gap-1.5"
+                  >
+                    <Icons.ArrowLeft className="w-4 h-4" />
+                    <span>Back to Mapping</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExecuteImport}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 px-6 rounded-lg shadow-sm hover:shadow transition-all cursor-pointer font-sans flex items-center gap-1.5"
+                  >
+                    <Icons.Check className="w-4 h-4" />
+                    <span>Run the Importer</span>
+                  </button>
+                </>
+              )}
+
+              {importStep === "done" && (
+                <button
+                  type="button"
+                  onClick={() => { setShowImportMappingModal(false); setCsvMappingData(null); }}
+                  className="bg-[#683EFF] hover:bg-[#5229E0] text-white text-xs font-bold py-2.5 px-6 rounded-lg shadow-sm transition-all cursor-pointer font-sans"
+                >
+                  View Mapped Assets
+                </button>
+              )}
             </div>
           </div>
         </div>

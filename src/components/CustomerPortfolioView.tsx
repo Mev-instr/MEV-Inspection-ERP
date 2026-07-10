@@ -34,6 +34,15 @@ export function CustomerPortfolioView({ customers, onCustomersChange, onUploadIm
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [showBulkActionDropdown, setShowBulkActionDropdown] = useState(false);
 
+  // CSV Import Mapping states
+  const [showImportMappingModal, setShowImportMappingModal] = useState(false);
+  const [csvMappingData, setCsvMappingData] = useState<{
+    headers: string[];
+    sampleRow: string[];
+    allRows: string[][];
+    mappings: Record<string, string>;
+  } | null>(null);
+
   // Pagination states mock (configured for high-fidelity representation of pagination)
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
@@ -240,6 +249,30 @@ export function CustomerPortfolioView({ customers, onCustomersChange, onUploadIm
         .map(parseCSVLine);
     };
 
+    const smartMap = (header: string): string => {
+      const h = header.trim().toLowerCase();
+      if (h === "id" || h === "customer id" || h === "cust_id") return "id";
+      if (h === "customer name" || h === "company name" || h === "name" || h === "company_name" || h === "company") return "companyName";
+      if (h === "customer type" || h === "type") return "customerType";
+      if (h === "country" || h === "country gateway") return "country";
+      if (h === "initial status" || h === "status") return "status";
+      if (h === "training site address" || h === "training_address") return "trainingSiteAddress";
+      if (h === "training contact person" || h === "training_contact") return "trainingContactPerson";
+      if (h === "training contact phone number" || h === "training_phone") return "trainingContactPhone";
+      if (h === "inspection site address" || h === "inspection_address") return "inspectionSiteAddress";
+      if (h === "inspection contact person" || h === "inspection_contact") return "inspectionContactPerson";
+      if (h === "contact phone number" || h === "inspection_phone" || h === "phone") return "inspectionContactPhone";
+      if (h === "mobile number" || h === "inspection_mobile" || h === "mobile") return "inspectionMobile";
+      if (h === "email id" || h === "primary_email" || h === "email") return "primaryEmail";
+      if (h === "primary contact mobile number" || h === "primary_mobile" || h === "primary_phone") return "primaryMobile";
+      if (h === "address line 1" || h === "address1") return "addressLine1";
+      if (h === "city address" || h === "city") return "cityAddress";
+      if (h === "address line 2" || h === "address2") return "addressLine2";
+      if (h === "state / province" || h === "state" || h === "province") return "stateProvince";
+      if (h === "zip / postal code" || h === "zip" || h === "postal_code" || h === "zipcode") return "zipPostalCode";
+      return "";
+    };
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
@@ -253,65 +286,101 @@ export function CustomerPortfolioView({ customers, onCustomersChange, onUploadIm
           return;
         }
 
-        const csvHeaders = rows[0].map(h => h.trim().toLowerCase());
-        const importedCustomers: any[] = [];
+        const csvHeaders = rows[0].map(h => h.trim());
+        const csvSampleRow = rows[1] || [];
+        const csvAllRows = rows.slice(1);
 
-        for (let i = 1; i < rows.length; i++) {
-          const row = rows[i];
-          if (row.length === 0 || !row[0]) continue;
+        // Compute initial intelligent mapping
+        const initialMappings: Record<string, string> = {};
+        csvHeaders.forEach((header) => {
+          initialMappings[header] = smartMap(header);
+        });
 
-          const getVal = (headerName: string) => {
-            const idx = csvHeaders.indexOf(headerName.toLowerCase());
-            return idx !== -1 && idx < row.length ? row[idx] : "";
-          };
-
-          const companyName = getVal("Customer Name");
-          if (!companyName) continue;
-
-          const customer = {
-            id: companyName,
-            companyName: companyName,
-            customerType: getVal("Customer Type") || "Company",
-            country: getVal("Country Gateway") || "Saudi Arabia",
-            status: getVal("Initial Status") || "Active",
-            trainingSiteAddress: getVal("Training Site Address"),
-            trainingContactPerson: getVal("Training Contact Person"),
-            trainingContactPhone: getVal("Training Contact Phone Number"),
-            inspectionSiteAddress: getVal("Inspection Site Address"),
-            inspectionContactPerson: getVal("Inspection Contact Person"),
-            inspectionContactPhone: getVal("Contact Phone Number"),
-            inspectionMobile: getVal("Mobile Number"),
-            primaryEmail: getVal("Email ID"),
-            primaryMobile: getVal("Primary Contact Mobile Number"),
-            addressLine1: getVal("Address Line 1"),
-            cityAddress: getVal("City Address"),
-            addressLine2: getVal("Address Line 2"),
-            stateProvince: getVal("State / Province"),
-            zipPostalCode: getVal("ZIP / Postal Code"),
-            contactPerson: getVal("Email ID") ? getVal("Email ID").split("@")[0] : "Admin-VIM",
-            phone: getVal("Contact Phone Number") || getVal("Primary Contact Mobile Number") || "+966 50 000 0000",
-            email: getVal("Email ID") || "info@client.com",
-            lastUpdated: new Date().toISOString().split("T")[0]
-          };
-
-          importedCustomers.push(customer);
-        }
-
-        if (importedCustomers.length > 0) {
-          onCustomersChange((prev) => [...importedCustomers, ...prev]);
-          setToastMessage(`✓ Successfully imported ${importedCustomers.length} customers.`);
-        } else {
-          setToastMessage("⚠ No valid customer entries found in the CSV.");
-        }
+        setCsvMappingData({
+          headers: csvHeaders,
+          sampleRow: csvSampleRow,
+          allRows: csvAllRows,
+          mappings: initialMappings
+        });
+        setShowImportMappingModal(true);
       } catch (err) {
         console.error(err);
         setToastMessage("⚠ Error parsing CSV file.");
+        setTimeout(() => setToastMessage(""), 3000);
       }
-      setTimeout(() => setToastMessage(""), 3000);
       e.target.value = "";
     };
 
     reader.readAsText(file);
+  };
+
+  const handleExecuteImport = () => {
+    if (!csvMappingData) return;
+
+    const { headers, allRows, mappings } = csvMappingData;
+    const importedCustomers: CustomerDetail[] = [];
+
+    const getValMapped = (row: string[], colHeaders: string[], activeMappings: Record<string, string>, targetField: string) => {
+      const csvHeader = colHeaders.find(h => activeMappings[h] === targetField);
+      if (!csvHeader) return "";
+      const idx = colHeaders.indexOf(csvHeader);
+      return idx !== -1 && idx < row.length ? row[idx].trim() : "";
+    };
+
+    allRows.forEach((row) => {
+      if (row.length === 0) return;
+
+      const getVal = (targetField: string) => {
+        return getValMapped(row, headers, mappings, targetField);
+      };
+
+      const companyName = getVal("companyName") || "Unnamed Customer";
+      if (companyName === "Unnamed Customer") {
+        const hasAnyContent = row.some(val => val.trim().length > 0);
+        if (!hasAnyContent) return;
+      }
+
+      const id = getVal("id") || companyName;
+
+      const customer: CustomerDetail = {
+        id: id,
+        companyName: companyName,
+        customerType: getVal("customerType") || "Company",
+        country: getVal("country") || "Saudi Arabia",
+        status: getVal("status") || "Active",
+        trainingSiteAddress: getVal("trainingSiteAddress"),
+        trainingContactPerson: getVal("trainingContactPerson"),
+        trainingContactPhone: getVal("trainingContactPhone"),
+        inspectionSiteAddress: getVal("inspectionSiteAddress"),
+        inspectionContactPerson: getVal("inspectionContactPerson"),
+        inspectionContactPhone: getVal("inspectionContactPhone"),
+        inspectionMobile: getVal("inspectionMobile"),
+        primaryEmail: getVal("primaryEmail"),
+        primaryMobile: getVal("primaryMobile"),
+        addressLine1: getVal("addressLine1"),
+        cityAddress: getVal("cityAddress"),
+        addressLine2: getVal("addressLine2"),
+        stateProvince: getVal("stateProvince"),
+        zipPostalCode: getVal("zipPostalCode"),
+        contactPerson: getVal("primaryEmail") ? getVal("primaryEmail").split("@")[0] : "Admin-VIM",
+        phone: getVal("inspectionContactPhone") || getVal("primaryMobile") || "+966 50 000 0000",
+        email: getVal("primaryEmail") || "info@client.com",
+        lastUpdated: new Date().toISOString().split("T")[0]
+      };
+
+      importedCustomers.push(customer);
+    });
+
+    if (importedCustomers.length > 0) {
+      onCustomersChange((prev) => [...importedCustomers, ...prev]);
+      setToastMessage(`✓ Successfully imported ${importedCustomers.length} customers.`);
+    } else {
+      setToastMessage("⚠ No valid customer entries found in the CSV based on current mapping.");
+    }
+
+    setShowImportMappingModal(false);
+    setCsvMappingData(null);
+    setTimeout(() => setToastMessage(""), 3000);
   };
 
   const handleBulkDeleteItems = () => {
@@ -1579,6 +1648,132 @@ export function CustomerPortfolioView({ customers, onCustomersChange, onUploadIm
         <div className="fixed bottom-5 right-5 z-[100] bg-[#0E1B2D] text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border border-slate-750 animate-slide-in">
           <Icons.Info className="w-4 h-4 text-[#683EFF]" />
           <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {showImportMappingModal && csvMappingData && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => { setShowImportMappingModal(false); setCsvMappingData(null); }} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl border border-slate-100 flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-250">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-slate-100">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800 font-sans flex items-center gap-2">
+                    <Icons.FileSpreadsheet className="w-5.5 h-5.5 text-[#683EFF]" />
+                    Map CSV fields to customers
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Select fields from your CSV file to map against customer profile fields, or to ignore during import.
+                  </p>
+                </div>
+                <button
+                  onClick={() => { setShowImportMappingModal(false); setCsvMappingData(null); }}
+                  className="text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-50 rounded-lg transition-all"
+                >
+                  <Icons.X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Mappings Table */}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="px-5 py-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-550 w-1/2">
+                        Column name
+                      </th>
+                      <th className="px-5 py-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-550 w-1/2">
+                        Map to field
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-150">
+                    {csvMappingData.headers.map((header, idx) => {
+                      const sampleVal = csvMappingData.sampleRow[idx] || "N/A";
+                      const currentSelected = csvMappingData.mappings[header] || "";
+
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-5 py-4">
+                            <div className="text-xs font-bold text-slate-800">{header}</div>
+                            <div className="text-[11px] text-slate-400 font-mono mt-0.5 truncate max-w-sm">
+                              Sample: <span className="text-slate-550 italic font-sans">{sampleVal}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <select
+                              value={currentSelected}
+                              onChange={(e) => {
+                                const newMappings = { ...csvMappingData.mappings, [header]: e.target.value };
+                                setCsvMappingData({ ...csvMappingData, mappings: newMappings });
+                              }}
+                              className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] focus:border-[#683EFF] font-semibold text-slate-700 hover:border-slate-300 transition-all cursor-pointer"
+                            >
+                              <option value="" className="text-slate-400">Do not import (Ignore)</option>
+                              <option value="id">Customer ID</option>
+                              <option value="companyName">Customer/Company Name</option>
+                              <option value="customerType">Customer Type</option>
+                              <option value="country">Country</option>
+                              <option value="status">Status</option>
+                              <option value="trainingSiteAddress">Training Site Address</option>
+                              <option value="trainingContactPerson">Training Contact Person</option>
+                              <option value="trainingContactPhone">Training Contact Phone</option>
+                              <option value="inspectionSiteAddress">Inspection Site Address</option>
+                              <option value="inspectionContactPerson">Inspection Contact Person</option>
+                              <option value="inspectionContactPhone">Inspection Contact Phone</option>
+                              <option value="inspectionMobile">Inspection Mobile</option>
+                              <option value="primaryEmail">Email ID</option>
+                              <option value="primaryMobile">Primary Contact Mobile</option>
+                              <option value="addressLine1">Address Line 1</option>
+                              <option value="cityAddress">City Address</option>
+                              <option value="addressLine2">Address Line 2</option>
+                              <option value="stateProvince">State / Province</option>
+                              <option value="zipPostalCode">ZIP / Postal Code</option>
+                            </select>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Informative Stats */}
+              <div className="mt-4 p-4 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Icons.Info className="w-4 h-4 text-[#683EFF]" />
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    Found <strong className="text-slate-700">{csvMappingData.allRows.length}</strong> total data rows in the CSV file.
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  Smart mapped: {Object.values(csvMappingData.mappings).filter(Boolean).length} / {csvMappingData.headers.length} fields
+                </span>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => { setShowImportMappingModal(false); setCsvMappingData(null); }}
+                className="px-4 py-2 border border-slate-300 text-xs font-semibold text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer font-sans"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteImport}
+                className="bg-[#683EFF] hover:bg-[#5229E0] text-white text-xs font-bold py-2.5 px-5 rounded-lg shadow-sm hover:shadow transition-all cursor-pointer font-sans flex items-center gap-1.5"
+              >
+                <Icons.Check className="w-4 h-4" />
+                Confirm & Import
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

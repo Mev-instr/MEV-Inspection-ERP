@@ -387,8 +387,8 @@ export function ClientPortalDashboard({
                       </td>
                     </tr>
                   ) : (
-                    filteredMachineCerts.map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                    filteredMachineCerts.map((item, index) => (
+                      <tr key={`${item.id}-${index}`} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-6 py-4 font-bold text-slate-800">{item.id}</td>
                         <td className="px-6 py-4 text-slate-600">
                           {item.inspectionDate || "N/A"}
@@ -449,8 +449,8 @@ export function ClientPortalDashboard({
                       </td>
                     </tr>
                   ) : (
-                    filteredLiftingCerts.map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                    filteredLiftingCerts.map((item, index) => (
+                      <tr key={`${item.id}-${index}`} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-6 py-4 font-bold text-slate-800">{item.id}</td>
                         <td className="px-6 py-4 text-slate-600">
                           {item.issueDate || "N/A"}
@@ -511,12 +511,12 @@ export function ClientPortalDashboard({
                       </td>
                     </tr>
                   ) : (
-                    filteredOperatorCards.map((item) => {
+                    filteredOperatorCards.map((item, index) => {
                       const isActive =
                         item.status?.toLowerCase() === "active" ||
                         (item.licenseExpiry && new Date(item.licenseExpiry) >= new Date());
                       return (
-                        <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                        <tr key={`${item.id}-${index}`} className="hover:bg-slate-50/50 transition-colors">
                           <td className="px-6 py-4 font-bold text-slate-800">{item.id}</td>
                           <td className="px-6 py-4 text-slate-600">
                             {item.machineOperator || "N/A"}

@@ -107,6 +107,15 @@ export function LiftingToolCertificatesPortfolioView({ employees, customers = st
   const [editFormValues, setEditFormValues] = useState<LiftingToolCert | null>(null);
   const [showBulkActionDropdown, setShowBulkActionDropdown] = useState(false);
 
+  // CSV Import Mapping states
+  const [showImportMappingModal, setShowImportMappingModal] = useState(false);
+  const [csvMappingData, setCsvMappingData] = useState<{
+    headers: string[];
+    sampleRow: string[];
+    allRows: string[][];
+    mappings: Record<string, string>;
+  } | null>(null);
+
   // Toast notifications
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -206,6 +215,33 @@ export function LiftingToolCertificatesPortfolioView({ employees, customers = st
         .map(parseCSVLine);
     };
 
+    const smartMap = (header: string): string => {
+      const h = header.trim().toLowerCase();
+      if (h === "id" || h === "certificate id" || h === "certificate_id") return "id";
+      if (h === "naming series code prefix" || h === "naming series" || h === "prefix") return "namingSeries";
+      if (h === "client name" || h === "client" || h === "customer") return "clientName";
+      if (h === "inspection report no" || h === "inspection report" || h === "report_no") return "inspectionReportNo";
+      if (h === "job number" || h === "job_number") return "jobNumber";
+      if (h === "tool name" || h === "lifting tool" || h === "lifting_tool") return "toolName";
+      if (h === "sticker number" || h === "sticker_number" || h === "sticker") return "stickerNumber";
+      if (h === "time sheet number" || h === "timesheet") return "timeSheetNumber";
+      if (h === "result" || h === "final result") return "result";
+      if (h === "validity") return "validity";
+      if (h === "check list" || h === "checklist") return "checkList";
+      if (h === "initial status" || h === "status") return "status";
+      if (h === "location") return "location";
+      if (h === "equipment location" || h === "machine_location") return "equipmentLocation";
+      if (h === "issue date" || h === "start date" || h === "date") return "issueDate";
+      if (h === "expiry date" || h === "expiration date" || h === "expiry_date") return "expiryDate";
+      if (h === "type of inspection" || h === "inspection_type") return "typeOfInspection";
+      if (h === "next issue date" || h === "next_inspection") return "nextInspectionDate";
+      if (h === "reference standard" || h === "standard") return "referenceStandard";
+      if (h === "authorized by" || h === "authorizer") return "authorizedBy";
+      if (h === "inspected by" || h === "inspector") return "inspectedBy";
+      if (h === "recommendation" || h === "recommendations") return "recommendation";
+      return "";
+    };
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
@@ -218,82 +254,23 @@ export function LiftingToolCertificatesPortfolioView({ employees, customers = st
           return;
         }
 
-        const csvHeaders = rows[0].map(h => h.trim().toLowerCase());
-        const importedCertificates: any[] = [];
+        const csvHeaders = rows[0].map(h => h.trim());
+        const csvSampleRow = rows[1] || [];
+        const csvAllRows = rows.slice(1);
 
-        for (let i = 1; i < rows.length; i++) {
-          const row = rows[i];
-          if (row.length === 0 || !row[0]) continue;
+        // Compute initial intelligent mapping
+        const initialMappings: Record<string, string> = {};
+        csvHeaders.forEach((header) => {
+          initialMappings[header] = smartMap(header);
+        });
 
-          const getVal = (headerName: string) => {
-            const idx = csvHeaders.indexOf(headerName.toLowerCase());
-            return idx !== -1 && idx < row.length ? row[idx] : "";
-          };
-
-          const namingSeries = getVal("Naming Series Code prefix") || "MEV-MC-26";
-          const clientName = getVal("Client Name");
-          if (!clientName) continue;
-
-          const finalId = calculateNextSequenceId(namingSeries);
-
-          const inspectionReportNo = getVal("Inspection Report No");
-          const jobNumber = getVal("Job Number");
-          const toolName = getVal("Tool Name") || "Heavy Machine";
-          const stickerNumber = getVal("Sticker Number");
-          const timeSheetNumber = getVal("Time Sheet Number");
-          const result = getVal("Result") || "Pass";
-          const validity = getVal("Validity");
-          const checkList = getVal("Check List");
-          const status = getVal("Initial Status") || "Active";
-          const location = getVal("Location");
-          const equipmentLocation = getVal("Equipment Location");
-          const issueDate = getVal("Issue Date") || new Date().toISOString().split("T")[0];
-          const expiryDate = getVal("Expiry Date") || new Date().toISOString().split("T")[0];
-          const typeOfInspection = getVal("Type of Inspection");
-          const nextInspectionDate = getVal("Next Issue Date");
-          const referenceStandard = getVal("Reference Standard");
-          const authorizedBy = getVal("Authorized By");
-          const inspectedBy = getVal("Inspected By");
-          const recommendation = getVal("Recommendation");
-
-          const certificate = {
-            id: finalId,
-            namingSeries: namingSeries,
-            inspectionReportNo: inspectionReportNo,
-            jobNumber: jobNumber,
-            toolName: toolName,
-            stickerNumber: stickerNumber,
-            timeSheetNumber: timeSheetNumber,
-            result: result,
-            validity: validity,
-            checkList: checkList,
-            clientName: clientName,
-            issueDate: issueDate,
-            location: location,
-            expiryDate: expiryDate,
-            equipmentLocation: equipmentLocation,
-            typeOfInspection: typeOfInspection,
-            nextInspectionDate: nextInspectionDate,
-            referenceStandard: referenceStandard,
-            inspectedBy: inspectedBy,
-            inspectedBySignature: "",
-            authorizedBy: authorizedBy,
-            authorizedBySignature: "",
-            recommendation: recommendation,
-            status: status,
-            operators: [],
-            /* loadChartData: [] */
-          };
-
-          importedCertificates.push(certificate);
-        }
-
-        if (importedCertificates.length > 0) {
-          onCertificatesChange((prev) => [...importedCertificates, ...prev]);
-          showToast(`✓ Successfully imported ${importedCertificates.length} certificates.`);
-        } else {
-          showToast("⚠ No valid certificate entries found in the CSV.");
-        }
+        setCsvMappingData({
+          headers: csvHeaders,
+          sampleRow: csvSampleRow,
+          allRows: csvAllRows,
+          mappings: initialMappings
+        });
+        setShowImportMappingModal(true);
       } catch (err) {
         console.error(err);
         showToast("⚠ Error parsing CSV file.");
@@ -302,6 +279,95 @@ export function LiftingToolCertificatesPortfolioView({ employees, customers = st
     };
 
     reader.readAsText(file);
+  };
+
+  const handleExecuteImport = () => {
+    if (!csvMappingData) return;
+
+    const { headers, allRows, mappings } = csvMappingData;
+    const importedCertificates: LiftingToolCert[] = [];
+
+    const getValMapped = (row: string[], colHeaders: string[], activeMappings: Record<string, string>, targetField: string) => {
+      const csvHeader = colHeaders.find(h => activeMappings[h] === targetField);
+      if (!csvHeader) return "";
+      const idx = colHeaders.indexOf(csvHeader);
+      return idx !== -1 && idx < row.length ? row[idx].trim() : "";
+    };
+
+    allRows.forEach((row) => {
+      if (row.length === 0) return;
+
+      const getVal = (targetField: string) => {
+        return getValMapped(row, headers, mappings, targetField);
+      };
+
+      const clientName = getVal("clientName") || "General Partner";
+      const namingSeries = getVal("namingSeries") || "MEV-MC-26";
+      const toolName = getVal("toolName") || "Heavy Machine";
+
+      const hasAnyContent = row.some(val => val.trim().length > 0);
+      if (!hasAnyContent) return;
+
+      const finalId = getVal("id") || calculateNextSequenceId(namingSeries);
+      const inspectionReportNo = getVal("inspectionReportNo");
+      const jobNumber = getVal("jobNumber");
+      const stickerNumber = getVal("stickerNumber");
+      const timeSheetNumber = getVal("timeSheetNumber");
+      const result = getVal("result") || "Pass";
+      const validity = getVal("validity");
+      const checkList = getVal("checkList");
+      const status = getVal("status") || "Active";
+      const location = getVal("location");
+      const equipmentLocation = getVal("equipmentLocation");
+      const issueDate = getVal("issueDate") || new Date().toISOString().split("T")[0];
+      const expiryDate = getVal("expiryDate") || new Date().toISOString().split("T")[0];
+      const typeOfInspection = getVal("typeOfInspection");
+      const nextInspectionDate = getVal("nextInspectionDate");
+      const referenceStandard = getVal("referenceStandard");
+      const authorizedBy = getVal("authorizedBy");
+      const inspectedBy = getVal("inspectedBy");
+      const recommendation = getVal("recommendation");
+
+      const certificate: LiftingToolCert = {
+        id: finalId,
+        namingSeries: namingSeries,
+        inspectionReportNo: inspectionReportNo,
+        jobNumber: jobNumber,
+        toolName: toolName,
+        stickerNumber: stickerNumber,
+        timeSheetNumber: timeSheetNumber,
+        result: result,
+        validity: validity,
+        checkList: checkList,
+        clientName: clientName,
+        issueDate: issueDate,
+        location: location,
+        expiryDate: expiryDate,
+        equipmentLocation: equipmentLocation,
+        typeOfInspection: typeOfInspection,
+        nextInspectionDate: nextInspectionDate,
+        referenceStandard: referenceStandard,
+        inspectedBy: inspectedBy,
+        inspectedBySignature: "",
+        authorizedBy: authorizedBy,
+        authorizedBySignature: "",
+        recommendation: recommendation,
+        status: status,
+        operators: []
+      };
+
+      importedCertificates.push(certificate);
+    });
+
+    if (importedCertificates.length > 0) {
+      onCertificatesChange((prev) => [...importedCertificates, ...prev]);
+      showToast(`✓ Successfully imported ${importedCertificates.length} certificates.`);
+    } else {
+      showToast("⚠ No valid certificate entries found in the CSV based on current mapping.");
+    }
+
+    setShowImportMappingModal(false);
+    setCsvMappingData(null);
   };
 
   const handleBulkDeleteItems = () => {
@@ -2617,6 +2683,142 @@ export function LiftingToolCertificatesPortfolioView({ employees, customers = st
                   Delete
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toastMessage && (
+        <div className="fixed bottom-5 right-5 z-50 bg-[#0E1B2D] text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border border-slate-755 animate-slide-in">
+          <Icons.Info className="w-4 h-4 text-[#683EFF]" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {showImportMappingModal && csvMappingData && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => { setShowImportMappingModal(false); setCsvMappingData(null); }} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl border border-slate-100 flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-250">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-slate-100">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800 font-sans flex items-center gap-2">
+                    <Icons.FileSpreadsheet className="w-5.5 h-5.5 text-[#683EFF]" />
+                    Map CSV fields to lifting tool certificates
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Select fields from your CSV file to map against lifting tool certificate fields, or to ignore during import.
+                  </p>
+                </div>
+                <button
+                  onClick={() => { setShowImportMappingModal(false); setCsvMappingData(null); }}
+                  className="text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-50 rounded-lg transition-all"
+                >
+                  <Icons.X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Mappings Table */}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="px-5 py-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-550 w-1/2">
+                        Column name
+                      </th>
+                      <th className="px-5 py-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-550 w-1/2">
+                        Map to field
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-150">
+                    {csvMappingData.headers.map((header, idx) => {
+                      const sampleVal = csvMappingData.sampleRow[idx] || "N/A";
+                      const currentSelected = csvMappingData.mappings[header] || "";
+
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-5 py-4">
+                            <div className="text-xs font-bold text-slate-800">{header}</div>
+                            <div className="text-[11px] text-slate-400 font-mono mt-0.5 truncate max-w-sm">
+                              Sample: <span className="text-slate-550 italic font-sans">{sampleVal}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <select
+                              value={currentSelected}
+                              onChange={(e) => {
+                                const newMappings = { ...csvMappingData.mappings, [header]: e.target.value };
+                                setCsvMappingData({ ...csvMappingData, mappings: newMappings });
+                              }}
+                              className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] focus:border-[#683EFF] font-semibold text-slate-700 hover:border-slate-300 transition-all cursor-pointer"
+                            >
+                              <option value="" className="text-slate-400">Do not import (Ignore)</option>
+                              <option value="id">Certificate ID / Reference</option>
+                              <option value="namingSeries">Naming Series Prefix</option>
+                              <option value="clientName">Client Name</option>
+                              <option value="inspectionReportNo">Inspection Report No</option>
+                              <option value="jobNumber">Job Number</option>
+                              <option value="toolName">Lifting Tool Name</option>
+                              <option value="stickerNumber">Sticker Number</option>
+                              <option value="timeSheetNumber">Time Sheet Number</option>
+                              <option value="result">Result (Pass/Fail)</option>
+                              <option value="validity">Validity Period</option>
+                              <option value="checkList">Checklist No / Ref</option>
+                              <option value="status">Status</option>
+                              <option value="location">Location</option>
+                              <option value="equipmentLocation">Equipment Location</option>
+                              <option value="issueDate">Issue Date</option>
+                              <option value="expiryDate">Expiry Date (Expiration)</option>
+                              <option value="typeOfInspection">Type of Inspection</option>
+                              <option value="nextInspectionDate">Next Issue Date</option>
+                              <option value="referenceStandard">Reference Standard</option>
+                              <option value="authorizedBy">Authorized By</option>
+                              <option value="inspectedBy">Inspected By</option>
+                              <option value="recommendation">Recommendation Details</option>
+                            </select>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Informative Stats */}
+              <div className="mt-4 p-4 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Icons.Info className="w-4 h-4 text-[#683EFF]" />
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    Found <strong className="text-slate-700">{csvMappingData.allRows.length}</strong> total data rows in the CSV file.
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  Smart mapped: {Object.values(csvMappingData.mappings).filter(Boolean).length} / {csvMappingData.headers.length} fields
+                </span>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => { setShowImportMappingModal(false); setCsvMappingData(null); }}
+                className="px-4 py-2 border border-slate-300 text-xs font-semibold text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer font-sans"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteImport}
+                className="bg-[#683EFF] hover:bg-[#5229E0] text-white text-xs font-bold py-2.5 px-5 rounded-lg shadow-sm hover:shadow transition-all cursor-pointer font-sans flex items-center gap-1.5"
+              >
+                <Icons.Check className="w-4 h-4" />
+                Confirm & Import
+              </button>
             </div>
           </div>
         </div>
