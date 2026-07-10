@@ -85,6 +85,7 @@ export interface EmployeeDetail {
   department?: string;
   email?: string;
   phone?: string;
+  iqamaNumber?: string;
   status?: string;
   joinDate?: string;
   joiningDate?: string;

@@ -368,7 +368,7 @@ export function PrintCardPreview({ operator, onClose, autoPrint = false }: Print
                     style={{ zIndex: 10 }}
                   >
                     <QRCodeSVG
-                      value={`${window.location.origin}/verify/${operator.id}`}
+                      value={`https://mev-ins.com/verify/${operator.id}`}
                       size={120}
                     />
                   </div>

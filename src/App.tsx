@@ -20,6 +20,7 @@ import {
 } from "./data";
 import { DetailModal, LucideIcon } from "./components/DetailModal";
 import { CustomerPortfolioView } from "./components/CustomerPortfolioView";
+import { EmployeeDetailsPortfolioView } from "./components/EmployeeDetailsPortfolioView";
 import { UserManagementView } from "./components/UserManagementView";
 import { ClientPortalDashboard } from "./components/ClientPortalDashboard";
 import { TrainingJobsPortfolioView } from "./components/TrainingJobsPortfolioView";
@@ -65,21 +66,58 @@ export default function App() {
   const [loginLogoUrl, setLoginLogoUrl] = useState<string | null>(null);
 
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
   const isAdmin = currentUser?.email === "shahzaibkamran44@gmail.com";
   const [cloudMessage, setCloudMessage] = useState<string | null>(null);
+
+  // Domain separation states (client.mev-ins.com vs erp.mev-ins.com)
+  const initialDomainMode = useMemo(() => {
+    if (typeof window !== "undefined") {
+      const hostname = window.location.hostname.toLowerCase();
+      if (hostname.includes("client")) {
+        return "CLIENT";
+      }
+      if (hostname.includes("erp")) {
+        return "ERP";
+      }
+    }
+    return "ERP";
+  }, []);
+
+  const [domainMode, setDomainMode] = useState<"ERP" | "CLIENT">(initialDomainMode);
+  const [adminPreviewClientId, setAdminPreviewClientId] = useState<string>("");
+
+  const isDevEnvironment = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    const h = window.location.hostname.toLowerCase();
+    return h === "localhost" || h.includes("127.0.0.1") || h.includes("run.app") || h.includes("aistudio");
+  }, []);
 
   // ERP Tables Core Database State
   const [customers, setCustomers] = useState(initialCustomers);
   const [employees, setEmployees] = useState(initialEmployees);
-  const currentEmployee = employees.find(e => e.email === currentUser?.email);
-  const isClient = !isAdmin && customers.some(c => {
+  const currentEmployee = employees.find(e => e.email && e.email.toLowerCase() === currentUser?.email?.toLowerCase());
+
+  // Find active client for portal based on domain and role
+  const activeClientForPortal = useMemo(() => {
+    if (isAdmin && domainMode === "CLIENT") {
+      const clientWithAccount = customers.find(c => c.hasAccount) || customers[0];
+      const selected = customers.find(c => c.id === adminPreviewClientId);
+      return selected || clientWithAccount || null;
+    }
+    const client = customers.find(c => {
+      const cEmail = (c.email || c.primaryEmail || "").toLowerCase();
+      return cEmail && cEmail === currentUser?.email?.toLowerCase() && c.hasAccount;
+    });
+    return client || null;
+  }, [currentUser, customers, isAdmin, domainMode, adminPreviewClientId]);
+
+  const isClient = domainMode === "CLIENT" || (!isAdmin && customers.some(c => {
     const cEmail = (c.email || c.primaryEmail || "").toLowerCase();
     return cEmail && cEmail === currentUser?.email?.toLowerCase() && c.hasAccount;
-  });
-  const currentClient = isClient ? customers.find(c => {
-    const cEmail = (c.email || c.primaryEmail || "").toLowerCase();
-    return cEmail && cEmail === currentUser?.email?.toLowerCase() && c.hasAccount;
-  }) : null;
+  }));
+
+  const currentClient = activeClientForPortal;
   const [trainingJobs, setTrainingJobs] = useState(initialTrainingJobs);
   const [inspectionJobs, setInspectionJobs] = useState(initialInspectionJobs);
   const [inspectionReports, setInspectionReports] = useState(
@@ -98,6 +136,7 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<
     | "DASHBOARD"
     | "PORTFOLIO"
+    | "EMPLOYEE_DETAILS"
     | "USER_MANAGEMENT"
     | "TRAINING"
     | "INSPECTION"
@@ -125,21 +164,92 @@ export default function App() {
     setTimeout(() => setCloudMessage(null), 4000);
   };
 
-  // 1. Listen to Firebase Authentication State Changes
+  // 1. Listen to Firebase Authentication State Changes with Secure Domain Authorization
   useEffect(() => {
-    const unsubscribe = initAuth((user) => {
-      setCurrentUser(user);
+    const unsubscribe = initAuth(async (user) => {
       if (user) {
-        triggerCloudToast(
-          `✓ Connected to Google Cloud as ${user.displayName || user.email}`,
-        );
-        initializeStructure();
+        try {
+          if (user.email === "shahzaibkamran44@gmail.com") {
+            // Admin has absolute access to everything
+            setAuthError(null);
+            setCurrentUser(user);
+            triggerCloudToast(`✓ Connected to Google Cloud as Admin`);
+            initializeStructure();
+            return;
+          }
+
+          // Fetch fresh customers and employees from Firestore
+          const freshCustomers = await fetchCollection("customers");
+          const freshEmployees = await fetchCollection("employees");
+
+          const userEmail = (user.email || "").toLowerCase();
+
+          const isCustomer = freshCustomers.some(c => {
+            const cEmail = (c.email || c.primaryEmail || "").toLowerCase();
+            return cEmail && cEmail === userEmail && c.hasAccount;
+          });
+
+          const isEmployee = freshEmployees.some(e => {
+            const eEmail = (e.email || "").toLowerCase();
+            return eEmail && eEmail === userEmail && e.hasAccount;
+          });
+
+          // Match the domain we are currently viewing
+          let currentMode = domainMode;
+          if (typeof window !== "undefined") {
+            const hostname = window.location.hostname.toLowerCase();
+            if (hostname.includes("client")) {
+              currentMode = "CLIENT";
+            } else if (hostname.includes("erp")) {
+              currentMode = "ERP";
+            }
+          }
+
+          if (currentMode === "CLIENT") {
+            if (!isCustomer) {
+              setAuthError("Access Denied: This login gateway is exclusively for MEV Clients. Employees should sign in at erp.mev-ins.com.");
+              await signOutUser();
+              setCurrentUser(null);
+              return;
+            }
+          } else {
+            if (!isEmployee) {
+              setAuthError("Access Denied: This login gateway is for MEV ERP staff only. Clients should sign in at client.mev-ins.com.");
+              await signOutUser();
+              setCurrentUser(null);
+              return;
+            }
+          }
+
+          // Authorized successfully, update states
+          setAuthError(null);
+          if (freshCustomers && freshCustomers.length > 0) {
+            setCustomers(freshCustomers);
+            customersLoadedRef.current = freshCustomers;
+          }
+          if (freshEmployees && freshEmployees.length > 0) {
+            setEmployees(freshEmployees);
+            employeesLoadedRef.current = freshEmployees;
+          }
+
+          setCurrentUser(user);
+          triggerCloudToast(
+            `✓ Connected to Google Cloud as ${user.displayName || user.email}`,
+          );
+          initializeStructure();
+        } catch (error) {
+          console.error("Auth verification error:", error);
+          setAuthError("Auth verification failed. Check your connection.");
+          await signOutUser();
+          setCurrentUser(null);
+        }
       } else {
+        setCurrentUser(null);
         triggerCloudToast(`Not connected. Please sign in to manage data.`);
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [domainMode]);
 
   // 2. Initialize Folder Structure and Load Existing Branding Files
   const initializeStructure = async () => {
@@ -734,26 +844,97 @@ export default function App() {
   if (!currentUser) {
     return (
       <LoginPage
-        onSuccess={(user) => setCurrentUser(user)}
+        onSuccess={(user) => {
+          // Handled securely via the unified initAuth observer
+        }}
         triggerCloudToast={triggerCloudToast}
         employees={employees}
         customers={customers}
+        domainMode={domainMode}
+        setDomainMode={setDomainMode}
+        isDevEnvironment={isDevEnvironment}
+        externalError={authError}
+        onClearExternalError={() => setAuthError(null)}
       />
     );
   }
 
-  if (isClient && currentClient) {
+  if (domainMode === "CLIENT") {
+    if (!currentClient) {
+      // Logged in on CLIENT domain but not a registered Customer!
+      // Trigger signout and clear user session
+      signOutUser().then(() => {
+        setCurrentUser(null);
+        setAuthError("Access Denied: This login gateway is exclusively for MEV Clients. Employees should sign in at erp.mev-ins.com.");
+      }).catch(console.error);
+
+      return (
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 text-center border border-slate-100/10">
+            <h1 className="text-2xl font-bold text-rose-600 mb-2">Access Denied</h1>
+            <p className="text-slate-600 text-sm mb-6">
+              This login gateway is exclusively for MEV Clients. Employees should sign in at erp.mev-ins.com.
+            </p>
+            <button
+              onClick={async () => {
+                await signOutUser();
+                setCurrentUser(null);
+              }}
+              className="bg-[#683EFF] text-white px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-[#522CD9] transition-all"
+            >
+              Back to Login
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <ClientPortalDashboard
         currentClient={currentClient}
         machineCertificates={machineCertificates}
         liftingToolCertificates={liftingToolCerts}
         operatorCards={operators}
-        onLogout={() => {
+        onLogout={async () => {
+          await signOutUser();
           triggerCloudToast("Signed out from Client Portal");
+          setAuthError(null);
           setCurrentUser(null);
         }}
+        isAdmin={isAdmin}
+        allClients={customers.filter(c => c.hasAccount)}
+        onSelectClientForPreview={(clientId) => setAdminPreviewClientId(clientId)}
       />
+    );
+  }
+
+  // ERP Domain Authorization Guard
+  if (domainMode === "ERP" && !isAdmin && !currentEmployee) {
+    // Logged in on ERP domain but not an authorized Employee!
+    // Trigger signout and clear user session
+    signOutUser().then(() => {
+      setCurrentUser(null);
+      setAuthError("Access Denied: This login gateway is for MEV ERP staff only. Clients should sign in at client.mev-ins.com.");
+    }).catch(console.error);
+
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 text-center border border-slate-100/10">
+          <h1 className="text-2xl font-bold text-rose-600 mb-2">Access Denied</h1>
+          <p className="text-slate-600 text-sm mb-6">
+            This login gateway is for MEV ERP staff only. Clients should sign in at client.mev-ins.com.
+          </p>
+          <button
+            onClick={async () => {
+              await signOutUser();
+              setCurrentUser(null);
+            }}
+            className="bg-[#683EFF] text-white px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-[#522CD9] transition-all"
+          >
+            Back to Login
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -1344,9 +1525,11 @@ export default function App() {
                 className="relative rounded-full p-2.5 bg-white border border-slate-100 hover:bg-slate-50 hover:shadow-sm text-slate-400 hover:text-[#683EFF] transition-all"
               >
                 <Icons.Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#683EFF] text-[9px] font-bold text-white shadow-sm ring-2 ring-white">
-                  4
-                </span>
+                {notifications.length > 0 && (
+                  <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#683EFF] text-[9px] font-bold text-white shadow-sm ring-2 ring-white">
+                    {notifications.length}
+                  </span>
+                )}
               </button>
 
               {/* Notification Popover Panel drop list */}
@@ -1430,6 +1613,23 @@ export default function App() {
         >
           <AnimatePresence mode="wait">
             {/* PORTFOLIO TAB ROUTE */}
+            {currentTab === "EMPLOYEE_DETAILS" && (
+              <motion.div
+                key="employeeDetails"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.3 }}
+                className="h-full flex flex-col"
+              >
+                <EmployeeDetailsPortfolioView
+                  employees={employees}
+                  onEmployeesChange={setEmployees}
+                  onUploadImage={handleUploadImage}
+                />
+              </motion.div>
+            )}
+
             {currentTab === "PORTFOLIO" && (
               <motion.div
                 key="portfolio"
@@ -1473,7 +1673,7 @@ export default function App() {
                 transition={{ duration: 0.18 }}
               >
                 <TrainingJobsPortfolioView
-                  jobs={trainingJobs}
+                  jobs={filteredTrainingJobs}
                   customers={customers}
                   employees={employees}
                   onJobsChange={setTrainingJobs}
@@ -1491,9 +1691,9 @@ export default function App() {
                 transition={{ duration: 0.18 }}
               >
                 <InspectionJobsPortfolioView
-                  jobs={inspectionJobs}
+                  jobs={filteredInspectionJobs}
                   onJobsChange={setInspectionJobs}
-                  reports={inspectionReports}
+                  reports={filteredInspectionReports}
                   onReportsChange={setInspectionReports}
                   customers={customers}
                   employees={employees}
@@ -1511,7 +1711,7 @@ export default function App() {
                 transition={{ duration: 0.18 }}
               >
                 <InspectionReportsPortfolioView
-                  reports={inspectionReports}
+                  reports={filteredInspectionReports}
                   customers={customers}
                   onReportsChange={setInspectionReports}
                   inspectionJobs={filteredInspectionJobs}
@@ -1534,6 +1734,7 @@ export default function App() {
                   inspectionReports={filteredInspectionReports}
                   employees={employees}
                   customers={customers}
+                  allCertificateIds={[...liftingToolCerts.map(c => c.id), ...machineCertificates.map(c => c.id)]}
                 />
               </motion.div>
             )}
@@ -1555,6 +1756,7 @@ export default function App() {
                   onUploadImage={handleUploadImage}
                   employees={employees}
                   customers={customers}
+                  allCertificateIds={[...liftingToolCerts.map(c => c.id), ...machineCertificates.map(c => c.id)]}
                 />
               </motion.div>
             )}
@@ -1666,6 +1868,10 @@ export default function App() {
                                   card.category === ERPCategory.USER_MANAGEMENT
                                 ) {
                                   setCurrentTab("USER_MANAGEMENT");
+                                } else if (
+                                  card.category === ERPCategory.EMPLOYEE_DETAILS
+                                ) {
+                                  setCurrentTab("EMPLOYEE_DETAILS");
                                 } else if (
                                   card.category ===
                                   ERPCategory.CUSTOMER_DETAILS

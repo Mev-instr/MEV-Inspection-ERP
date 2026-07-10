@@ -11,6 +11,9 @@ interface Props {
   liftingToolCertificates: LiftingToolCert[];
   operatorCards: OperatorCard[];
   onLogout: () => void;
+  isAdmin?: boolean;
+  allClients?: CustomerDetail[];
+  onSelectClientForPreview?: (clientId: string) => void;
 }
 
 type CardType = "machine" | "lifting" | "operator";
@@ -21,6 +24,9 @@ export function ClientPortalDashboard({
   liftingToolCertificates,
   operatorCards,
   onLogout,
+  isAdmin = false,
+  allClients = [],
+  onSelectClientForPreview,
 }: Props) {
   const [selectedCard, setSelectedCard] = useState<CardType>("machine");
   const [searchTerm, setSearchTerm] = useState("");
@@ -141,6 +147,26 @@ export function ClientPortalDashboard({
           </div>
 
           <div className="flex items-center gap-4">
+            {isAdmin && allClients.length > 0 && (
+              <div className="flex items-center gap-2 bg-[#F0EBFF] px-3 py-1.5 rounded-xl border border-[#683EFF]/25">
+                <Icons.UserCog className="w-4 h-4 text-[#683EFF]" />
+                <span className="text-xs font-bold text-[#683EFF] uppercase tracking-wider hidden sm:inline">
+                  Admin Preview:
+                </span>
+                <select
+                  value={currentClient.id}
+                  onChange={(e) => onSelectClientForPreview?.(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-[#683EFF] outline-none cursor-pointer border-none p-0 focus:ring-0"
+                >
+                  {allClients.map((client) => (
+                    <option key={client.id} value={client.id} className="text-slate-800 bg-white">
+                      {client.companyName || "Client"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <button
               onClick={onLogout}
               className="flex items-center gap-2 text-slate-500 hover:text-slate-800 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"

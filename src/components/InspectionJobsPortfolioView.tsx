@@ -20,7 +20,7 @@ interface InspectionJobsPortfolioProps {
   employees?: EmployeeDetail[];
 }
 
-export function InspectionJobsPortfolioView({ jobs, onJobsChange, reports, onReportsChange, customers = staticCustomers }: InspectionJobsPortfolioProps) {
+export function InspectionJobsPortfolioView({ jobs, onJobsChange, reports, onReportsChange, customers = staticCustomers, employees = [] }: InspectionJobsPortfolioProps) {
   // View states
   const [viewMode, setViewMode] = useState<"list" | "grid" | "compact">("list");
   const [showViewDropdown, setShowViewDropdown] = useState(false);
@@ -855,14 +855,18 @@ export function InspectionJobsPortfolioView({ jobs, onJobsChange, reports, onRep
                       </label>
                       <input
                         type="text"
+                        list="employees-list"
                         disabled={!isEditingInDetail}
                         value={isEditingInDetail && editFormValues ? editFormValues.inspectorId || "" : dispTrainer}
                         onChange={(e) => {
                           if (editFormValues) setEditFormValues({ ...editFormValues, inspectorId: e.target.value, inspector: e.target.value });
                         }}
                         className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#683EFF]/20 focus:border-[#683EFF] bg-slate-50 font-semibold text-slate-700"
-                        placeholder="INSP-ZAID-09"
+                        placeholder="Search employee..."
                       />
+                      <datalist id="employees-list">
+                        {employees.map(e => <option key={e.id} value={e.name || e.firstName || e.id}>{e.id} - {e.role || e.designation}</option>)}
+                      </datalist>
                     </div>
 
                     <div>
@@ -1940,13 +1944,17 @@ export function InspectionJobsPortfolioView({ jobs, onJobsChange, reports, onRep
                     </label>
                     <input
                       type="text"
+                      list="employees-list"
                       className={`w-full text-xs px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#683EFF] bg-slate-50 font-normal font-sans ${
                         formErrors.inspectorId ? "border-rose-300 focus:ring-rose-500" : "border-slate-200"
                       }`}
                       value={formValues.inspectorId}
                       onChange={(e) => setFormValues({ ...formValues, inspectorId: e.target.value })}
-                      placeholder="e.g. INSP-ZAID-09"
+                      placeholder="Search employee..."
                     />
+                    <datalist id="employees-list">
+                      {employees.map(e => <option key={e.id} value={e.name || e.firstName || e.id}>{e.id} - {e.role || e.designation}</option>)}
+                    </datalist>
                     {formErrors.inspectorId && <p className="text-[10px] text-rose-500 font-semibold mt-1">{formErrors.inspectorId}</p>}
                   </div>
 

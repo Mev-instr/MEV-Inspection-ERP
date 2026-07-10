@@ -19,9 +19,10 @@ interface LiftingToolCertificatesPortfolioProps {
   onCertificatesChange: React.Dispatch<React.SetStateAction<LiftingToolCert[]>>;
   inspectionReports?: InspectionReport[];
   onUploadImage?: (file: File, clientName: string, subfolder: string, entityId?: string) => Promise<string>;
+  allCertificateIds?: string[];
 }
 
-export function LiftingToolCertificatesPortfolioView({ employees, customers = staticCustomers, certificates, onCertificatesChange, inspectionReports = [], onUploadImage }: LiftingToolCertificatesPortfolioProps) {
+export function LiftingToolCertificatesPortfolioView({ employees, customers = staticCustomers, certificates, onCertificatesChange, inspectionReports = [], onUploadImage, allCertificateIds = [] }: LiftingToolCertificatesPortfolioProps) {
   // View states
   const [viewMode, setViewMode] = useState<"list" | "grid" | "compact">("list");
   const [showViewDropdown, setShowViewDropdown] = useState(false);
@@ -456,9 +457,9 @@ export function LiftingToolCertificatesPortfolioView({ employees, customers = st
 
     // Otherwise, find the maximum suffix number in current certificates starting with MEV-CRT-26
     let maxSuffix = 1000; // Starting baseline suffix count
-    const matchingCertificates = certificates.filter((j) => j.id.startsWith("MEV-CRT-26-"));
-    matchingCertificates.forEach((certificate) => {
-      const parts = certificate.id.split("-");
+    const matchingIds = allCertificateIds.length > 0 ? allCertificateIds.filter((id) => id.startsWith("MEV-CRT-26-")) : certificates.map(c => c.id).filter((id) => id.startsWith("MEV-CRT-26-"));
+    matchingIds.forEach((id) => {
+      const parts = id.split("-");
       const suffixCode = parts[parts.length - 1];
       const numericVal = parseInt(suffixCode, 10);
       if (!isNaN(numericVal) && numericVal > maxSuffix) {

@@ -10,9 +10,24 @@ interface LoginPageProps {
   triggerCloudToast: (msg: string) => void;
   employees: EmployeeDetail[];
   customers: CustomerDetail[];
+  domainMode: "ERP" | "CLIENT";
+  setDomainMode: (mode: "ERP" | "CLIENT") => void;
+  isDevEnvironment: boolean;
+  externalError?: string | null;
+  onClearExternalError?: () => void;
 }
 
-export function LoginPage({ onSuccess, triggerCloudToast, employees, customers }: LoginPageProps) {
+export function LoginPage({
+  onSuccess,
+  triggerCloudToast,
+  employees,
+  customers,
+  domainMode,
+  setDomainMode,
+  isDevEnvironment,
+  externalError,
+  onClearExternalError,
+}: LoginPageProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,26 +35,46 @@ export function LoginPage({ onSuccess, triggerCloudToast, employees, customers }
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const clearAllErrors = () => {
+    setErrorMessage(null);
+    if (onClearExternalError) {
+      onClearExternalError();
+    }
+  };
+
   const checkAuthorization = (user: any) => {
     if (user.email === "shahzaibkamran44@gmail.com") return true;
+    
     const isEmployee = employees.some(e => e.email && e.email.toLowerCase() === user.email.toLowerCase() && e.hasAccount);
     const isCustomer = customers.some(c => {
       const cEmail = (c.email || c.primaryEmail || "").toLowerCase();
       return cEmail && cEmail === user.email.toLowerCase() && c.hasAccount;
     });
-    return isEmployee || isCustomer;
+
+    if (domainMode === "CLIENT") {
+      if (!isCustomer) {
+        setErrorMessage("Access Denied: This login gateway is exclusively for MEV Clients. Employees should sign in at erp.mev-ins.com.");
+        return false;
+      }
+      return true;
+    } else {
+      if (!isEmployee) {
+        setErrorMessage("Access Denied: This login gateway is for MEV ERP staff only. Clients should sign in at client.mev-ins.com.");
+        return false;
+      }
+      return true;
+    }
   };
 
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setErrorMessage(null);
+    clearAllErrors();
 
     try {
       const userCred = await signInWithEmailAndPassword(auth, email, password);
       if (!checkAuthorization(userCred.user)) {
-        setErrorMessage("You are not authorized to access this system. Please contact the administrator.");
         return;
       }
       triggerCloudToast(`✓ Signed in successfully as ${userCred.user.displayName || userCred.user.email}`);
@@ -60,11 +95,10 @@ export function LoginPage({ onSuccess, triggerCloudToast, employees, customers }
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
-    setErrorMessage(null);
+    clearAllErrors();
     try {
       const res = await signInWithGoogle();
       if (!checkAuthorization(res.user)) {
-        setErrorMessage("You are not authorized to access this system. Please contact the administrator.");
         return;
       }
       triggerCloudToast(`✓ Signed in successfully via Google!`);
@@ -82,6 +116,44 @@ export function LoginPage({ onSuccess, triggerCloudToast, employees, customers }
       {/* Background radial gradient decoration */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-slate-800/50 via-slate-900 to-slate-950 pointer-events-none" />
 
+      {/* Dev Switcher Banner */}
+      {isDevEnvironment && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-700/60 text-slate-200 text-xs py-2.5 px-4 rounded-2xl shadow-xl flex flex-col sm:flex-row items-center gap-2 sm:gap-4 z-20 transition-all">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="font-bold text-amber-400">🛠️ Developer Simulator:</span>
+            <span className="text-slate-400">Preview subdomains:</span>
+          </div>
+          <div className="flex bg-slate-950 rounded-xl p-0.5 border border-slate-700/60">
+            <button
+              onClick={() => {
+                setDomainMode("ERP");
+                clearAllErrors();
+              }}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                domainMode === "ERP"
+                  ? "bg-[#683EFF] text-white shadow"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              erp.mev-ins.com (ERP)
+            </button>
+            <button
+              onClick={() => {
+                setDomainMode("CLIENT");
+                clearAllErrors();
+              }}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                domainMode === "CLIENT"
+                  ? "bg-[#683EFF] text-white shadow"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              client.mev-ins.com (Clients)
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main card */}
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-100/10 z-10 flex flex-col p-8 relative">
         
@@ -93,14 +165,16 @@ export function LoginPage({ onSuccess, triggerCloudToast, employees, customers }
             className="h-20 w-auto object-contain mb-4 transform hover:scale-105 transition-transform duration-200"
           />
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">MIDDLE EAST VIM</h1>
-          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Inspection & Certification ERP</p>
+          <p className="text-xs text-[#683EFF] font-black uppercase tracking-widest mt-1">
+            {domainMode === "CLIENT" ? "🔑 Client Portal" : "💼 Staff ERP Workspace"}
+          </p>
         </div>
 
         {/* Error message alert block */}
-        {errorMessage && (
+        {(errorMessage || externalError) && (
           <div className="flex items-start gap-2.5 bg-rose-50 border border-rose-200/60 text-rose-700 p-3.5 rounded-xl text-xs font-medium text-left mb-5 animate-headShake">
             <Icons.AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span className="leading-relaxed">{errorMessage}</span>
+            <span className="leading-relaxed">{errorMessage || externalError}</span>
           </div>
         )}
 
@@ -119,7 +193,10 @@ export function LoginPage({ onSuccess, triggerCloudToast, employees, customers }
                 required
                 placeholder="you@company.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  clearAllErrors();
+                }}
                 className="w-full bg-slate-50/50 border border-slate-100 text-slate-900 text-sm pl-10 pr-4 py-2.5 rounded-xl outline-none focus:border-[#683EFF]/30 focus:bg-white transition-all shadow-inner"
               />
             </div>
@@ -138,7 +215,10 @@ export function LoginPage({ onSuccess, triggerCloudToast, employees, customers }
                 required
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  clearAllErrors();
+                }}
                 className="w-full bg-slate-50/50 border border-slate-100 text-slate-900 text-sm pl-10 pr-4 py-2.5 rounded-xl outline-none focus:border-[#683EFF]/30 focus:bg-white transition-all shadow-inner"
               />
             </div>
@@ -152,7 +232,7 @@ export function LoginPage({ onSuccess, triggerCloudToast, employees, customers }
             {loading ? (
               <div className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
             ) : (
-              "Sign In to ERP"
+              domainMode === "CLIENT" ? "Sign In to Client Portal" : "Sign In to ERP"
             )}
           </button>
         </form>
@@ -195,7 +275,10 @@ export function LoginPage({ onSuccess, triggerCloudToast, employees, customers }
 
         {/* Security / System Access Notice */}
         <p className="text-[10px] text-slate-400 leading-normal text-center mt-6">
-          Access is restricted to authorized personnel. External auditors can verify printed certificates directly via QR scan verification.
+          {domainMode === "CLIENT" 
+            ? "Your client account must have active credentials. Contact MEV Operations support if you cannot sign in."
+            : "Access is restricted to authorized MEV personnel. External auditors can verify printed certificates directly via QR scan verification."
+          }
         </p>
 
       </div>

@@ -31,7 +31,7 @@ interface PhoneCountryCodeInputProps {
 export function PhoneCountryCodeInput({
   value = "",
   onChange,
-  placeholder = "Enter phone number",
+  placeholder = "",
   id,
 }: PhoneCountryCodeInputProps) {
   const [isOpen, setIsOpen] = useState(false);

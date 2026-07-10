@@ -16,7 +16,7 @@ interface PrintMachineCertificatePreviewProps {
 }
 
 export function PrintMachineCertificatePreview({ certificate, onClose, autoPrint = false }: PrintMachineCertificatePreviewProps) {
-  const [template, setTemplate] = useState("template_approved"); // Use approved template as default for direct printing
+  const [template, setTemplate] = useState("template1"); // Use no approval template as default for direct printing
   const [isExporting, setIsExporting] = useState(false);
 
   const certRef = useRef<HTMLDivElement>(null);
@@ -341,7 +341,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose, autoPrint
                      <div className="absolute left-1/2 -translate-x-1/2 bottom-[15px] flex flex-col items-center w-64 text-center">
                         <div className="p-0 bg-white rounded-xl shadow-sm border border-slate-200">
                            <QRCodeSVG 
-                             value={`${window.location.origin}/verify/${certificate.id}`}
+                             value={`https://mev-ins.com/verify/${certificate.id}`}
                              size={85}
                              level="H"
                              fgColor="#111827"
@@ -637,7 +637,7 @@ export function PrintMachineCertificatePreview({ certificate, onClose, autoPrint
                      <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center w-64 text-center">
                         <div className="p-0 bg-white rounded-xl shadow-sm border border-slate-200">
                            <QRCodeSVG 
-                             value={`${window.location.origin}/verify/${certificate.id}`}
+                             value={`https://mev-ins.com/verify/${certificate.id}`}
                              size={85}
                              level="H"
                              fgColor="#111827"

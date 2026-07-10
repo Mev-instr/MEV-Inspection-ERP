@@ -1,0 +1,37 @@
+--- src/App.tsx
++++ src/App.tsx
+@@ -701,23 +701,28 @@
+   };
+ 
+   // Extract verifyId from URL to support public QR code scans
+-  const getVerifyIdFromUrl = (): string | null => {
+-    if (typeof window === "undefined") return null;
++  const getVerifyRouteInfo = (): { isVerifyRoute: boolean; verifyId: string | null } => {
++    if (typeof window === "undefined") return { isVerifyRoute: false, verifyId: null };
+     const searchParams = new URLSearchParams(window.location.search);
+     const verifySearch = searchParams.get("verify") || searchParams.get("id");
+-    if (verifySearch) return verifySearch;
++    if (verifySearch) return { isVerifyRoute: true, verifyId: verifySearch };
+     
+     const pathParts = window.location.pathname.split("/");
+     const verifyIndex = pathParts.findIndex(part => part === "verify");
+-    if (verifyIndex !== -1 && pathParts[verifyIndex + 1]) {
+-      return pathParts[verifyIndex + 1];
++    if (verifyIndex !== -1) {
++      const verifyId = pathParts[verifyIndex + 1] || null;
++      return { isVerifyRoute: true, verifyId };
+     }
+-    return null;
++    return { isVerifyRoute: false, verifyId: null };
+   };
+ 
+-  const verifyId = getVerifyIdFromUrl();
++  const { isVerifyRoute, verifyId } = getVerifyRouteInfo();
+ 
+-  if (verifyId) {
++  if (isVerifyRoute) {
+     return (
+       <PublicVerificationView
+-        verifyId={verifyId}
++        verifyId={verifyId || undefined}
+         onBackToLogin={() => {

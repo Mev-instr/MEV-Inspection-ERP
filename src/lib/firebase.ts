@@ -22,7 +22,7 @@ const app = initializeApp(firebaseConfig);
 const databaseId = (firebaseAppletConfig as any).databaseId || (firebaseAppletConfig as any).firestoreDatabaseId || "(default)";
 console.log("Initializing Firestore with databaseId:", databaseId);
 
-const db = initializeFirestore(app, {}, databaseId);
+const db = initializeFirestore(app, { experimentalForceLongPolling: true }, databaseId);
 
 // Add a helper to check if we are online
 export const isFirestoreOnline = async () => {
