@@ -1,9 +1,108 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function userDocExists() {
+      return firestore.exists(/databases/(default)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserDoc() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isAuth() && userDocExists() && getUserDoc().role == 'admin';
+    }
+
+    function isEmployee() {
+      return isAuth() && userDocExists() && getUserDoc().role == 'employee';
+    }
+
+    function isClient() {
+      return isAuth() && userDocExists() && getUserDoc().role == 'client';
+    }
+
+    function getAssignedCompanies() {
+      let doc = getUserDoc();
+      return 'assignedCompanies' in doc ? doc.assignedCompanies : [];
+    }
+
+    function getUserCompany() {
+      let doc = getUserDoc();
+      return 'companyName' in doc ? doc.companyName : null;
+    }
+
+    // Admin: full access to all paths
     match /{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.token.email == 'shahzaibkamran44@gmail.com';
+      allow read, write: if isAdmin();
+    }
+
+    // ============================================================
+    // BRANDING / PUBLIC ASSETS
+    // ============================================================
+    match /Branding/{fileName} {
+      allow read: if true; // Public logo, etc.
+      allow write: if isAdmin();
+    }
+
+    // ============================================================
+    // CUSTOMER FILES (Certificates, Reports)
+    // ============================================================
+    match /customers/{customerId}/{fileName} {
+      allow read: if isAdmin() || 
+                    (isEmployee() && 
+                     customerId in getAssignedCompanies()) ||
+                    (isClient() && 
+                     customerId == getUserCompany());
+      
+      allow write: if isAdmin() || 
+                     (isEmployee() && 
+                      customerId in getAssignedCompanies());
+    }
+
+    // ============================================================
+    // CERTIFICATES PDFs / ATTACHMENTS
+    // ============================================================
+    match /certificates/{certId}/{fileName} {
+      allow read: if isAdmin() ||
+                    (isEmployee() && 
+                     firestore.get(/databases/(default)/documents/machineCertificates/$(certId)).data.clientName in getAssignedCompanies()) ||
+                    (isClient() && 
+                     firestore.get(/databases/(default)/documents/machineCertificates/$(certId)).data.clientName == getUserCompany());
+      
+      allow write: if isAdmin() || 
+                     (isEmployee() && 
+                      firestore.get(/databases/(default)/documents/machineCertificates/$(certId)).data.clientName in getAssignedCompanies());
+    }
+
+    // ============================================================
+    // OPERATOR PHOTOS
+    // ============================================================
+    match /operators/{operatorId}/{fileName} {
+      allow read: if isAdmin() ||
+                    (isEmployee() && 
+                     firestore.get(/databases/(default)/documents/operatorCards/$(operatorId)).data.company in getAssignedCompanies()) ||
+                    (isClient() && 
+                     firestore.get(/databases/(default)/documents/operatorCards/$(operatorId)).data.company == getUserCompany());
+      
+      allow write: if isAdmin() || isEmployee();
+    }
+
+    // ============================================================
+    // REPORT ATTACHMENTS
+    // ============================================================
+    match /reports/{reportId}/{fileName} {
+      allow read: if isAdmin() || isEmployee();
+      allow write: if isAdmin() || isEmployee();
+    }
+
+    // Default deny
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

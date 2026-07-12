@@ -1,9 +1,282 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ============================================================
+    // CORE AUTH HELPERS
+    // ============================================================
+    
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function userDocExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Only 'role' lives in custom claims. Everything else is in Firestore.
+    function isAdmin() {
+      return isAuth() && userDocExists() && getUserDoc().role == 'admin';
+    }
+
+    function isEmployee() {
+      return isAuth() && userDocExists() && getUserDoc().role == 'employee';
+    }
+
+    function isClient() {
+      return isAuth() && userDocExists() && getUserDoc().role == 'client';
+    }
+
+    // ============================================================
+    // USER DATA HELPERS (read from Firestore users doc, NOT claims)
+    // ============================================================
+
+    function getAssignedCompanies() {
+      let doc = getUserDoc();
+      return 'assignedCompanies' in doc ? doc.assignedCompanies : [];
+    }
+
+    function getAssignedCustomerIds() {
+      let doc = getUserDoc();
+      return 'assignedCustomerIds' in doc ? doc.assignedCustomerIds : [];
+    }
+
+    function getAssignedCustomerEmails() {
+      let doc = getUserDoc();
+      return 'assignedCustomerEmails' in doc ? doc.assignedCustomerEmails : [];
+    }
+
+    function getUserCompany() {
+      let doc = getUserDoc();
+      return 'companyName' in doc ? doc.companyName : null;
+    }
+
+    function getUserName() {
+      let doc = getUserDoc();
+      return 'name' in doc ? doc.name : null;
+    }
+
+    function getUserEmail() {
+      // request.auth.token.email is verified by Firebase Auth (tamper-proof)
+      return request.auth.token.email;
+    }
+
+    function getEmployeeId() {
+      let doc = getUserDoc();
+      return 'employeeId' in doc ? doc.employeeId : null;
+    }
+
+    // ============================================================
+    // OWNERSHIP / ASSIGNMENT HELPERS
+    // ============================================================
+
+    function isAssignedToEmployee() {
+      return resource.data.clientName in getAssignedCompanies() ||
+             resource.data.companyName in getAssignedCompanies() ||
+             resource.data.id in getAssignedCustomerIds() ||
+             resource.data.email in getAssignedCustomerEmails();
+    }
+
+    function isOwnCompanyData() {
+      let company = getUserCompany();
+      return resource.data.clientName == company ||
+             resource.data.companyName == company ||
+             resource.data.company == company ||
+             resource.data.sponsorName == company ||
+             resource.data.id == company;
+    }
+
+    // ============================================================
+    // USERS COLLECTION - CENTRAL ROLE AUTHORITY
+    // ============================================================
+    match /users/{userId} {
+      // Admin: full control
+      allow read, write: if isAdmin();
+      
+      // Users: read own profile only (needed for frontend role checks)
+      allow read: if isAuth() && request.auth.uid == userId;
+      
+      // No self-registration or modification
+      allow create, update, delete: if false;
+    }
+
+    // ============================================================
+    // EMPLOYEES COLLECTION
+    // ============================================================
+    match /employees/{employeeId} {
+      allow read, write: if isAdmin();
+      
+      // Employee can read own profile
+      allow read: if isEmployee() && 
+                     (resource.data.email == getUserEmail() || 
+                      resource.data.id == getEmployeeId());
+      
+      allow create, update, delete: if false;
+    }
+
+    // ============================================================
+    // CUSTOMERS COLLECTION
+    // ============================================================
+    match /customers/{customerId} {
+      allow read, write: if isAdmin();
+      
+      // Employee: read if assigned to this customer
+      allow read: if isEmployee() && 
+                     (resource.data.companyName in getAssignedCompanies() ||
+                      resource.data.id in getAssignedCustomerIds() ||
+                      resource.data.email in getAssignedCustomerEmails());
+      
+      // Client: read own company only, NO write access
+      allow read: if isClient() && isOwnCompanyData();
+      
+      allow write: if false;
+    }
+
+    // ============================================================
+    // MACHINE CERTIFICATES
+    // ============================================================
+    match /machineCertificates/{certId} {
+      allow read, write: if isAdmin();
+      
+      // Employee: read/write if assigned to this certificate's client OR they inspected it
+      allow read, write: if isEmployee() && 
+                            (resource.data.clientName in getAssignedCompanies() ||
+                             getUserName() == resource.data.inspectedBy);
+      
+      // Client: read-only their own certificates
+      allow read: if isClient() && isOwnCompanyData();
+      
+      // NO PUBLIC READS. Unauthenticated users must use verifyCertificate Cloud Function.
+      allow read, write: if false;
+    }
+
+    // ============================================================
+    // LIFTING TOOL CERTIFICATES
+    // ============================================================
+    match /liftingToolCertificates/{certId} {
+      allow read, write: if isAdmin();
+      
+      allow read, write: if isEmployee() && 
+                            (resource.data.clientName in getAssignedCompanies() ||
+                             getUserName() == resource.data.inspectedBy);
+      
+      allow read: if isClient() && isOwnCompanyData();
+      
+      // NO PUBLIC READS
+      allow read, write: if false;
+    }
+
+    // ============================================================
+    // OPERATOR CARDS / OPERATOR DIRECTORIES
+    // ============================================================
+    match /operatorCards/{operatorId} {
+      allow read, write: if isAdmin();
+      
+      allow read, write: if isEmployee() && 
+                            (resource.data.company in getAssignedCompanies() ||
+                             resource.data.sponsorName in getAssignedCompanies() ||
+                             getUserName() == resource.data.authorizedBy ||
+                             getUserName() == resource.data.trainedBy);
+      
+      allow read: if isClient() && 
+                    (resource.data.company == getUserCompany() ||
+                     resource.data.sponsorName == getUserCompany());
+      
+      // NO PUBLIC READS
+      allow read, write: if false;
+    }
+
+    // ============================================================
+    // MACHINE DETAILS / MODELS (Master directory)
+    // ============================================================
+    match /machineDetails/{machineId} {
+      allow read, write: if isAdmin();
+      // Employees can read machine models for reference
+      allow read: if isEmployee();
+      // Clients: no access to internal machine registry
+      allow read, write: if false;
+    }
+
+    // ============================================================
+    // INSPECTION JOBS
+    // ============================================================
+    match /inspectionJobs/{jobId} {
+      allow read, write: if isAdmin();
+      
+      allow read, write: if isEmployee() && 
+                            (resource.data.clientName in getAssignedCompanies() ||
+                             getEmployeeId() == resource.data.inspectorId ||
+                             getUserName() == resource.data.inspector);
+      
+      // Clients: no access to internal job workflow
+      allow read, write: if false;
+    }
+
+    // ============================================================
+    // TRAINING JOBS
+    // ============================================================
+    match /trainingJobs/{jobId} {
+      allow read, write: if isAdmin();
+      
+      allow read, write: if isEmployee() && 
+                            (resource.data.clientName in getAssignedCompanies() ||
+                             getEmployeeId() == resource.data.trainerId ||
+                             getUserName() == resource.data.instructor);
+      
+      allow read, write: if false;
+    }
+
+    // ============================================================
+    // INSPECTION REPORTS
+    // ============================================================
+    match /inspectionReports/{reportId} {
+      allow read, write: if isAdmin();
+      
+      allow read, write: if isEmployee() && 
+                            (resource.data.clientName in getAssignedCompanies() ||
+                             getUserName() == resource.data.inspector);
+      
+      // Clients: read-only their own reports
+      allow read: if isClient() && resource.data.clientName == getUserCompany();
+      
+      allow write: if false;
+    }
+
+    // ============================================================
+    // ADMIN OPERATIONS LOG
+    // ============================================================
+    match /adminLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // ============================================================
+    // VERIFICATION LOGS (Public search tracking for rate limiting)
+    // ============================================================
+    match /verificationLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if true; // Public can create (tracks searches)
+      allow update, delete: if false;
+    }
+
+    // ============================================================
+    // SETTINGS / CONFIG
+    // ============================================================
+    match /settings/{docId} {
+      allow read, write: if isAdmin();
+      allow read, write: if false;
+    }
+
+    // ============================================================
+    // DEFAULT DENY - LOCK EVERYTHING ELSE
+    // ============================================================
     match /{document=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }

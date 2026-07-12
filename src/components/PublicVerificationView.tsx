@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { app } from "../lib/firebase";
 import * as Icons from "lucide-react";
 
 interface PublicVerificationViewProps {
@@ -20,46 +20,37 @@ export function PublicVerificationView({ verifyId, onBackToLogin }: PublicVerifi
     async function loadCertificate() {
       setLoading(true);
       setError(null);
+
       try {
-        // 1. Try Machine Certificates
-        const machineRef = doc(db, "machineCertificates", verifyId);
-        const machineSnap = await getDoc(machineRef);
-        if (machineSnap.exists()) {
-          setVerifiedData({
-            type: "Machine Certificate",
-            data: machineSnap.data(),
-          });
+        const functions = getFunctions(app);
+        const verifyCertificate = httpsCallable(functions, "verifyCertificate");
+
+        let res = await verifyCertificate({ certId: verifyId, certType: "machine" });
+        let result = res.data as any;
+        if (result.found) {
+          setVerifiedData({ type: "Machine Certificate", data: result });
           setLoading(false);
           return;
         }
 
-        // 2. Try Lifting Tool Certificates
-        const liftingRef = doc(db, "liftingToolCerts", verifyId);
-        const liftingSnap = await getDoc(liftingRef);
-        if (liftingSnap.exists()) {
-          setVerifiedData({
-            type: "Lifting Tool Certificate",
-            data: liftingSnap.data(),
-          });
+        res = await verifyCertificate({ certId: verifyId, certType: "lifting" });
+        result = res.data as any;
+        if (result.found) {
+          setVerifiedData({ type: "Lifting Tool Certificate", data: result });
           setLoading(false);
           return;
         }
 
-        // 3. Try Operators
-        const operatorRef = doc(db, "operators", verifyId);
-        const operatorSnap = await getDoc(operatorRef);
-        if (operatorSnap.exists()) {
-          setVerifiedData({
-            type: "Operator Card",
-            data: operatorSnap.data(),
-          });
+        res = await verifyCertificate({ certId: verifyId, certType: "operator" });
+        result = res.data as any;
+        if (result.found) {
+          setVerifiedData({ type: "Operator Card", data: result });
           setLoading(false);
           return;
         }
 
-        // If not found in live Firestore, check if we have matching default ID (as fallback in local dev or before sync)
         setError("Certificate / ID could not be found or verified in our official registry database.");
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error verifying certificate:", err);
         setError("A database connection error occurred. Please try again later.");
       } finally {
@@ -76,7 +67,6 @@ export function PublicVerificationView({ verifyId, onBackToLogin }: PublicVerifi
     <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 md:p-8 relative selection:bg-[#683EFF]/20 font-sans" id="verify-root">
       {/* Background decorations */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-slate-800/40 via-slate-900 to-slate-950 pointer-events-none" />
-
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden relative z-10 border border-slate-100/10 flex flex-col my-8">
         {/* Header Branding Panel */}
         <div className="bg-[#0E1B2D] p-6 flex flex-col md:flex-row items-center justify-between border-b border-slate-800 gap-4">

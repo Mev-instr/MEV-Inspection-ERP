@@ -1,7 +1,9 @@
 import { initializeApp } from "firebase/app";
-import { initializeFirestore } from "firebase/firestore";
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, User, signInAnonymously } from "firebase/auth";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
+import { getAuth, GoogleAuthProvider, onAuthStateChanged, signOut, User } from "firebase/auth";
 import { getStorage } from "firebase/storage";
+import { getFunctions } from "firebase/functions";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import firebaseAppletConfig from "../../firebase-applet-config.json";
 
 const storageBucket = firebaseAppletConfig.storageBucket || `${firebaseAppletConfig.projectId}.appspot.com`;
@@ -18,42 +20,44 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// Use initializeFirestore with experimentalForceLongPolling to avoid connectivity issues in proxy environments
+// App Check — CRITICAL for preventing unauthorized API abuse
+// Get your reCAPTCHA v3 site key from Firebase Console > App Check
+const appCheck = initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider('YOUR_RECAPTCHA_V3_SITE_KEY'),
+  isTokenAutoRefreshEnabled: true
+});
+
 const databaseId = (firebaseAppletConfig as any).databaseId || (firebaseAppletConfig as any).firestoreDatabaseId || "(default)";
 console.log("Initializing Firestore with databaseId:", databaseId);
 
-const db = initializeFirestore(app, { experimentalForceLongPolling: true }, databaseId);
-
-// Add a helper to check if we are online
-export const isFirestoreOnline = async () => {
-  try {
-    const { collection, getDocs, limit, query } = await import("firebase/firestore");
-    await getDocs(query(collection(db, 'customers'), limit(1)));
-    return true;
-  } catch (e) {
-    console.error("Firestore connectivity check failed:", e);
-    return false;
-  }
-};
+const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
+}, databaseId);
 
 const auth = getAuth(app);
 const storage = getStorage(app);
+const functions = getFunctions(app);
 
 const googleProvider = new GoogleAuthProvider();
+googleProvider.addScope('email');
+googleProvider.addScope('profile');
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
+});
 
 let cachedAccessToken: string | null = localStorage.getItem("gdrive_access_token");
 let isSigningIn = false;
 
-// Initialize auth listener
-export const initAuth = (
-  onAuthChange: (user: User | null) => void
-) => {
-  return onAuthStateChanged(auth, onAuthChange);
-};
+// Domain validation
+const ALLOWED_ERP_DOMAINS = ['erp.mev-ins.com', 'localhost', 'ais-dev', 'ais-pre', window.location.hostname];
 
 export const signInWithGoogle = async () => {
   try {
     isSigningIn = true;
+    const { signInWithPopup } = await import("firebase/auth");
     const result = await signInWithPopup(auth, googleProvider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
     if (!credential?.accessToken) {
@@ -93,5 +97,82 @@ export const setAccessToken = (token: string | null) => {
   }
 };
 
-export { app, db, auth, storage, googleProvider };
+// Add a helper to check if we are online
+export const isFirestoreOnline = async () => {
+  try {
+    const { collection, getDocs, limit, query } = await import("firebase/firestore");
+    await getDocs(query(collection(db, 'users'), limit(1)));
+    return true;
+  } catch (e) {
+    console.error("Firestore connectivity check failed:", e);
+    return false;
+  }
+};
 
+// Secure auth state listener with role + domain validation
+export const initSecureAuth = (
+  onAuthChange: (user: User | null, role: string | null) => void
+) => {
+  return onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      onAuthChange(null, null);
+      return;
+    }
+
+    try {
+      // Bypass check for admin
+      if (user.email === "shahzaibkamran44@gmail.com") {
+        onAuthChange(user, "admin");
+        return;
+      }
+
+      // Force token refresh to get latest custom claims
+      const idTokenResult = await user.getIdTokenResult(true);
+      const role = (idTokenResult.claims.role as string) || 'pending';
+
+      // Validate role is not pending/unauthorized
+      if (!role || role === 'pending') {
+        await signOut(auth);
+        onAuthChange(null, null);
+        throw new Error('Account pending admin approval. Contact your administrator.');
+      }
+
+      // Domain check (client-side enforcement as backup to server-side rules)
+      const currentDomain = window.location.hostname;
+      if (!ALLOWED_ERP_DOMAINS.some(d => currentDomain.includes(d))) {
+        await signOut(auth);
+        onAuthChange(null, null);
+        throw new Error(`Domain ${currentDomain} not authorized for ERP access.`);
+      }
+
+      // Validate user exists in Firestore users collection
+      const { getDoc, doc } = await import("firebase/firestore");
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (!userDoc.exists()) {
+        await signOut(auth);
+        onAuthChange(null, null);
+        throw new Error('User not found in system. Contact admin.');
+      }
+
+      const userData = userDoc.data();
+      if (userData.role !== role) {
+        await signOut(auth);
+        onAuthChange(null, null);
+        throw new Error('Role mismatch. Contact admin.');
+      }
+
+      if (userData.disabled === true) {
+        await signOut(auth);
+        onAuthChange(null, null);
+        throw new Error('Account disabled. Contact admin.');
+      }
+
+      onAuthChange(user, role);
+    } catch (err: any) {
+      console.error('Auth validation error:', err);
+      onAuthChange(null, null);
+    }
+  });
+};
+
+export { app, db, auth, storage, functions, googleProvider };

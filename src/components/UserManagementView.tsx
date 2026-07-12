@@ -2,7 +2,9 @@ import React, { useState } from "react";
 import * as Icons from "lucide-react";
 import { EmployeeDetail, CustomerDetail } from "../types";
 import { initializeApp, deleteApp } from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { getAuth, signOut } from "firebase/auth";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { functions } from "../lib/firebase";
 import firebaseAppletConfig from "../../firebase-applet-config.json";
 
 interface Props {
@@ -36,53 +38,51 @@ export function UserManagementView({
   const customerUsers = customers.filter((cust) => cust.hasAccount === true);
   const unassignedCustomers = customers.filter((cust) => cust.hasAccount !== true);
 
+  const createEmployeeUser = httpsCallable(functions, 'createEmployeeUser');
+  const createClientUser = httpsCallable(functions, 'createClientUser');
+
   const handleAddUser = async () => {
     if (!selectedId) return;
     setLoading(true);
     setErrorMessage(null);
 
     try {
-      if (!useGoogle) {
-        if (!newEmail || !newPassword) {
-          setErrorMessage("Please enter both email and password.");
+      if (activeTab === "employees") {
+        if (!newEmail) {
+          setErrorMessage("Please enter an email address.");
           setLoading(false);
           return;
         }
 
-        // Initialize temporary app instance to create user without kicking out current admin
-        const tempAppName = `temp-auth-app-${Date.now()}`;
-        const tempApp = initializeApp({
-          projectId: firebaseAppletConfig.projectId,
-          appId: firebaseAppletConfig.appId,
-          apiKey: firebaseAppletConfig.apiKey,
-          authDomain: firebaseAppletConfig.authDomain,
-          messagingSenderId: firebaseAppletConfig.messagingSenderId,
-          storageBucket: firebaseAppletConfig.storageBucket || `${firebaseAppletConfig.projectId}.appspot.com`,
-        }, tempAppName);
-        const tempAuth = getAuth(tempApp);
-
-        try {
-          await createUserWithEmailAndPassword(tempAuth, newEmail.trim(), newPassword);
-          await signOut(tempAuth);
-        } catch (authError: any) {
-          console.error("Firebase auth creation error:", authError);
-          // If already in use, we can link/associate it anyway
-          if (authError.code === "auth/email-already-in-use") {
-            console.log("Email already in use in Firebase Auth. Associating local account.");
-          } else {
-            let friendlyMsg = authError.message;
-            if (authError.code === "auth/weak-password") {
-              friendlyMsg = "Password must be at least 6 characters long.";
-            } else if (authError.code === "auth/invalid-email") {
-              friendlyMsg = "The email address is invalid.";
-            }
-            setErrorMessage(`Firebase Auth error: ${friendlyMsg}`);
-            setLoading(false);
-            await deleteApp(tempApp);
-            return;
-          }
+        const emp = employees.find(e => e.id === selectedId);
+        if (!emp) throw new Error("Employee not found");
+        
+        await createEmployeeUser({
+          email: newEmail.trim(),
+          employeeId: emp.id,
+          name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.email || "Employee",
+          department: emp.department || "",
+          assignedCompanies: [],
+          assignedCustomerIds: [],
+          assignedCustomerEmails: []
+        });
+      } else {
+        // Customers/Clients (Email/Password only)
+        if (!newEmail || !newPassword) {
+          setErrorMessage("Email and password required for client accounts.");
+          setLoading(false);
+          return;
         }
-        await deleteApp(tempApp);
+
+        const cust = customers.find(c => c.id === selectedId);
+        if (!cust) throw new Error("Customer not found");
+        
+        await createClientUser({
+          email: newEmail.trim(),
+          password: newPassword,
+          companyName: cust.companyName || cust.contactPerson || cust.primaryEmail || "Customer",
+          customerId: cust.id
+        });
       }
 
       if (activeTab === "employees") {
@@ -117,7 +117,9 @@ export function UserManagementView({
       setNewPassword("");
     } catch (err: any) {
       console.error("Error creating user account:", err);
-      setErrorMessage(err.message || "Failed to create user account. Please try again.");
+      // Clean up Cloud Functions errors which might be wrapped
+      const msg = err?.details?.message || err.message || "Failed to create user account. Please try again.";
+      setErrorMessage(msg);
     } finally {
       setLoading(false);
     }

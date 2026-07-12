@@ -35,7 +35,7 @@ import { OperatorCard } from "./types";
 import { LoginPage } from "./components/LoginPage";
 import { PublicVerificationView } from "./components/PublicVerificationView";
 import {
-  initAuth,
+  initSecureAuth,
   signInWithGoogle,
   signOutUser,
   getAccessToken,
@@ -184,7 +184,7 @@ export default function App() {
 
   // 1. Listen to Firebase Authentication State Changes with Secure Domain Authorization
   useEffect(() => {
-    const unsubscribe = initAuth(async (user) => {
+    const unsubscribe = initSecureAuth(async (user) => {
       if (user) {
         try {
           if (user.email === "shahzaibkamran44@gmail.com") {
@@ -863,7 +863,7 @@ export default function App() {
     return (
       <LoginPage
         onSuccess={(user) => {
-          // Handled securely via the unified initAuth observer
+          // Handled securely via the unified initSecureAuth observer
         }}
         triggerCloudToast={triggerCloudToast}
         employees={employees}
