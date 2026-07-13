@@ -313,13 +313,12 @@ exports.verifyCertificate = functions.https.onCall(async (data, context) => {
 // ============================================================
 // BLOCK ANONYMOUS AUTH & VALIDATE NEW USERS
 // ============================================================
-exports.beforeUserCreated = functions.identity.beforeUserCreated((event) => {
-  const user = event.data;
+exports.beforeUserCreated = functions.auth.user().beforeCreate((user, context) => {
   const signInMethod = user.providerData[0]?.providerId || 'password';
   
   // Block anonymous auth completely
   if (signInMethod === 'anonymous') {
-    throw new functions.https.HttpsError('permission-denied', 'Anonymous authentication is disabled');
+    throw new functions.auth.HttpsError('permission-denied', 'Anonymous authentication is disabled');
   }
 
   // For email/password: only allow if admin pre-created the user
