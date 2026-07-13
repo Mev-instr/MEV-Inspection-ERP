@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: npm install && npm run build && echo "${{ github.sha }}" > dist/version.txt
+      - run: npm install && npm run build && echo "${{ github.sha }}" > dist/version.txt && cd functions && npm install
       - name: Deploy to Firebase Hosting
         env:
           GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
