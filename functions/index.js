@@ -1,4 +1,5 @@
 const functions = require('firebase-functions');
+const identity = require('firebase-functions/v2/identity');
 const admin = require('firebase-admin');
 admin.initializeApp();
 
@@ -313,12 +314,13 @@ exports.verifyCertificate = functions.https.onCall(async (data, context) => {
 // ============================================================
 // BLOCK ANONYMOUS AUTH & VALIDATE NEW USERS
 // ============================================================
-exports.beforeUserCreated = functions.auth.user().beforeCreate((user, context) => {
+exports.beforeUserCreated = identity.beforeUserCreated((event) => {
+  const user = event.data;
   const signInMethod = user.providerData[0]?.providerId || 'password';
   
   // Block anonymous auth completely
   if (signInMethod === 'anonymous') {
-    throw new functions.auth.HttpsError('permission-denied', 'Anonymous authentication is disabled');
+    throw new identity.HttpsError('permission-denied', 'Anonymous authentication is disabled');
   }
 
   // For email/password: only allow if admin pre-created the user
@@ -333,10 +335,12 @@ exports.beforeUserCreated = functions.auth.user().beforeCreate((user, context) =
   }
 });
 
+const v1Auth = require('firebase-functions/v1/auth');
+
 // ============================================================
 // ON USER CREATED — VALIDATE PRE-REGISTRATION
 // ============================================================
-exports.onUserSignedIn = functions.auth.user().onCreate(async (user) => {
+exports.onUserSignedIn = v1Auth.user().onCreate(async (user) => {
   const userDoc = await db.collection('users').doc(user.uid).get();
   
   if (!userDoc.exists) {
