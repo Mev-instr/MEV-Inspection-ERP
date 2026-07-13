@@ -6,7 +6,20 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import * as Icons from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { ERPSection, ERPCategory, DashboardCard } from "./types";
+import {
+  ERPSection,
+  ERPCategory,
+  DashboardCard,
+  CustomerDetail,
+  EmployeeDetail,
+  TrainingJob,
+  InspectionJob,
+  InspectionReport,
+  MachineCertificate,
+  LiftingToolCert,
+  MachineDetail,
+  OperatorCard
+} from "./types";
 import {
   initialCustomers,
   initialEmployees,
@@ -31,7 +44,6 @@ import { InspectionReportsPortfolioView } from "./components/InspectionReportsPo
 import { OperatorDirectoryView } from "./components/OperatorDirectoryView";
 import { OperatorDetailView } from "./components/OperatorDetailView";
 import { MachineDetailsPortfolioView } from "./components/MachineDetailsPortfolioView";
-import { OperatorCard } from "./types";
 import { LoginPage } from "./components/LoginPage";
 import { PublicVerificationView } from "./components/PublicVerificationView";
 import {
@@ -112,8 +124,8 @@ export default function App() {
   }, []);
 
   // ERP Tables Core Database State
-  const [customers, setCustomers] = useState(initialCustomers);
-  const [employees, setEmployees] = useState(initialEmployees);
+  const [customers, setCustomers] = useState<CustomerDetail[]>([]);
+  const [employees, setEmployees] = useState<EmployeeDetail[]>([]);
   const currentEmployee = employees.find(e => e.email && e.email.toLowerCase() === currentUser?.email?.toLowerCase());
 
   // Find active client for portal based on domain and role
@@ -136,19 +148,13 @@ export default function App() {
   }));
 
   const currentClient = activeClientForPortal;
-  const [trainingJobs, setTrainingJobs] = useState(initialTrainingJobs);
-  const [inspectionJobs, setInspectionJobs] = useState(initialInspectionJobs);
-  const [inspectionReports, setInspectionReports] = useState(
-    initialInspectionReports,
-  );
-  const [machineCertificates, setMachineCertificates] = useState(
-    initialMachineCertificates,
-  );
-  const [liftingToolCerts, setLiftingToolCerts] = useState(
-    initialLiftingToolCerts,
-  );
-  const [machineDetails, setMachineDetails] = useState(initialMachineDetails);
-  const [operators, setOperators] = useState(initialOperators);
+  const [trainingJobs, setTrainingJobs] = useState<TrainingJob[]>([]);
+  const [inspectionJobs, setInspectionJobs] = useState<InspectionJob[]>([]);
+  const [inspectionReports, setInspectionReports] = useState<InspectionReport[]>([]);
+  const [machineCertificates, setMachineCertificates] = useState<MachineCertificate[]>([]);
+  const [liftingToolCerts, setLiftingToolCerts] = useState<LiftingToolCert[]>([]);
+  const [machineDetails, setMachineDetails] = useState<MachineDetail[]>([]);
+  const [operators, setOperators] = useState<OperatorCard[]>([]);
 
   // Layout states
   const [currentTab, setCurrentTab] = useState<
@@ -396,6 +402,7 @@ export default function App() {
             setCustomers(syncedCustomers);
           } else {
             customersLoadedRef.current = initialCustomers;
+            setCustomers(initialCustomers);
             await seedFirestore("customers", initialCustomers);
           }
 
@@ -405,6 +412,7 @@ export default function App() {
             setEmployees(syncedEmployees);
           } else {
             employeesLoadedRef.current = initialEmployees;
+            setEmployees(initialEmployees);
             await seedFirestore("employees", initialEmployees);
           }
 
@@ -414,6 +422,7 @@ export default function App() {
             setOperators(syncedOperators);
           } else {
             operatorsLoadedRef.current = initialOperators;
+            setOperators(initialOperators);
             await seedFirestore("operators", initialOperators);
           }
 
@@ -423,6 +432,7 @@ export default function App() {
             setMachineCertificates(syncedCerts);
           } else {
             machineCertificatesLoadedRef.current = initialMachineCertificates;
+            setMachineCertificates(initialMachineCertificates);
             await seedFirestore(
               "machineCertificates",
               initialMachineCertificates,
@@ -435,6 +445,7 @@ export default function App() {
             setTrainingJobs(syncedTraining);
           } else {
             trainingJobsLoadedRef.current = initialTrainingJobs;
+            setTrainingJobs(initialTrainingJobs);
             await seedFirestore("trainingJobs", initialTrainingJobs);
           }
 
@@ -444,6 +455,7 @@ export default function App() {
             setInspectionJobs(syncedInspection);
           } else {
             inspectionJobsLoadedRef.current = initialInspectionJobs;
+            setInspectionJobs(initialInspectionJobs);
             await seedFirestore("inspectionJobs", initialInspectionJobs);
           }
 
@@ -453,6 +465,7 @@ export default function App() {
             setInspectionReports(syncedReports);
           } else {
             inspectionReportsLoadedRef.current = initialInspectionReports;
+            setInspectionReports(initialInspectionReports);
             await seedFirestore("inspectionReports", initialInspectionReports);
           }
 
@@ -462,6 +475,7 @@ export default function App() {
             setLiftingToolCerts(syncedLifting);
           } else {
             liftingToolCertsLoadedRef.current = initialLiftingToolCerts;
+            setLiftingToolCerts(initialLiftingToolCerts);
             await seedFirestore("liftingToolCerts", initialLiftingToolCerts);
           }
 
@@ -471,6 +485,7 @@ export default function App() {
             setMachineDetails(syncedDetails);
           } else {
             machineDetailsLoadedRef.current = initialMachineDetails;
+            setMachineDetails(initialMachineDetails);
             await seedFirestore("machineDetails", initialMachineDetails);
           }
 
