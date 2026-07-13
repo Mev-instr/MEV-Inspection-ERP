@@ -17,7 +17,7 @@ jobs:
           export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/sa.json
           
           set +e
-          OUTPUT=$(npx firebase-tools deploy --only hosting,firestore,storage,functions --project gen-lang-client-0459155438 --non-interactive 2>&1)
+          OUTPUT=$(npx firebase-tools deploy --only hosting,firestore,storage,functions --project gen-lang-client-0459155438 --force --non-interactive 2>&1)
           EXIT_CODE=$?
           set -e
           
