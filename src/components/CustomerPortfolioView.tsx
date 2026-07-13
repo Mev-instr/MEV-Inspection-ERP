@@ -154,7 +154,8 @@ export function CustomerPortfolioView({ customers, onCustomersChange, onUploadIm
   // Pagination totals
   const totalItems = filteredCustomers.length;
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedCustomers = filteredCustomers.slice(startIndex, startIndex + itemsPerPage);
+  const sortedCustomers = [...filteredCustomers].sort((a, b) => b.id.localeCompare(a.id, undefined, { numeric: true, sensitivity: "base" }));
+  const paginatedCustomers = sortedCustomers.slice(startIndex, startIndex + itemsPerPage);
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
 
   const getPageNumbers = (current: number, total: number): (number | string)[] => {

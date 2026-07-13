@@ -404,7 +404,8 @@ export function TrainingJobsPortfolioView({ jobs, customers, employees, onJobsCh
   // Pagination slices
   const totalItems = filteredJobs.length;
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedJobs = filteredJobs.slice(startIndex, startIndex + itemsPerPage);
+  const sortedJobs = [...filteredJobs].sort((a, b) => b.id.localeCompare(a.id, undefined, { numeric: true, sensitivity: "base" }));
+  const paginatedJobs = sortedJobs.slice(startIndex, startIndex + itemsPerPage);
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
 
   const getPageNumbers = (current: number, total: number): (number | string)[] => {

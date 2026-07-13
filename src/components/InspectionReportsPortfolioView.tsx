@@ -458,7 +458,8 @@ export function InspectionReportsPortfolioView({ reports, customers, onReportsCh
   // Pagination slices
   const totalItems = filteredReports.length;
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedReports = filteredReports.slice(startIndex, startIndex + itemsPerPage);
+  const sortedReports = [...filteredReports].sort((a, b) => b.id.localeCompare(a.id, undefined, { numeric: true, sensitivity: "base" }));
+  const paginatedReports = sortedReports.slice(startIndex, startIndex + itemsPerPage);
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
 
   const getPageNumbers = (current: number, total: number): (number | string)[] => {

@@ -436,7 +436,8 @@ export function MachineDetailsPortfolioView({ machines, onMachinesChange }: Mach
   // Pagination slices
   const totalItems = filteredMachines.length;
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedMachines = filteredMachines.slice(startIndex, startIndex + itemsPerPage);
+  const sortedMachines = [...filteredMachines].sort((a, b) => b.id.localeCompare(a.id, undefined, { numeric: true, sensitivity: "base" }));
+  const paginatedMachines = sortedMachines.slice(startIndex, startIndex + itemsPerPage);
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
 
   const getPageNumbers = (current: number, total: number): (number | string)[] => {
