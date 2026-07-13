@@ -314,7 +314,7 @@ exports.verifyCertificate = functions.https.onCall(async (data, context) => {
 // ============================================================
 // BLOCK ANONYMOUS AUTH & VALIDATE NEW USERS
 // ============================================================
-exports.beforeUserCreated = identity.beforeUserCreated((event) => {
+exports.beforeUserCreated = identity.beforeUserCreated(async (event) => {
   const user = event.data;
   const signInMethod = user.providerData[0]?.providerId || 'password';
   
@@ -323,24 +323,6 @@ exports.beforeUserCreated = identity.beforeUserCreated((event) => {
     throw new identity.HttpsError('permission-denied', 'Anonymous authentication is disabled');
   }
 
-  // For email/password: only allow if admin pre-created the user
-  // (We validate this on first sign-in by checking the users collection)
-  if (signInMethod === 'password') {
-    return;
-  }
-
-  // For Google sign-in: allow but mark as pending if not pre-registered
-  if (signInMethod === 'google.com') {
-    return;
-  }
-});
-
-const v1Auth = require('firebase-functions/v1/auth');
-
-// ============================================================
-// ON USER CREATED — VALIDATE PRE-REGISTRATION
-// ============================================================
-exports.onUserSignedIn = v1Auth.user().onCreate(async (user) => {
   const userDoc = await db.collection('users').doc(user.uid).get();
   
   if (!userDoc.exists) {
@@ -349,12 +331,16 @@ exports.onUserSignedIn = v1Auth.user().onCreate(async (user) => {
       uid: user.uid,
       email: user.email,
       displayName: user.displayName,
-      provider: user.providerData[0]?.providerId,
+      provider: signInMethod,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       status: 'pending_approval'
     });
     
-    // Set pending role so Firestore rules deny all access
-    await auth.setCustomUserClaims(user.uid, { role: 'pending' });
+    return {
+      customClaims: {
+        role: 'pending'
+      }
+    };
   }
 });
+
