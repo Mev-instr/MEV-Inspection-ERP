@@ -3,7 +3,6 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 import { getAuth, GoogleAuthProvider, onAuthStateChanged, signOut, User } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { getFunctions } from "firebase/functions";
-import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import firebaseAppletConfig from "../../firebase-applet-config.json";
 
 const storageBucket = firebaseAppletConfig.storageBucket || `${firebaseAppletConfig.projectId}.appspot.com`;
@@ -20,12 +19,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// App Check — CRITICAL for preventing unauthorized API abuse
-// Get your reCAPTCHA v3 site key from Firebase Console > App Check
-const appCheck = initializeAppCheck(app, {
-  provider: new ReCaptchaV3Provider('YOUR_RECAPTCHA_V3_SITE_KEY'),
-  isTokenAutoRefreshEnabled: true
-});
+// Removed App Check temporarily
 
 const databaseId = (firebaseAppletConfig as any).databaseId || (firebaseAppletConfig as any).firestoreDatabaseId || "(default)";
 console.log("Initializing Firestore with databaseId:", databaseId);
@@ -122,20 +116,23 @@ export const initSecureAuth = (
     try {
       // Bypass check for admin
       if (user.email === "shahzaibkamran44@gmail.com") {
+        // Ensure the admin doc exists
+        const { getDoc, setDoc, doc } = await import("firebase/firestore");
+        const adminDoc = await getDoc(doc(db, 'users', user.uid));
+        if (!adminDoc.exists()) {
+          await setDoc(doc(db, 'users', user.uid), {
+            uid: user.uid,
+            email: user.email,
+            role: 'admin',
+            name: 'Shahzaib Kamran (Admin)',
+            createdAt: new Date()
+          });
+        }
         onAuthChange(user, "admin");
         return;
       }
 
-      // Force token refresh to get latest custom claims
-      const idTokenResult = await user.getIdTokenResult(true);
-      const role = (idTokenResult.claims.role as string) || 'pending';
 
-      // Validate role is not pending/unauthorized
-      if (!role || role === 'pending') {
-        await signOut(auth);
-        onAuthChange(null, null);
-        throw new Error('Account pending admin approval. Contact your administrator.');
-      }
 
       // Domain check (client-side enforcement as backup to server-side rules)
       const currentDomain = window.location.hostname;
@@ -155,10 +152,11 @@ export const initSecureAuth = (
       }
 
       const userData = userDoc.data();
-      if (userData.role !== role) {
+      const role = userData.role || 'pending';
+      if (!role || role === 'pending') {
         await signOut(auth);
         onAuthChange(null, null);
-        throw new Error('Role mismatch. Contact admin.');
+        throw new Error('Account pending admin approval. Contact your administrator.');
       }
 
       if (userData.disabled === true) {

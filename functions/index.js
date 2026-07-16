@@ -3,7 +3,7 @@ const identity = require('firebase-functions/v2/identity');
 const admin = require('firebase-admin');
 admin.initializeApp();
 
-const db = admin.firestore();
+const db = admin.firestore('ai-studio-mevinserp-8508ed93-8dc1-47fa-8fdc-87ee68eae527');
 const auth = admin.auth();
 
 // ============================================================
@@ -344,3 +344,55 @@ exports.beforeUserCreated = identity.beforeUserCreated(async (event) => {
   }
 });
 
+
+// ============================================================
+// DELETE USER ACCOUNT (Admin only)
+// ============================================================
+exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Login required');
+  }
+  
+  const adminDoc = await db.collection('users').doc(context.auth.uid).get();
+  if (!adminDoc.exists || adminDoc.data().role !== 'admin') {
+    // Also allow shahzaibkamran44@gmail.com
+    const userRecord = await auth.getUser(context.auth.uid);
+    if (userRecord.email !== 'shahzaibkamran44@gmail.com') {
+      throw new functions.https.HttpsError('permission-denied', 'Admin only');
+    }
+  }
+
+  const { uid, userType, recordId } = data;
+  if (!uid) {
+    throw new functions.https.HttpsError('invalid-argument', 'Target uid is required');
+  }
+
+  // Delete from Firebase Auth
+  await auth.deleteUser(uid);
+
+  // Update Firestore records
+  if (userType === 'employee') {
+    await db.collection('employees').doc(recordId).update({
+      hasAccount: false,
+      firebaseUid: null
+    });
+  } else if (userType === 'client') {
+    await db.collection('customers').doc(recordId).update({
+      hasAccount: false,
+      firebaseUid: null
+    });
+  }
+
+  // Delete from users collection
+  await db.collection('users').doc(uid).delete();
+
+  await db.collection('adminLogs').add({
+    action: 'delete_user',
+    targetUid: uid,
+    performedBy: context.auth.uid,
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    ipAddress: getClientIp(context)
+  });
+
+  return { success: true };
+});

@@ -1692,6 +1692,7 @@ export default function App() {
                   onEmployeesChange={setEmployees}
                   customers={customers}
                   onCustomersChange={setCustomers}
+                  currentUser={currentUser}
                 />
               </motion.div>
             )}

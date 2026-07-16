@@ -46,6 +46,9 @@ export interface DashboardCard {
 }
 
 export interface CustomerDetail {
+  hasAccount?: boolean;
+  firebaseUid?: string;
+  portalEmail?: string;
   id: string;
   companyName?: string;
   vatNumber?: string;
@@ -74,10 +77,12 @@ export interface CustomerDetail {
   zipPostalCode?: string;
   inspectionSiteAddress?: string;
   lastUpdated?: string;
-  hasAccount?: boolean;
 }
 
 export interface EmployeeDetail {
+  hasAccount?: boolean;
+  firebaseUid?: string;
+  portalEmail?: string;
   id: string;
   firstName?: string;
   lastName?: string;
@@ -91,7 +96,6 @@ export interface EmployeeDetail {
   joiningDate?: string;
   name?: string;
   role?: string;
-  hasAccount?: boolean;
 }
 
 export interface TrainingOperator {
