@@ -1,9 +1,10 @@
 const functions = require('firebase-functions');
 const identity = require('firebase-functions/v2/identity');
 const admin = require('firebase-admin');
+const { getFirestore } = require('firebase-admin/firestore');
 admin.initializeApp();
 
-const db = admin.firestore('ai-studio-mevinserp-8508ed93-8dc1-47fa-8fdc-87ee68eae527');
+const db = getFirestore('ai-studio-mevinserp-8508ed93-8dc1-47fa-8fdc-87ee68eae527');
 const auth = admin.auth();
 
 // ============================================================
