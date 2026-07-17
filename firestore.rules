@@ -111,12 +111,8 @@ service cloud.firestore {
     // EMPLOYEES COLLECTION
     // ============================================================
     match /employees/{employeeId} {
-      allow read, write: if isAdmin();
-      
-      // Employee can read own profile
-      allow read: if isEmployee() && 
-                     (resource.data.email == getUserEmail() || 
-                      resource.data.id == getEmployeeId());
+      allow read: if isAuth();
+      allow write: if isAdmin();
       
       allow create, update, delete: if false;
     }
@@ -125,128 +121,70 @@ service cloud.firestore {
     // CUSTOMERS COLLECTION
     // ============================================================
     match /customers/{customerId} {
-      allow read, write: if isAdmin();
+      allow read: if isAuth();
+      allow write: if isAdmin();
       
-      // Employee: read if assigned to this customer
-      allow read: if isEmployee() && 
-                     (resource.data.companyName in getAssignedCompanies() ||
-                      resource.data.id in getAssignedCustomerIds() ||
-                      resource.data.email in getAssignedCustomerEmails());
-      
-      // Client: read own company only, NO write access
-      allow read: if isClient() && isOwnCompanyData();
-      
-      allow write: if false;
+      allow create, update, delete: if false;
     }
 
     // ============================================================
     // MACHINE CERTIFICATES
     // ============================================================
     match /machineCertificates/{certId} {
-      allow read, write: if isAdmin();
-      
-      // Employee: read/write if assigned to this certificate's client OR they inspected it
-      allow read, write: if isEmployee() && 
-                            (resource.data.clientName in getAssignedCompanies() ||
-                             getUserName() == resource.data.inspectedBy);
-      
-      // Client: read-only their own certificates
-      allow read: if isClient() && isOwnCompanyData();
-      
-      // NO PUBLIC READS. Unauthenticated users must use verifyCertificate Cloud Function.
-      allow read, write: if false;
+      allow read: if isAuth();
+      allow write: if isAdmin() || (isEmployee() && (resource.data.clientName in getAssignedCompanies() || getUserName() == resource.data.inspectedBy));
+      allow create, update, delete: if false;
     }
 
     // ============================================================
     // LIFTING TOOL CERTIFICATES
     // ============================================================
     match /liftingToolCerts/{certId} {
-      allow read, write: if isAdmin();
-      
-      allow read, write: if isEmployee() && 
-                            (resource.data.clientName in getAssignedCompanies() ||
-                             getUserName() == resource.data.inspectedBy);
-      
-      allow read: if isClient() && isOwnCompanyData();
-      
-      // NO PUBLIC READS
-      allow read, write: if false;
+      allow read: if isAuth();
+      allow write: if isAdmin() || (isEmployee() && (resource.data.clientName in getAssignedCompanies() || getUserName() == resource.data.inspectedBy));
+      allow create, update, delete: if false;
     }
 
     // ============================================================
     // OPERATOR CARDS / OPERATOR DIRECTORIES
     // ============================================================
     match /operators/{operatorId} {
-      allow read, write: if isAdmin();
-      
-      allow read, write: if isEmployee() && 
-                            (resource.data.company in getAssignedCompanies() ||
-                             resource.data.sponsorName in getAssignedCompanies() ||
-                             getUserName() == resource.data.authorizedBy ||
-                             getUserName() == resource.data.trainedBy);
-      
-      allow read: if isClient() && 
-                    (resource.data.company == getUserCompany() ||
-                     resource.data.sponsorName == getUserCompany());
-      
-      // NO PUBLIC READS
-      allow read, write: if false;
+      allow read: if isAuth();
+      allow write: if isAdmin() || (isEmployee() && (resource.data.company in getAssignedCompanies() || resource.data.sponsorName in getAssignedCompanies() || getUserName() == resource.data.authorizedBy || getUserName() == resource.data.trainedBy));
+      allow create, update, delete: if false;
     }
 
     // ============================================================
     // MACHINE DETAILS / MODELS (Master directory)
     // ============================================================
     match /machineDetails/{machineId} {
-      allow read, write: if isAdmin();
-      // Employees can read machine models for reference
-      allow read: if isEmployee();
-      // Clients: no access to internal machine registry
-      allow read, write: if false;
+      allow read: if isAuth();
+      allow write: if isAdmin();
+      allow create, update, delete: if false;
     }
 
     // ============================================================
     // INSPECTION JOBS
     // ============================================================
     match /inspectionJobs/{jobId} {
-      allow read, write: if isAdmin();
-      
-      allow read, write: if isEmployee() && 
-                            (resource.data.clientName in getAssignedCompanies() ||
-                             getEmployeeId() == resource.data.inspectorId ||
-                             getUserName() == resource.data.inspector);
-      
-      // Clients: no access to internal job workflow
-      allow read, write: if false;
+      allow read: if isAuth();
+      allow write: if isAdmin() || (isEmployee() && (resource.data.clientName in getAssignedCompanies() || getEmployeeId() == resource.data.inspectorId || getUserName() == resource.data.inspector));
     }
 
     // ============================================================
     // TRAINING JOBS
     // ============================================================
     match /trainingJobs/{jobId} {
-      allow read, write: if isAdmin();
-      
-      allow read, write: if isEmployee() && 
-                            (resource.data.clientName in getAssignedCompanies() ||
-                             getEmployeeId() == resource.data.trainerId ||
-                             getUserName() == resource.data.instructor);
-      
-      allow read, write: if false;
+      allow read: if isAuth();
+      allow write: if isAdmin() || (isEmployee() && (resource.data.clientName in getAssignedCompanies() || getEmployeeId() == resource.data.trainerId || getUserName() == resource.data.instructor));
     }
 
     // ============================================================
     // INSPECTION REPORTS
     // ============================================================
     match /inspectionReports/{reportId} {
-      allow read, write: if isAdmin();
-      
-      allow read, write: if isEmployee() && 
-                            (resource.data.clientName in getAssignedCompanies() ||
-                             getUserName() == resource.data.inspector);
-      
-      // Clients: read-only their own reports
-      allow read: if isClient() && resource.data.clientName == getUserCompany();
-      
-      allow write: if false;
+      allow read: if isAuth();
+      allow write: if isAdmin() || (isEmployee() && (resource.data.clientName in getAssignedCompanies() || getUserName() == resource.data.inspector));
     }
 
     // ============================================================
