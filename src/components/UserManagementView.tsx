@@ -95,7 +95,6 @@ export function UserManagementView({
           setLoading(false);
           return;
         }
-        await auth.currentUser.getIdToken(true);
 
         // Use Cloud Function to create/update the employee user account
         const createEmployeeUser = httpsCallable(functions, 'createEmployeeUser');
@@ -126,7 +125,6 @@ export function UserManagementView({
           setLoading(false);
           return;
         }
-        await auth.currentUser.getIdToken(true);
 
         // Call secure Cloud Function to create the client user account
         const createClientUser = httpsCallable(functions, 'createClientUser');
@@ -178,6 +176,13 @@ export function UserManagementView({
       let msg = err.message || "Failed to create user account. Please try again.";
       if (msg.includes("email-already-in-use")) {
         msg = "This email address is already in use by another account. Please use a different email.";
+      } else if (msg.includes("Password must be 8+ characters") || msg.includes("WEAK_PASSWORD") || msg.includes("auth/weak-password")) {
+        msg = "Password must be at least 8 characters.";
+      } else if (msg.includes("error-code:-47")) {
+        msg = "Network or authentication issue. Please refresh the page and try again.";
+      } else if (msg.startsWith("Firebase: Error (")) {
+        // Strip out the Firebase: Error () part for a cleaner message
+        msg = msg.replace(/Firebase:\s*Error\s*\([^)]+\)\.?/i, '').trim() || msg;
       }
       setErrorMessage(msg);
     } finally {
@@ -212,7 +217,6 @@ export function UserManagementView({
           setLoading(false);
           return;
         }
-        await auth.currentUser.getIdToken(true);
 
         // Call secure Cloud Function to delete the user account
         try {

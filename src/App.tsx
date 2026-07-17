@@ -136,14 +136,14 @@ export default function App() {
       return selected || clientWithAccount || null;
     }
     const client = customers.find(c => {
-      const cEmail = (c.email || c.primaryEmail || "").toLowerCase();
+      const cEmail = (c.portalEmail || c.email || c.primaryEmail || "").toLowerCase();
       return cEmail && cEmail === currentUser?.email?.toLowerCase() && c.hasAccount;
     });
     return client || null;
   }, [currentUser, customers, isAdmin, domainMode, adminPreviewClientId]);
 
   const isClient = domainMode === "CLIENT" || (!isAdmin && customers.some(c => {
-    const cEmail = (c.email || c.primaryEmail || "").toLowerCase();
+    const cEmail = (c.portalEmail || c.email || c.primaryEmail || "").toLowerCase();
     return cEmail && cEmail === currentUser?.email?.toLowerCase() && c.hasAccount;
   }));
 
@@ -209,7 +209,7 @@ export default function App() {
           const userEmail = (user.email || "").toLowerCase();
 
           const isCustomer = freshCustomers.some(c => {
-            const cEmail = (c.email || c.primaryEmail || "").toLowerCase();
+            const cEmail = (c.portalEmail || c.email || c.primaryEmail || "").toLowerCase();
             return cEmail && cEmail === userEmail && c.hasAccount;
           });
 
