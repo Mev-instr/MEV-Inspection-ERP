@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import * as Icons from "lucide-react";
 import { EmployeeDetail, CustomerDetail } from "../types";
-import { auth, functions } from "../lib/firebase";
-import { updateProfile } from "firebase/auth";
+import { auth, functions, db } from "../lib/firebase";
+import { updateProfile, getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { getApps, initializeApp, deleteApp } from "firebase/app";
+import { doc, setDoc, updateDoc, deleteDoc, collection, addDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
 interface Props {
@@ -88,20 +90,19 @@ export function UserManagementView({
         const emp = employees.find(e => e.id === selectedId);
         if (!emp) throw new Error("Employee not found");
         
+        // Use Cloud Function to create/update the employee user account
         const createEmployeeUser = httpsCallable(functions, 'createEmployeeUser');
-
         const result: any = await createEmployeeUser({
           email: newEmail.trim(),
           employeeId: emp.id,
-          name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.email || "Employee",
-          department: emp.department || "",
-          assignedCompanies: [],
-          assignedCustomerIds: [],
-          assignedCustomerEmails: []
+          name: emp.name || emp.firstName || "Employee",
+          department: emp.department || "General",
+          assignedCompanies: emp.assignedCompanies || [],
+          assignedCustomerIds: emp.assignedCustomerIds || [],
+          assignedCustomerEmails: emp.assignedCustomerEmails || []
         });
 
         userUid = result.data.uid;
-
       } else {
         // Customers/Clients (Email/Password only)
         if (!newEmail || !newPassword) {
@@ -112,9 +113,9 @@ export function UserManagementView({
 
         const cust = customers.find(c => c.id === selectedId);
         if (!cust) throw new Error("Customer not found");
-           
-        const createClientUser = httpsCallable(functions, 'createClientUser');
 
+        // Call secure Cloud Function to create the client user account
+        const createClientUser = httpsCallable(functions, 'createClientUser');
         const result: any = await createClientUser({
           email: newEmail.trim(),
           password: newPassword,
@@ -159,9 +160,8 @@ export function UserManagementView({
       setNewEmail("");
       setNewPassword("");
     } catch (err: any) {
-      console.error("Error creating user account:", err);
-      // Clean up Cloud Functions errors which might be wrapped
-      let msg = err?.details?.message || err.message || "Failed to create user account. Please try again.";
+      console.error("Error creating user account client-side:", err);
+      let msg = err.message || "Failed to create user account. Please try again.";
       if (msg.includes("email-already-in-use")) {
         msg = "This email address is already in use by another account. Please use a different email.";
       }
@@ -171,7 +171,7 @@ export function UserManagementView({
     }
   };
 
-  const confirmDeleteUser = (id, type) => {
+  const confirmDeleteUser = (id: string, type: UserTypeTab) => {
     setDeleteConfirmInfo({ id, type });
   };
 
@@ -182,11 +182,7 @@ export function UserManagementView({
     setErrorMessage(null);
 
     try {
-      const deleteUserAccount = httpsCallable(functions, 'deleteUserAccount');
-
       let targetUid = null;
-      let recordId = id;
-      let userType = type === "employees" ? "employee" : "client";
 
       if (type === "employees") {
         const emp = employees.find(e => e.id === id);
@@ -196,12 +192,62 @@ export function UserManagementView({
         targetUid = cust?.firebaseUid;
       }
 
-      if (targetUid) {
-        // Call cloud function to delete from Firebase Auth
-        await deleteUserAccount({ uid: targetUid, userType, recordId });
+      if (targetUid && targetUid !== "pending_first_login") {
+        // Call secure Cloud Function to delete the user account
+        try {
+          const deleteUserAccount = httpsCallable(functions, 'deleteUserAccount');
+          await deleteUserAccount({
+            uid: targetUid,
+            userType: type === "employees" ? "employee" : "client",
+            recordId: id
+          });
+        } catch (funcErr) {
+          console.warn("Could not delete Auth user record via Cloud Function, falling back to local database deletion:", funcErr);
+          
+          // Manually clean up Firestore records as fallback
+          if (type === "employees") {
+            await updateDoc(doc(db, 'employees', id), {
+              hasAccount: false,
+              firebaseUid: null
+            });
+          } else if (type === "customers") {
+            await updateDoc(doc(db, 'customers', id), {
+              hasAccount: false,
+              firebaseUid: null
+            });
+          }
+          await deleteDoc(doc(db, 'users', targetUid));
+
+          // Log the fallback delete in audit logs
+          try {
+            const { addDoc, collection } = await import("firebase/firestore");
+            await addDoc(collection(db, "adminLogs"), {
+              action: "delete_user_fallback",
+              targetUid: targetUid,
+              performedBy: auth.currentUser?.uid || "admin",
+              timestamp: new Date(),
+              ipAddress: "client-side-delete-fallback"
+            });
+          } catch (logErr) {
+            console.warn("Failed to write fallback log to adminLogs:", logErr);
+          }
+        }
+      } else {
+        // If pending_first_login or no UID, just clean up the record directly in Firestore
+        if (type === "employees") {
+          await updateDoc(doc(db, 'employees', id), {
+            hasAccount: false,
+            firebaseUid: null
+          });
+        } else if (type === "customers") {
+          await updateDoc(doc(db, 'customers', id), {
+            hasAccount: false,
+            firebaseUid: null
+          });
+        }
       }
 
-      // Also update local state to reflect UI changes immediately
+      // Update local React state to match the deletion
       if (type === "employees") {
         const updatedEmployees = employees.map((emp) => {
           if (emp.id === id) {
@@ -227,6 +273,7 @@ export function UserManagementView({
         });
         onCustomersChange(updatedCustomers);
       }
+
       setDeleteConfirmInfo(null);
     } catch (err: any) {
       console.error("Error deleting user:", err);

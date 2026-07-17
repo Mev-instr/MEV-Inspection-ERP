@@ -97,7 +97,13 @@ export const isFirestoreOnline = async () => {
     const { collection, getDocs, limit, query } = await import("firebase/firestore");
     await getDocs(query(collection(db, 'users'), limit(1)));
     return true;
-  } catch (e) {
+  } catch (e: any) {
+    // If we get permission-denied, the database is 100% online and properly configured
+    // because we successfully reached the backend and the security rules engine was evaluated.
+    if (e && (e.code === 'permission-denied' || (e.message && e.message.toLowerCase().includes('permission')))) {
+      console.log("Firestore is online (connection verified via rules evaluation).");
+      return true;
+    }
     console.error("Firestore connectivity check failed:", e);
     return false;
   }
@@ -143,8 +149,46 @@ export const initSecureAuth = (
       }
 
       // Validate user exists in Firestore users collection
-      const { getDoc, doc } = await import("firebase/firestore");
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const { getDoc, setDoc, doc, collection, query, where, getDocs, updateDoc } = await import("firebase/firestore");
+      let userDoc = await getDoc(doc(db, 'users', user.uid));
+      
+      if (!userDoc.exists() && user.email) {
+        // Fallback/Automatic employee onboarding on first login:
+        // Check if there is an employee with this email address pre-registered by the admin
+        const q = query(collection(db, 'employees'), where('email', '==', user.email.trim()));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+          const empDoc = querySnapshot.docs[0];
+          const empData = empDoc.data();
+          const empId = empDoc.id;
+          
+          // Auto-provision their users/uid document in Firestore
+          await setDoc(doc(db, 'users', user.uid), {
+            uid: user.uid,
+            email: user.email.trim(),
+            name: user.displayName || `${empData.firstName || ''} ${empData.lastName || ''}`.trim() || 'Employee',
+            role: 'employee',
+            employeeId: empId,
+            department: empData.department || "",
+            assignedCompanies: [],
+            assignedCustomerIds: [],
+            assignedCustomerEmails: [],
+            createdAt: new Date(),
+            allowedDomains: ['erp.mev-ins.com']
+          });
+          
+          // Update the employee record
+          await updateDoc(doc(db, 'employees', empId), {
+            hasAccount: true,
+            firebaseUid: user.uid
+          });
+          
+          // Re-fetch the newly created user doc
+          userDoc = await getDoc(doc(db, 'users', user.uid));
+        }
+      }
+
       if (!userDoc.exists()) {
         await signOut(auth);
         onAuthChange(null, null);

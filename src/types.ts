@@ -96,6 +96,9 @@ export interface EmployeeDetail {
   joiningDate?: string;
   name?: string;
   role?: string;
+  assignedCompanies?: string[];
+  assignedCustomerIds?: string[];
+  assignedCustomerEmails?: string[];
 }
 
 export interface TrainingOperator {
