@@ -90,6 +90,13 @@ export function UserManagementView({
         const emp = employees.find(e => e.id === selectedId);
         if (!emp) throw new Error("Employee not found");
         
+        if (!auth.currentUser) {
+          setErrorMessage("You must be logged in to create a user account.");
+          setLoading(false);
+          return;
+        }
+        await auth.currentUser.getIdToken(true);
+
         // Use Cloud Function to create/update the employee user account
         const createEmployeeUser = httpsCallable(functions, 'createEmployeeUser');
         const result: any = await createEmployeeUser({
@@ -113,6 +120,13 @@ export function UserManagementView({
 
         const cust = customers.find(c => c.id === selectedId);
         if (!cust) throw new Error("Customer not found");
+
+        if (!auth.currentUser) {
+          setErrorMessage("You must be logged in to create a user account.");
+          setLoading(false);
+          return;
+        }
+        await auth.currentUser.getIdToken(true);
 
         // Call secure Cloud Function to create the client user account
         const createClientUser = httpsCallable(functions, 'createClientUser');
@@ -193,6 +207,13 @@ export function UserManagementView({
       }
 
       if (targetUid && targetUid !== "pending_first_login") {
+        if (!auth.currentUser) {
+          setErrorMessage("You must be logged in to delete a user account.");
+          setLoading(false);
+          return;
+        }
+        await auth.currentUser.getIdToken(true);
+
         // Call secure Cloud Function to delete the user account
         try {
           const deleteUserAccount = httpsCallable(functions, 'deleteUserAccount');

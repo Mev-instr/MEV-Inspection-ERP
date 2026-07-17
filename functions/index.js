@@ -44,14 +44,8 @@ async function getAuthenticatedUser(request) {
     }
   }
 
-  // Fallback for Dev/Testing Sandbox and Iframe Partitioning restrictions:
-  // Automatically authenticate as the primary admin developer user
-  console.log("No authenticated user session found in request; falling back to primary developer admin.");
-  return {
-    uid: 'dev-admin-fallback',
-    email: 'shahzaibkamran44@gmail.com',
-    token: { email: 'shahzaibkamran44@gmail.com' }
-  };
+  // If neither works, return null instead of a fake admin identity
+  return null;
 }
 
 // ============================================================
