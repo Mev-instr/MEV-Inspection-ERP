@@ -206,6 +206,14 @@ service cloud.firestore {
     }
 
     // ============================================================
+    // INSPECTION TYPES (Dynamic autocomplete list)
+    // ============================================================
+    match /inspectionTypes/{typeId} {
+      allow read: if isAuth();
+      allow write: if isAdmin() || isEmployee();
+    }
+
+    // ============================================================
     // SETTINGS / CONFIG
     // ============================================================
     match /settings/{docId} {
